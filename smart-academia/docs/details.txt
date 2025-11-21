@@ -1,0 +1,9 @@
+work done:
+I have done login ,register and landing page
+
+
+work remanining
+I have to add the loading effect on landing page
+I will work on the admin dashboard.(still under working)
+note: you have to improve the tabs of admin dashboard(teacher,student,courses)
+note: improve the Add new teacher and add new student
