@@ -5,12 +5,10 @@ import StudentRegistration from './pages/loginRegSystem/studentReg'
 import Register from './pages/loginRegSystem/log-reg'
 import Login from './pages/loginRegSystem/login'
 import ForgotPassword from './pages/loginRegSystem/ForgotPassword';
-// import LandingPage from './pages/LandingPage';
+import LandingPage from './pages/LandingPage';
 import AdminDashboard from "./pages/AdminDashboard";
-// import TeacherDashboard from "./pages/TeacherDashboard";
-// import AdminDashboard from './pages/AdminDashboard';
-
-import ManageTeachers from './pages/ManageTeachers';
+import StudentDashboard from './pages/StudentDashboard';
+import TeacherDashboard from './pages/loginRegSystem/TeacherDashboard';
 
 
 
@@ -20,7 +18,9 @@ function App() {
       <div className="App">
         <Routes>
           {/* Redirect root to dashboard */}
-          {/* <Route path="/" element={<LandingPage />} /> */}
+          <Route path="/teacher" element={<TeacherDashboard />} />
+          <Route path="/student" element={<StudentDashboard />} />
+          <Route path="/landingPage" element={<LandingPage />} />
           <Route path="/" element={<AdminDashboard />} />
           <Route path="/dashboard" element={<AdminDashboard />} />
           {/* Main routes */}

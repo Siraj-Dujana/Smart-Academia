@@ -9,21 +9,21 @@ const Dashboard = () => {
   const [teachers] = useState([
     {
       id: 1,
-      name: "Dr. Eleanor Vance",
+      name: "Sir Faiz Ahmed Lakhani",
       department: "Computer Science",
       courses: 3,
       avatar: "https://lh3.googleusercontent.com/aida-public/AB6AXuAfPTeEMhMiED4qhmQAOotpYXPxbkz0JE7o_K1HptVxnuBK0HyuUSfhIm98TfaNun5NY90nyLCnQkvq2J2vUgeP450wvExuY5o9hjOaM-Pg7e-Oc-ozwfkYAAzNCK2iwrhZ3fyRKLXx8ixuezruT0auBF5fx6XQbKOWmqTHVkMQVi3JsPGBo8cUXOkn6XksgBKMLMyRBUx6pzCeuUAxWjyqQHxqStSoaYm4Fwc1LZ19b0rwJcldaBrC2XHz2OOTAya6ZP-9Ci2TtJ01"
     },
     {
       id: 2,
-      name: "Dr. Ben Carter",
+      name: "Sir Iftikhar Ahmed",
       department: "Mathematics",
       courses: 4,
       avatar: "https://lh3.googleusercontent.com/aida-public/AB6AXuDR3UIICWRxpLXy2-ZT5DRGJgUPDD9B_OgP94OtA62iwt9wInk1CWtjneGF3WfNAlxi7PZP_fgkcnpjnqIhk-hKA7L1Hr89vPkL34QRw90UyiVJURBPO04Hgt4kpfcmfAIMTV5R0hASJLoXYNOtcqStVs6U-sbPCSMSy75h1Zv8ofrVUvANF53PXeiyHpsinX_6ApMlb1XRqUZn-0Kuqvp5vdNNDwi2d4ueRRhITL_rNZ0vG9H1AuDEF0JncW8r6KZnw3m8XRIyNq84"
     },
     {
       id: 3,
-      name: "Dr. Sofia Rodriguez",
+      name: "Sir Iftikhar Ahmed",
       department: "Physics",
       courses: 2,
       avatar: "https://lh3.googleusercontent.com/aida-public/AB6AXuCA7cmsTtpmxprpoNL3hk2D9zfyG7nrHk8B8jhENZ2PMysq09baQmTguIB7YD7drdghlaf1QUmQNN_i3lc7T2mjXKuHsAvSKeR9QTit5wIekTh6OEunaCETlBI_O1gVlhpX_e5KjbUZh34JOzL5mZwf3cw86gQus9cn5VCmd62FSr6N5L6cwGg-1z_H7ANOuSLIB3gALrUy__CgsRdM1eQJMICwXEYYAkV2eDWc39OymB4LGvhGyMHXpVdNc3I26cUG3tXICiG2IIKu"
@@ -233,7 +233,7 @@ const Dashboard = () => {
             Admin Dashboard
           </h1>
           <p className="text-gray-600 dark:text-gray-400 text-base">
-            Welcome back, Alex! Here's the system overview.
+            Welcome back, Siraj Dujana! Here's the system overview.
           </p>
         </div>
       </div>
@@ -265,91 +265,7 @@ const Dashboard = () => {
         ))}
       </div>
 
-      {/* System Management Section */}
-      <div>
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
-          <h2 className="text-xl font-bold text-gray-900 dark:text-white">
-            System Management
-          </h2>
-          <button 
-            onClick={handleAddNew}
-            className="flex items-center justify-center gap-2 text-sm font-medium px-4 py-2.5 rounded-lg text-white bg-indigo-600 hover:bg-indigo-700 shadow-sm hover:shadow-md transition-all duration-200 hover:scale-105 group w-full sm:w-auto"
-          >
-            <span className="material-symbols-outlined text-base group-hover:scale-110 transition-transform duration-200">
-              add
-            </span> 
-            Add New Teacher
-          </button>
-        </div>
-        
-        <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="bg-gray-50 dark:bg-gray-700/50 border-b border-gray-200 dark:border-gray-600">
-                <tr>
-                  <th className="px-4 py-3 text-left font-semibold text-gray-600 dark:text-gray-400 uppercase text-xs tracking-wider">
-                    Teacher Name
-                  </th>
-                  <th className="px-4 py-3 text-left font-semibold text-gray-600 dark:text-gray-400 uppercase text-xs tracking-wider">
-                    Department
-                  </th>
-                  <th className="px-4 py-3 text-left font-semibold text-gray-600 dark:text-gray-400 uppercase text-xs tracking-wider">
-                    Courses
-                  </th>
-                  <th className="px-4 py-3 text-center font-semibold text-gray-600 dark:text-gray-400 uppercase text-xs tracking-wider">
-                    Actions
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-                {teachers.map((teacher) => (
-                  <tr 
-                    key={teacher.id} 
-                    className="hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors duration-150 group"
-                  >
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-3">
-                        <img 
-                          className="size-8 sm:size-10 rounded-full object-cover ring-2 ring-gray-200 dark:ring-gray-600 group-hover:ring-indigo-200 dark:group-hover:ring-indigo-400 transition-all duration-200"
-                          src={teacher.avatar} 
-                          alt={`Profile of ${teacher.name}`} 
-                        />
-                        <span className="font-medium text-gray-900 dark:text-white text-sm sm:text-base">
-                          {teacher.name}
-                        </span>
-                      </div>
-                    </td>
-                    <td className="px-4 py-3 text-gray-600 dark:text-gray-400 text-sm sm:text-base">
-                      {teacher.department}
-                    </td>
-                    <td className="px-4 py-3 text-gray-600 dark:text-gray-400 text-sm sm:text-base">
-                      {teacher.courses}
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex justify-center gap-1 sm:gap-2">
-                        <button 
-                          onClick={() => handleEditTeacher(teacher)}
-                          className="p-1.5 sm:p-2 text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 rounded-lg transition-all duration-200 hover:scale-110"
-                          title="Edit teacher"
-                        >
-                          <span className="material-symbols-outlined text-sm sm:text-base">edit</span>
-                        </button>
-                        <button 
-                          onClick={() => handleDeleteTeacher(teacher)}
-                          className="p-1.5 sm:p-2 text-gray-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg transition-all duration-200 hover:scale-110"
-                          title="Delete teacher"
-                        >
-                          <span className="material-symbols-outlined text-sm sm:text-base">delete</span>
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </div>
+    
 
       {/* Reports Overview Section */}
       <div>
@@ -379,7 +295,7 @@ const Dashboard = () => {
         </div>
       </div>
 
-      {/* Generate AI Report Button */}
+      {/* Generate Report Button */}
       <div className="flex justify-center">
         <button 
           onClick={handleGenerateReport}
@@ -388,7 +304,7 @@ const Dashboard = () => {
           <span className="material-symbols-outlined text-base group-hover:scale-110 transition-transform duration-200">
             auto_awesome
           </span> 
-          Generate AI Report
+          Generate Report
         </button>
       </div>
     </div>
