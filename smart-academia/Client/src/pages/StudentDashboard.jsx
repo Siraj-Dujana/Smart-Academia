@@ -6,8 +6,10 @@ import Quizzes from "../components/dashboard/StudentDashboard/Student Tabs/Quizz
 import Labs from "../components/dashboard/StudentDashboard/Student Tabs/Labs";
 import ProgressReport from "../components/dashboard/StudentDashboard/Student Tabs/ProgressReport";
 import AITutor from "../components/dashboard/StudentDashboard/Student Tabs/AITutor";
-
+import FloatingButtons from '../components/sections/LandingPage/FloatingButtons'; // Adjust path as needed
+import { useNavigate } from "react-router-dom";
 const StudentDashboard = () => {
+  const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [activeMenu, setActiveMenu] = useState('dashboard');
 
@@ -122,21 +124,6 @@ const StudentDashboard = () => {
               ))}
             </div>
 
-            {/* AI Assistance */}
-            <div className="mt-4 lg:mt-6 px-2 lg:px-3">
-              <button 
-                onClick={handleAIAssistance}
-                className="flex items-center gap-2 lg:gap-3 px-2 lg:px-3 py-2 lg:py-3 rounded-lg text-gray-600 dark:text-gray-400 hover:bg-gradient-to-r hover:from-indigo-50 hover:to-purple-50 dark:hover:from-indigo-900/20 dark:hover:to-purple-900/20 hover:text-gray-900 dark:hover:text-white transition-all duration-200 group w-full"
-              >
-                <span className="material-symbols-outlined text-lg lg:text-base text-purple-500 group-hover:scale-110 transition-transform duration-200">
-                  smart_toy
-                </span>
-                <p className="text-xs lg:text-sm font-medium">AI Tutor</p>
-                <span className="ml-auto material-symbols-outlined text-xs opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-                  arrow_forward
-                </span>
-              </button>
-            </div>
           </div>
 
           {/* User Profile */}
@@ -209,12 +196,19 @@ const StudentDashboard = () => {
       </div>
 
       {/* AI Assistant Floating Button */}
-      <button 
-        onClick={handleAIAssistance}
-        className="fixed z-30 bottom-8 right-8 h-16 w-16 flex items-center justify-center rounded-full bg-indigo-600 text-white shadow-lg hover:bg-indigo-700 transition-transform duration-300 hover:scale-110"
-      >
-        <span className="material-symbols-outlined text-3xl">smart_toy</span>
-      </button>
+     <FloatingButtons
+  showScrollTop={false}
+  onScrollToTop={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+  onChatClick={() => window.location.href = '/chat'}
+  chatTooltip="AI Tutor Assistant"
+  scrollTooltip="Scroll to Top"
+  chatIcon="smart_toy"
+  scrollIcon="arrow_upward"
+  chatPosition="bottom-8 right-8"
+  scrollPosition="bottom-8 right-8"
+  chatColor="from-indigo-600 to-indigo-700"
+  scrollColor="from-indigo-600 to-indigo-700"
+/>
     </div>
   );
 };

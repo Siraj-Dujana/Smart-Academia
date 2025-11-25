@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from 'react-router-dom';
+import TermsPrivacyModal from './TermsPrivacyModal';
 
 const Register = () => {
   // ========== STATE MANAGEMENT ==========
@@ -14,6 +15,7 @@ const Register = () => {
 
   const [errors, setErrors] = useState({}); // Stores validation errors
   const navigate = useNavigate(); // React Router navigation hook
+   const [showTermsModal, setShowTermsModal] = useState(false);
 
   // ========== ANIMATION STATES ==========
   const [animateSchool, setAnimateSchool] = useState(false);
@@ -136,8 +138,8 @@ const Register = () => {
         </div>
 
         {/* Desktop Brand Section */}
-        <div className="hidden lg:flex flex-col items-center justify-center bg-gray-50 dark:bg-gray-800 w-1/2 p-8 lg:p-12 text-center">
-          <div className="flex flex-col items-center gap-6 max-w-md">
+        <div className="hidden lg:flex flex-col items-center  bg-gray-50 dark:bg-gray-800 w-1/2 p-8 lg:p-12 text-center">
+          <div className="flex flex-col items-center gap-6 max-w-md mt-25">
             {/* Brand Icon */}
             <div className={`mb-2 flex h-20 w-20 items-center justify-center rounded-full bg-blue-500 text-white transition-all duration-700 transform ${
               animateSchool 
@@ -299,9 +301,16 @@ const Register = () => {
                   htmlFor="terms"
                 >
                   I agree to the{" "}
-                  <a href="#" className="font-medium text-blue-600 hover:text-blue-500">
-                    Terms & Privacy Policy
-                  </a>
+                  <a 
+  href="#" 
+  onClick={(e) => {
+    e.preventDefault();
+    setShowTermsModal(true);
+  }}
+  className="font-medium text-blue-600 hover:text-blue-500"
+>
+  Terms & Privacy Policy
+</a>
                 </label>
               </div>
               {errors.terms && (
@@ -343,8 +352,14 @@ const Register = () => {
             </div>
           </div>
         </div>
+        
       </div>
+      <TermsPrivacyModal 
+  isOpen={showTermsModal}
+  onClose={() => setShowTermsModal(false)}
+/>
     </div>
+    
   );
 };
 

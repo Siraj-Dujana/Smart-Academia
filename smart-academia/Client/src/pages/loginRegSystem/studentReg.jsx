@@ -50,10 +50,10 @@ const StudentRegistration = () => {
       label: "Student ID",
       icon: "badge",
       type: "text",
-      placeholder: "e.g. SA2024001",
-      validation: (value) => /^SA\d{7}$/.test(value),
+      placeholder: "e.g. 023-22-0327",
+       validation: (value) => /^\d{3}-\d{2}-\d{4}$/.test(value),
       successMsg: "Valid Student ID!",
-      errorMsg: "Student ID must be in format: SA2024001",
+      errorMsg: "Student ID must be in format: XXX-XX-XXXX",
     },
     email: {
       label: "Email",
@@ -424,7 +424,7 @@ const StudentRegistration = () => {
             </p>
 
             {/* Feature Highlights */}
-            <div className="flex flex-wrap justify-center gap-3 mt-4">
+            <div className="flex flex-wrap justify-center gap-3 mt-4 ">
               {["AI Powered", "Smart Learning", "24/7 Support", "Secure"].map((feature, index) => (
                 <span 
                   key={feature}
@@ -443,8 +443,8 @@ const StudentRegistration = () => {
         </div>
 
         {/* Desktop Brand Section */}
-        <div className="hidden lg:flex flex-col items-center justify-center bg-gray-50 dark:bg-gray-800 w-1/2 p-8 lg:p-12 text-center">
-          <div className="flex flex-col items-center gap-6 max-w-md">
+        <div className="hidden lg:flex flex-col items-center  bg-gray-50 dark:bg-gray-800 w-1/2 p-8 lg:p-12 text-center">
+          <div className="flex flex-col items-center gap-6 max-w-md mt-25">
             {/* Brand Icon */}
             <div className={`mb-2 flex h-20 w-20 items-center justify-center rounded-full bg-blue-500 text-white transition-all duration-700 transform ${
               animateSchool 
@@ -460,7 +460,7 @@ const StudentRegistration = () => {
             </div>
             
             {/* Brand Title */}
-            <h1 className={`text-4xl lg:text-5xl font-bold text-gray-900 dark:text-white transition-all duration-700 transform ${
+            <h1 className={`text-3xl lg:text-4xl font-bold text-gray-900 dark:text-white transition-all duration-700 transform ${
               animateTitle 
                 ? 'opacity-100 translate-y-0' 
                 : 'opacity-0 translate-y-8'
@@ -585,38 +585,7 @@ const StudentRegistration = () => {
                   </label>
                 </div>
 
-                {/* Terms and Conditions */}
-                <div className="flex items-start space-x-3">
-                  <input
-                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded mt-1"
-                    id="terms"
-                    name="terms"
-                    type="checkbox"
-                    checked={formData.terms}
-                    onChange={handleChange}
-                  />
-                  <div className="flex-1">
-                    <label
-                      className="block text-sm text-gray-700 dark:text-gray-300"
-                      htmlFor="terms"
-                    >
-                      I agree to the{" "}
-                      <a
-                        className="font-medium text-blue-600 hover:text-blue-500"
-                        href="#"
-                      >
-                        Terms & Privacy Policy
-                      </a>
-                      .
-                    </label>
-                    {errors.terms && (
-                      <p className="mt-1 text-sm text-red-600">{errors.terms}</p>
-                    )}
-                    {success.terms && !errors.terms && (
-                      <p className="mt-1 text-sm text-green-600">{success.terms}</p>
-                    )}
-                  </div>
-                </div>
+              
 
                 {/* ========== SUBMIT AND NAVIGATION BUTTONS ========== */}
                 <div className="flex flex-col gap-3">
