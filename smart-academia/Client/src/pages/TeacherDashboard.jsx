@@ -1,11 +1,11 @@
 import React, { useState } from "react";
-import Dashboard from "../components/dashboard/TeacherDashboard/Teacher tabs/Dashboard";
-import CourseManagement from "../components/dashboard/TeacherDashboard/Teacher tabs/CourseManagement";
-import QuizManagement from "../components/dashboard/TeacherDashboard/Teacher tabs/QuizManagement";
-import LabManagement from "../components/dashboard/TeacherDashboard/Teacher tabs/LabManagement";
-import StudentProgress from "../components/dashboard/TeacherDashboard/Teacher tabs/StudentProgress";
-import Announcements from "../components/dashboard/TeacherDashboard/Teacher tabs/Announcements";
-import AITutor from "../components/dashboard/TeacherDashboard/Teacher tabs/AITutor";
+import Dashboard from "../components/dashboard/TeacherDashboard/Teacher Tabs/Dashboard";
+import CourseManagement from "../components/dashboard/TeacherDashboard/Teacher Tabs/CourseManagement";
+import QuizManagement from "../components/dashboard/TeacherDashboard/Teacher Tabs/QuizManagement";
+import LabManagement from "../components/dashboard/TeacherDashboard/Teacher Tabs/LabManagement";
+import StudentProgress from "../components/dashboard/TeacherDashboard/Teacher Tabs/StudentProgress";
+import Announcements from "../components/dashboard/TeacherDashboard/Teacher Tabs/Announcements";
+import AITutor from "../components/dashboard/TeacherDashboard/Teacher Tabs/AITutor";
 
 const TeacherDashboard = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
