@@ -328,21 +328,7 @@ const ForgotPassword = () => {
               </div>
             )}
 
-            {/* ========== SUPPORT LINK ========== */}
-            {/* Only shown when form is not submitted */}
-            {!isSubmitted && (
-              <div className="text-center">
-                <p className="text-sm text-gray-600 dark:text-gray-400">
-                  Need help?{" "}
-                  <a
-                    className="font-medium text-blue-600 hover:text-blue-500"
-                    href="#"
-                  >
-                    Contact Support
-                  </a>
-                </p>
-              </div>
-            )}
+           
           </div>
         </div>
       </div>
