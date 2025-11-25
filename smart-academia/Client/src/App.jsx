@@ -8,7 +8,7 @@ import ForgotPassword from './pages/loginRegSystem/ForgotPassword';
 import LandingPage from './pages/LandingPage';
 import AdminDashboard from "./pages/AdminDashboard";
 import StudentDashboard from './pages/StudentDashboard';
-import TeacherDashboard from './pages/loginRegSystem/TeacherDashboard';
+import TeacherDashboard from './pages/TeacherDashboard';
 
 
 
