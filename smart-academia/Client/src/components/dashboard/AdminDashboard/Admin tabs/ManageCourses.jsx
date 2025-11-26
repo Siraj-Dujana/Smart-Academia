@@ -7,7 +7,7 @@ const ManageCourses = () => {
       title: "Introduction to Computer Science",
       code: "CS101",
       department: "Computer Science",
-      instructor: "Dr. Eleanor Vance",
+      instructor: "Dr. Noor Nabi",
       credits: 3,
       enrolled: 45,
       status: "active",
@@ -18,7 +18,7 @@ const ManageCourses = () => {
       title: "Calculus I",
       code: "MATH201",
       department: "Mathematics",
-      instructor: "Dr. Ben Carter",
+      instructor: "Dr. Iftikhar Ahmed",
       credits: 4,
       enrolled: 38,
       status: "active",
@@ -26,10 +26,10 @@ const ManageCourses = () => {
     },
     {
       id: 3,
-      title: "Quantum Physics",
-      code: "PHY301",
-      department: "Physics",
-      instructor: "Dr. Sofia Rodriguez",
+      title: "OOP",
+      code: "CS301",
+      department: "Computer Science",
+      instructor: "Dr. Faiz Ahmed Lakhani",
       credits: 3,
       enrolled: 28,
       status: "active",
@@ -37,26 +37,16 @@ const ManageCourses = () => {
     },
     {
       id: 4,
-      title: "Genetics and Evolution",
+      title: "Finance",
       code: "BIO202",
-      department: "Biology",
-      instructor: "Dr. Samuel Green",
+      department: "Business Administration",
+      instructor: "Dr. Khair Bux",
       credits: 3,
       enrolled: 32,
       status: "active",
       startDate: "2024-01-15"
     },
-    {
-      id: 5,
-      title: "Ancient Civilizations",
-      code: "HIST101",
-      department: "History",
-      instructor: "Dr. Chloe Davis",
-      credits: 3,
-      enrolled: 25,
-      status: "active",
-      startDate: "2024-01-15"
-    }
+    
   ]);
 
   const [searchTerm, setSearchTerm] = useState("");

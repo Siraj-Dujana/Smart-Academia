@@ -30,28 +30,28 @@ const Dashboard = () => {
   const studentProgress = [
     {
       id: 1,
-      name: "Olivia Chen",
+      name: "Mubeen Channa",
       course: "Introduction to Python",
       progress: 95,
       avatar: "https://lh3.googleusercontent.com/aida-public/AB6AXuCA7cmsTtpmxprpoNL3hk2D9zfyG7nrHk8B8jhENZ2PMysq09baQmTguIB7YD7drdghlaf1QUmQNN_i3lc7T2mjXKuHsAvSKeR9QTit5wIekTh6OEunaCETlBI_O1gVlhpX_e5KjbUZh34JOzL5mZwf3cw86gQus9cn5VCmd62FSr6N5L6cwGg-1z_H7ANOuSLIB3gALrUy__CgsRdM1eQJMICwXEYYAkV2eDWc39OymB4LGvhGyMHXpVdNc3I26cUG3tXICiG2IIKu"
     },
     {
       id: 2,
-      name: "Liam Patel",
+      name: "Manthar Ali",
       course: "Data Structures & Algorithms",
       progress: 82,
       avatar: "https://lh3.googleusercontent.com/aida-public/AB6AXuDR3UIICWRxpLXy2-ZT5DRGJgUPDD9B_OgP94OtA62iwt9wInk1CWtjneGF3WfNAlxi7PZP_fgkcnpjnqIhk-hKA7L1Hr89vPkL34QRw90UyiVJURBPO04Hgt4kpfcmfAIMTV5R0hASJLoXYNOtcqStVs6U-sbPCSMSy75h1Zv8ofrVUvANF53PXeiyHpsinX_6ApMlb1XRqUZn-0Kuqvp5vdNNDwi2d4ueRRhITL_rNZ0vG9H1AuDEF0JncW8r6KZnw3m8XRIyNq84"
     },
     {
       id: 3,
-      name: "Ava Garcia",
+      name: "Abdul Qadeer",
       course: "Machine Learning",
       progress: 75,
       avatar: "https://lh3.googleusercontent.com/aida-public/AB6AXuCtnYbxeWCt8KBRSHWtWmtUbg56WSyYWYG2jdygTpmmIz-zsXb2yPR6sURUIPz7QIcDf7at6_zCrclzK6w3pYQckCr3KrGjScsivo0IDHR6TcB7-OkrDmypmCP1L0YK8kUUlAr2hWTgRILLbdyoh2NfW__EHIU48xnBGSSVAF4-uJqatQ2fSh9taxoWk6xkAwMBOtOUE10zANYB5CleGq64KrvWFjWtPN9UbA--qTIUe0rHdnavE85Rl6Edf43KFJDx_8jcpiOFS2Z2"
     },
     {
       id: 4,
-      name: "Noah Kim",
+      name: "Saifullah",
       course: "Introduction to Python",
       progress: 45,
       avatar: "https://lh3.googleusercontent.com/aida-public/AB6AXuAp85dXa58ls5nHbIXfSTaM_xH02YhIVdAjnnoY6IB9GooLVSJbia04iRnJmOo5OPOXwIIfJOgg5PJwoJFeUMHKs9J4rjASKd7-DgCV6FYvQRBOS7kEj6WbfDjw5yGz81Jhpwj7ydFnWlRlbQKH63qAdJ46NlXvVuBUE7DwqvqphU24_H8KwZQVcGrEWMb_h95o9pfG3lwfd5ZM_q72kLK5HNxXGulu78dZY4TDsQvsew2GaduceAfDri0tDa37dXxGBup4YDJTTTgH"
