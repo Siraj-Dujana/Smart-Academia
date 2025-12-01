@@ -1,7 +1,6 @@
 import React, { useState } from "react";
 import Dashboard from "../components/dashboard/StudentDashboard/Student Tabs/Dashboard";
 import Courses from "../components/dashboard/StudentDashboard/Student Tabs/Courses";
-import Lessons from "../components/dashboard/StudentDashboard/Student Tabs/Lessons";
 import Quizzes from "../components/dashboard/StudentDashboard/Student Tabs/Quizzes";
 import Labs from "../components/dashboard/StudentDashboard/Student Tabs/Labs";
 import ProgressReport from "../components/dashboard/StudentDashboard/Student Tabs/ProgressReport";
@@ -17,7 +16,6 @@ const StudentDashboard = () => {
   const menuItems = [
     { icon: "dashboard", label: "Dashboard", key: 'dashboard' },
     { icon: "import_contacts", label: "Courses", key: 'courses' },
-    { icon: "play_lesson", label: "Lessons", key: 'lessons' },
     { icon: "quiz", label: "Quizzes", key: 'quizzes' },
     { icon: "science", label: "Labs", key: 'labs' },
     { icon: "bar_chart_4_bars", label: "Progress Report", key: 'progress' },
@@ -56,8 +54,6 @@ const StudentDashboard = () => {
         return <Dashboard />;
       case 'courses':
         return <Courses />;
-      case 'lessons':
-        return <Lessons />;
       case 'quizzes':
         return <Quizzes />;
       case 'labs':
