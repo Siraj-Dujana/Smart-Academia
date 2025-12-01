@@ -10,8 +10,10 @@ const ManageCourses = () => {
       instructor: "Dr. Noor Nabi",
       credits: 3,
       enrolled: 45,
+      capacity: 60,
       status: "active",
-      startDate: "2024-01-15"
+      startDate: "2024-01-15",
+      endDate: "2024-05-15"
     },
     {
       id: 2,
@@ -21,38 +23,69 @@ const ManageCourses = () => {
       instructor: "Dr. Iftikhar Ahmed",
       credits: 4,
       enrolled: 38,
+      capacity: 50,
       status: "active",
-      startDate: "2024-01-15"
+      startDate: "2024-01-15",
+      endDate: "2024-05-15"
     },
     {
       id: 3,
-      title: "OOP",
+      title: "Object-Oriented Programming",
       code: "CS301",
       department: "Computer Science",
       instructor: "Dr. Faiz Ahmed Lakhani",
       credits: 3,
       enrolled: 28,
+      capacity: 40,
       status: "active",
-      startDate: "2024-01-15"
+      startDate: "2024-01-15",
+      endDate: "2024-05-15"
     },
     {
       id: 4,
-      title: "Finance",
-      code: "BIO202",
+      title: "Financial Management",
+      code: "BUS202",
       department: "Business Administration",
       instructor: "Dr. Khair Bux",
       credits: 3,
       enrolled: 32,
+      capacity: 50,
       status: "active",
-      startDate: "2024-01-15"
+      startDate: "2024-01-15",
+      endDate: "2024-05-15"
     },
-    
+    {
+      id: 5,
+      title: "Web Development",
+      code: "CS302",
+      department: "Computer Science",
+      instructor: "Dr. Noor Nabi",
+      credits: 4,
+      enrolled: 42,
+      capacity: 50,
+      status: "active",
+      startDate: "2024-01-15",
+      endDate: "2024-05-15"
+    },
+    {
+      id: 6,
+      title: "Statistics",
+      code: "MATH202",
+      department: "Mathematics",
+      instructor: "Dr. Iftikhar Ahmed",
+      credits: 3,
+      enrolled: 25,
+      capacity: 40,
+      status: "inactive",
+      startDate: "2023-09-01",
+      endDate: "2023-12-15"
+    }
   ]);
 
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedDepartment, setSelectedDepartment] = useState("all");
 
-  const departments = ["Computer Science", "Mathematics", "Physics", "Biology", "History", "Arts"];
+  const departments = ["Computer Science", "Mathematics", "Physics", "Biology", "Business Administration", "History", "Arts"];
 
   const filteredCourses = courses.filter(course => {
     const matchesSearch = course.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -60,6 +93,15 @@ const ManageCourses = () => {
     const matchesDepartment = selectedDepartment === "all" || course.department === selectedDepartment;
     return matchesSearch && matchesDepartment;
   });
+
+  // Calculate statistics
+  const totalCourses = courses.length;
+  const activeCourses = courses.filter(c => c.status === 'active').length;
+  const totalEnrolled = courses.reduce((sum, course) => sum + course.enrolled, 0);
+  const totalCapacity = courses.reduce((sum, course) => sum + course.capacity, 0);
+  const enrollmentRate = totalCapacity > 0 ? ((totalEnrolled / totalCapacity) * 100).toFixed(1) : 0;
+  const totalDepartments = [...new Set(courses.map(c => c.department))].length;
+  const totalCredits = courses.reduce((sum, course) => sum + course.credits, 0);
 
   const handleAddCourse = () => {
     console.log("Add new course");
@@ -104,6 +146,89 @@ const ManageCourses = () => {
         </button>
       </div>
 
+      {/* Summary Stats */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
+        {/* Total Courses */}
+        <div className="bg-white dark:bg-gray-800 rounded-xl p-4 sm:p-6 border border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-md transition-all duration-300 hover:scale-105 group">
+          <div className="flex items-start gap-4">
+            <div className="flex items-center justify-center size-12 rounded-lg bg-indigo-100 dark:bg-indigo-900/30 group-hover:scale-110 transition-transform duration-200">
+              <span className="material-symbols-outlined text-2xl text-indigo-600 dark:text-indigo-400">menu_book</span>
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-gray-600 dark:text-gray-400 text-sm font-medium mb-1">
+                Total Courses
+              </p>
+              <p className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white mb-1">
+                {totalCourses}
+              </p>
+              <p className="text-xs font-medium text-green-600 dark:text-green-400">
+                {totalCourses} in catalog
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Active Courses */}
+        <div className="bg-white dark:bg-gray-800 rounded-xl p-4 sm:p-6 border border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-md transition-all duration-300 hover:scale-105 group">
+          <div className="flex items-start gap-4">
+            <div className="flex items-center justify-center size-12 rounded-lg bg-green-100 dark:bg-green-900/30 group-hover:scale-110 transition-transform duration-200">
+              <span className="material-symbols-outlined text-2xl text-green-600 dark:text-green-400">check_circle</span>
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-gray-600 dark:text-gray-400 text-sm font-medium mb-1">
+                Active Courses
+              </p>
+              <p className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white mb-1">
+                {activeCourses}
+              </p>
+              <p className="text-xs font-medium text-green-600 dark:text-green-400">
+                {((activeCourses / totalCourses) * 100).toFixed(1)}% currently running
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Total Students Enrolled */}
+        <div className="bg-white dark:bg-gray-800 rounded-xl p-4 sm:p-6 border border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-md transition-all duration-300 hover:scale-105 group">
+          <div className="flex items-start gap-4">
+            <div className="flex items-center justify-center size-12 rounded-lg bg-blue-100 dark:bg-blue-900/30 group-hover:scale-110 transition-transform duration-200">
+              <span className="material-symbols-outlined text-2xl text-blue-600 dark:text-blue-400">groups</span>
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-gray-600 dark:text-gray-400 text-sm font-medium mb-1">
+                Total Enrollment
+              </p>
+              <p className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white mb-1">
+                {totalEnrolled}
+              </p>
+              <p className="text-xs font-medium text-blue-600 dark:text-blue-400">
+                {enrollmentRate}% overall capacity
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Departments */}
+        <div className="bg-white dark:bg-gray-800 rounded-xl p-4 sm:p-6 border border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-md transition-all duration-300 hover:scale-105 group">
+          <div className="flex items-start gap-4">
+            <div className="flex items-center justify-center size-12 rounded-lg bg-purple-100 dark:bg-purple-900/30 group-hover:scale-110 transition-transform duration-200">
+              <span className="material-symbols-outlined text-2xl text-purple-600 dark:text-purple-400">corporate_fare</span>
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-gray-600 dark:text-gray-400 text-sm font-medium mb-1">
+                Departments
+              </p>
+              <p className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white mb-1">
+                {totalDepartments}
+              </p>
+              <p className="text-xs font-medium text-purple-600 dark:text-purple-400">
+                Across all faculties
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* Filters and Search */}
       <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm p-4 sm:p-6">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -114,7 +239,7 @@ const ManageCourses = () => {
             </span>
             <input
               type="text"
-              placeholder="Search courses..."
+              placeholder="Search courses by title or code..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full pl-10 pr-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200"
@@ -160,7 +285,7 @@ const ManageCourses = () => {
                   Instructor
                 </th>
                 <th className="px-4 py-3 text-left font-semibold text-gray-600 dark:text-gray-400 uppercase text-xs tracking-wider">
-                  Credits
+                  Enrollment
                 </th>
                 <th className="px-4 py-3 text-left font-semibold text-gray-600 dark:text-gray-400 uppercase text-xs tracking-wider">
                   Status
@@ -171,68 +296,91 @@ const ManageCourses = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-              {filteredCourses.map((course) => (
-                <tr 
-                  key={course.id} 
-                  className="hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors duration-150 group"
-                >
-                  <td className="px-4 py-3">
-                    <div>
-                      <span className="font-medium text-gray-900 dark:text-white text-sm sm:text-base block">
-                        {course.title}
-                      </span>
-                      <span className="text-gray-500 dark:text-gray-400 text-xs">
-                        {course.code}
-                      </span>
-                    </div>
-                  </td>
-                  <td className="px-4 py-3 text-gray-600 dark:text-gray-400 text-sm sm:text-base">
-                    {course.department}
-                  </td>
-                  <td className="px-4 py-3 text-gray-600 dark:text-gray-400 text-sm sm:text-base">
-                    {course.instructor}
-                  </td>
-                  <td className="px-4 py-3 text-gray-600 dark:text-gray-400 text-sm sm:text-base">
-                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300">
-                      <span className="material-symbols-outlined text-xs">school</span>
-                      {course.credits} credits
-                    </span>
-                  </td>
-                  <td className="px-4 py-3">
-                    <button
-                      onClick={() => toggleCourseStatus(course)}
-                      className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium transition-all duration-200 hover:scale-105 ${
-                        course.status === "active" 
-                          ? "bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300 hover:bg-green-200 dark:hover:bg-green-900/50" 
-                          : "bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600"
-                      }`}
-                    >
-                      <span className={`w-1.5 h-1.5 rounded-full ${
-                        course.status === "active" ? "bg-green-500" : "bg-gray-500"
-                      }`}></span>
-                      {course.status === "active" ? "Active" : "Inactive"}
-                    </button>
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="flex justify-center gap-1 sm:gap-2">
-                      <button 
-                        onClick={() => handleEditCourse(course)}
-                        className="p-1.5 sm:p-2 text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 rounded-lg transition-all duration-200 hover:scale-110"
-                        title="Edit course"
+              {filteredCourses.map((course) => {
+                const enrollmentPercentage = ((course.enrolled / course.capacity) * 100).toFixed(1);
+                return (
+                  <tr 
+                    key={course.id} 
+                    className="hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors duration-150 group"
+                  >
+                    <td className="px-4 py-3">
+                      <div>
+                        <span className="font-medium text-gray-900 dark:text-white text-sm sm:text-base block">
+                          {course.title}
+                        </span>
+                        <span className="text-gray-500 dark:text-gray-400 text-xs">
+                          {course.code} • {course.credits} credits
+                        </span>
+                      </div>
+                    </td>
+                    <td className="px-4 py-3 text-gray-600 dark:text-gray-400 text-sm sm:text-base">
+                      {course.department}
+                    </td>
+                    <td className="px-4 py-3 text-gray-600 dark:text-gray-400 text-sm sm:text-base">
+                      {course.instructor}
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="space-y-1">
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="text-gray-600 dark:text-gray-400">
+                            {course.enrolled} / {course.capacity} students
+                          </span>
+                          <span className={`font-medium ${
+                            enrollmentPercentage >= 90 ? 'text-red-600' :
+                            enrollmentPercentage >= 75 ? 'text-yellow-600' :
+                            'text-green-600'
+                          }`}>
+                            {enrollmentPercentage}%
+                          </span>
+                        </div>
+                        <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1.5">
+                          <div 
+                            className={`h-1.5 rounded-full ${
+                              enrollmentPercentage >= 90 ? 'bg-red-500' :
+                              enrollmentPercentage >= 75 ? 'bg-yellow-500' :
+                              'bg-green-500'
+                            }`}
+                            style={{ width: `${Math.min(enrollmentPercentage, 100)}%` }}
+                          ></div>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-4 py-3">
+                      <button
+                        onClick={() => toggleCourseStatus(course)}
+                        className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium transition-all duration-200 hover:scale-105 ${
+                          course.status === "active" 
+                            ? "bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300 hover:bg-green-200 dark:hover:bg-green-900/50" 
+                            : "bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600"
+                        }`}
                       >
-                        <span className="material-symbols-outlined text-sm sm:text-base">edit</span>
+                        <span className={`w-1.5 h-1.5 rounded-full ${
+                          course.status === "active" ? "bg-green-500" : "bg-gray-500"
+                        }`}></span>
+                        {course.status === "active" ? "Active" : "Inactive"}
                       </button>
-                      <button 
-                        onClick={() => handleDeleteCourse(course)}
-                        className="p-1.5 sm:p-2 text-gray-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg transition-all duration-200 hover:scale-110"
-                        title="Delete course"
-                      >
-                        <span className="material-symbols-outlined text-sm sm:text-base">delete</span>
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="flex justify-center gap-1 sm:gap-2">
+                        <button 
+                          onClick={() => handleEditCourse(course)}
+                          className="p-1.5 sm:p-2 text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 rounded-lg transition-all duration-200 hover:scale-110"
+                          title="Edit course"
+                        >
+                          <span className="material-symbols-outlined text-sm sm:text-base">edit</span>
+                        </button>
+                        <button 
+                          onClick={() => handleDeleteCourse(course)}
+                          className="p-1.5 sm:p-2 text-gray-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg transition-all duration-200 hover:scale-110"
+                          title="Delete course"
+                        >
+                          <span className="material-symbols-outlined text-sm sm:text-base">delete</span>
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>

@@ -71,6 +71,14 @@ const Dashboard = () => {
       color: "bg-blue-100 dark:bg-blue-900/50 text-blue-600 dark:text-blue-500",
       trend: "Up from 18 last week",
       trendColor: "text-green-500"
+    },
+    {
+      icon: "quiz",
+      title: "Active Labs",
+      value: "22",
+      color: "bg-blue-100 dark:bg-blue-900/50 text-blue-600 dark:text-blue-500",
+      trend: "Up from 18 last week",
+      trendColor: "text-green-500"
     }
   ];
 

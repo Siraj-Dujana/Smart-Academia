@@ -34,6 +34,14 @@ const Dashboard = () => {
       trendColor: "text-red-500"
     },
     {
+      icon: "pending_actions",
+      title: "Pending Labs",
+      value: "3",
+      color: "bg-amber-100 dark:bg-amber-900/50 text-amber-600 dark:text-amber-500",
+      trend: "2 due today",
+      trendColor: "text-red-500"
+    },
+    {
       icon: "trending_up",
       title: "Overall Progress",
       value: "85%",
@@ -261,33 +269,7 @@ const Dashboard = () => {
         ))}
       </div>
 
-      {/* Charts Section */}
-      <div>
-        <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-6">
-          Learning Analytics
-        </h2>
-        <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 mb-8">
-          {/* Bar Chart Section */}
-          <div className="xl:col-span-2 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm p-4 sm:p-6 hover:shadow-md transition-all duration-300">
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-              Course Progress Overview
-            </h3>
-            <div className="h-64 sm:h-80">
-              <canvas ref={barChartRef} />
-            </div>
-          </div>
-          
-          {/* Pie Chart Section */}
-          <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm p-4 sm:p-6 hover:shadow-md transition-all duration-300">
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-              Learning Status
-            </h3>
-            <div className="h-64 sm:h-80 flex items-center justify-center">
-              <canvas ref={pieChartRef} />
-            </div>
-          </div>
-        </div>
-      </div>
+     
 
       {/* Courses Section */}
       <div>

@@ -380,12 +380,7 @@ const ManageStudents = () => {
                       >
                         <span className="material-symbols-outlined text-sm sm:text-base">delete</span>
                       </button>
-                      <button 
-                        className="p-1.5 sm:p-2 text-gray-400 hover:text-green-600 dark:hover:text-green-400 hover:bg-green-50 dark:hover:bg-green-900/30 rounded-lg transition-all duration-200 hover:scale-110"
-                        title="View profile"
-                      >
-                        <span className="material-symbols-outlined text-sm sm:text-base">visibility</span>
-                      </button>
+                     
                     </div>
                   </td>
                 </tr>
