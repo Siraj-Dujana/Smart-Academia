@@ -1,10 +1,12 @@
 import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 // Course Card Component
 const CourseCard = ({ course, isEnrolled = true, onEnroll, onUnenroll }) => {
   const radius = 14;
   const circumference = 2 * Math.PI * radius;
   const progressOffset = circumference - (course.progress / 100) * circumference;
+  const navigate = useNavigate();
 
   const getProgressColor = (percentage) => {
     if (percentage >= 80) return "stroke-blue-600 dark:stroke-blue-500";
@@ -16,12 +18,18 @@ const CourseCard = ({ course, isEnrolled = true, onEnroll, onUnenroll }) => {
   const progressColor = getProgressColor(course.progress);
 
   const handleCardClick = () => {
-    console.log(`Viewing course: ${course.title}`);
+    if (isEnrolled) {
+      navigate(`/lessons/${course.id}`);
+    } else {
+      console.log(`Viewing course details: ${course.title}`);
+    }
   };
 
   const handleContinueClick = (e) => {
     e.stopPropagation();
-    console.log(`Continuing course: ${course.title}`);
+    if (isEnrolled) {
+      navigate(`/lessons/${course.id}`);
+    }
   };
 
   const handleEnrollClick = (e) => {
@@ -43,7 +51,7 @@ const CourseCard = ({ course, isEnrolled = true, onEnroll, onUnenroll }) => {
         {/* Course Header */}
         <div className="flex items-start gap-3 mb-4">
           {/* Icon */}
-          <div className={`flex items-center justify-center size-10 rounded-lg  flex-shrink-0 mt-1 group-hover:scale-110 transition-transform duration-300`}>
+          <div className={`flex items-center justify-center size-10 rounded-lg flex-shrink-0 mt-1 group-hover:scale-110 transition-transform duration-300 ${course.color}`}>
             <span className="material-symbols-outlined text-base text-blue-600 dark:text-blue-400">menu_book</span>
           </div>
           
@@ -261,7 +269,6 @@ const Courses = () => {
     ? Math.round(enrolledCourses.reduce((sum, course) => sum + course.progress, 0) / enrolledCourses.length)
     : 0;
   const totalCredits = enrolledCourses.reduce((sum, course) => sum + course.credits, 0);
-  const completedCourses = enrolledCourses.filter(course => course.progress === 100).length;
 
   // Handle enroll action
   const handleEnroll = (courseId) => {
@@ -295,13 +302,6 @@ const Courses = () => {
           <p className="text-gray-600 dark:text-gray-400 mt-1">
             Manage your course enrollments and track progress
           </p>
-        </div>
-        
-        <div className="flex items-center gap-3">
-          <button className="flex items-center justify-center gap-2 text-sm font-medium px-4 py-2.5 rounded-lg text-white bg-blue-600 hover:bg-blue-700 shadow-sm hover:shadow-md transition-all duration-200">
-            <span className="material-symbols-outlined text-base">add</span>
-            Browse All Courses
-          </button>
         </div>
       </div>
 

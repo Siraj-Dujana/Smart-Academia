@@ -9,6 +9,7 @@ import LandingPage from './pages/LandingPage';
 import AdminDashboard from "./pages/AdminDashboard";
 import StudentDashboard from './pages/StudentDashboard';
 import TeacherDashboard from './pages/TeacherDashboard';
+import Lessons from './components/dashboard/StudentDashboard/Lesson';
 
 
 
@@ -17,12 +18,14 @@ function App() {
     <Router>
       <div className="App">
         <Routes>
+            <Route path="/lessons/:courseId" element={<Lessons />} />
           {/* Redirect root to dashboard */}
           <Route path="/TeacherDashboard" element={<TeacherDashboard />} />
           <Route path="/StudentDashboard" element={<StudentDashboard />} />
           <Route path="/LandingPage" element={<LandingPage />} />
           <Route path="/" element={<AdminDashboard />} />
           <Route path="/AdminDashboard" element={<AdminDashboard />} />
+          
           {/* Main routes */}
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />

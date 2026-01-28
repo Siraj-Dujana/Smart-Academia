@@ -137,24 +137,7 @@ const Settings = () => {
                     />
                   </div>
 
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                      Language
-                    </label>
-                    <select
-                      value={settings.general.language}
-                      onChange={(e) => setSettings({
-                        ...settings,
-                        general: { ...settings.general, language: e.target.value }
-                      })}
-                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200"
-                    >
-                      <option value="English">English</option>
-                      <option value="Spanish">Spanish</option>
-                      <option value="French">French</option>
-                      <option value="German">German</option>
-                    </select>
-                  </div>
+                 
                 </div>
               </div>
             )}

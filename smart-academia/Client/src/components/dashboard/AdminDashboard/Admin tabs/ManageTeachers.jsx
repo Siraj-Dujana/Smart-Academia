@@ -12,7 +12,7 @@ const ManageTeachers = () => {
       specialization: "Artificial Intelligence",
       status: "active",
       joinDate: "2022-03-15",
-      avatar: "https://lh3.googleusercontent.com/aida-public/AB6AXuAfPTeEMhMiED4qhmQAOotpYXPxbkz0JE7o_K1HptVxnuBK0HyuUSfhIm98TfaNun5NY90nyLCnQkvq2J2vUgeP450wvExuY5o9hjOaM-Pg7e-Oc-ozwfkYAAzNCK2iwrhZ3fyRKLXx8ixuezruT0auBF5fx6XQbKOWmqTHVkMQVi3JsPGBo8cUXOkn6XksgBKMLMyRBUx6pzCeuUAxWjyqQHxqStSoaYm4Fwc1LZ19b0rwJcldaBrC2XHz2OOTAya6ZP-9Ci2TtJ01"
+      // avatar: "https://lh3.googleusercontent.com/aida-public/AB6AXuAfPTeEMhMiED4qhmQAOotpYXPxbkz0JE7o_K1HptVxnuBK0HyuUSfhIm98TfaNun5NY90nyLCnQkvq2J2vUgeP450wvExuY5o9hjOaM-Pg7e-Oc-ozwfkYAAzNCK2iwrhZ3fyRKLXx8ixuezruT0auBF5fx6XQbKOWmqTHVkMQVi3JsPGBo8cUXOkn6XksgBKMLMyRBUx6pzCeuUAxWjyqQHxqStSoaYm4Fwc1LZ19b0rwJcldaBrC2XHz2OOTAya6ZP-9Ci2TtJ01"
     },
     {
       id: 2,
@@ -24,7 +24,7 @@ const ManageTeachers = () => {
       specialization: "Calculus",
       status: "active",
       joinDate: "2021-08-22",
-      avatar: "https://lh3.googleusercontent.com/aida-public/AB6AXuDR3UIICWRxpLXy2-ZT5DRGJgUPDD9B_OgP94OtA62iwt9wInk1CWtjneGF3WfNAlxi7PZP_fgkcnpjnqIhk-hKA7L1Hr89vPkL34QRw90UyiVJURBPO04Hgt4kpfcmfAIMTV5R0hASJLoXYNOtcqStVs6U-sbPCSMSy75h1Zv8ofrVUvANF53PXeiyHpsinX_6ApMlb1XRqUZn-0Kuqvp5vdNNDwi2d4ueRRhITL_rNZ0vG9H1AuDEF0JncW8r6KZnw3m8XRIyNq84"
+      // avatar: "https://lh3.googleusercontent.com/aida-public/AB6AXuDR3UIICWRxpLXy2-ZT5DRGJgUPDD9B_OgP94OtA62iwt9wInk1CWtjneGF3WfNAlxi7PZP_fgkcnpjnqIhk-hKA7L1Hr89vPkL34QRw90UyiVJURBPO04Hgt4kpfcmfAIMTV5R0hASJLoXYNOtcqStVs6U-sbPCSMSy75h1Zv8ofrVUvANF53PXeiyHpsinX_6ApMlb1XRqUZn-0Kuqvp5vdNNDwi2d4ueRRhITL_rNZ0vG9H1AuDEF0JncW8r6KZnw3m8XRIyNq84"
     },
     {
       id: 3,
@@ -36,7 +36,7 @@ const ManageTeachers = () => {
       specialization: "Quantum Mechanics",
       status: "active",
       joinDate: "2023-01-10",
-      avatar: "https://lh3.googleusercontent.com/aida-public/AB6AXuCA7cmsTtpmxprpoNL3hk2D9zfyG7nrHk8B8jhENZ2PMysq09baQmTguIB7YD7drdghlaf1QUmQNN_i3lc7T2mjXKuHsAvSKeR9QTit5wIekTh6OEunaCETlBI_O1gVlhpX_e5KjbUZh34JOzL5mZwf3cw86gQus9cn5VCmd62FSr6N5L6cwGg-1z_H7ANOuSLIB3gALrUy__CgsRdM1eQJMICwXEYYAkV2eDWc39OymB4LGvhGyMHXpVdNc3I26cUG3tXICiG2IIKu"
+      // avatar: "https://lh3.googleusercontent.com/aida-public/AB6AXuCA7cmsTtpmxprpoNL3hk2D9zfyG7nrHk8B8jhENZ2PMysq09baQmTguIB7YD7drdghlaf1QUmQNN_i3lc7T2mjXKuHsAvSKeR9QTit5wIekTh6OEunaCETlBI_O1gVlhpX_e5KjbUZh34JOzL5mZwf3cw86gQus9cn5VCmd62FSr6N5L6cwGg-1z_H7ANOuSLIB3gALrUy__CgsRdM1eQJMICwXEYYAkV2eDWc39OymB4LGvhGyMHXpVdNc3I26cUG3tXICiG2IIKu"
     },
     {
       id: 4,
@@ -48,7 +48,7 @@ const ManageTeachers = () => {
       specialization: "Genetics",
       status: "active",
       joinDate: "2022-11-05",
-      avatar: "https://lh3.googleusercontent.com/aida-public/AB6AXuCBIbkpOtI2w0Xlpq_fwmhZstv_c4JY4qjC41VHJvTozCEs61mq-RhA3iojwyqRTYZJv7ewgsmtyGpL0pbOcWgAaSkNn4keZd0Lk_UYMBxFKMHKfaeD_W5OlSlNqHQjC2iztQePW5g4tmCki_qDDlK8ld-yVaBrvpYV2f22Kz4TeATX9aIDuKa1tXyg_ujlwdYPuf3WtXu05VdpA1WS18imCWPcW9SXN2zAKq_StXpE2HRbogXjL6ukfCb0FsBXzOCgELLgE7FzQ8FR"
+      // avatar: "https://lh3.googleusercontent.com/aida-public/AB6AXuCBIbkpOtI2w0Xlpq_fwmhZstv_c4JY4qjC41VHJvTozCEs61mq-RhA3iojwyqRTYZJv7ewgsmtyGpL0pbOcWgAaSkNn4keZd0Lk_UYMBxFKMHKfaeD_W5OlSlNqHQjC2iztQePW5g4tmCki_qDDlK8ld-yVaBrvpYV2f22Kz4TeATX9aIDuKa1tXyg_ujlwdYPuf3WtXu05VdpA1WS18imCWPcW9SXN2zAKq_StXpE2HRbogXjL6ukfCb0FsBXzOCgELLgE7FzQ8FR"
     },
     {
       id: 5,
@@ -60,7 +60,7 @@ const ManageTeachers = () => {
       specialization: "Ancient Civilizations",
       status: "active",
       joinDate: "2023-03-20",
-      avatar: "https://lh3.googleusercontent.com/aida-public/AB6AXuAcf-ni8ThORU95cb_qoxVVegwcwN9_ijYqfeqOojDGOKdFAZ_oNeLU9uH0UsmjzxRpKXgnc6D2Z-NVKfHfXhzE4FKkvyMmHzePmwDlTufSUnqkxzDzw26QVWYRGbvJEjnQlDdWvGmlglf9nyVDFjOuSKXRpgcUCxo2hzREE9rrF2dOXOD5LFbX1HtHEpnL09eEL-ZbTqTt-K09wXQObeyz1ufSk4_dKFbXNQjPfYymBQs4UayJL94R3VtDKK3TbLxP3bdgZroBXD0b"
+      // avatar: "https://lh3.googleusercontent.com/aida-public/AB6AXuAcf-ni8ThORU95cb_qoxVVegwcwN9_ijYqfeqOojDGOKdFAZ_oNeLU9uH0UsmjzxRpKXgnc6D2Z-NVKfHfXhzE4FKkvyMmHzePmwDlTufSUnqkxzDzw26QVWYRGbvJEjnQlDdWvGmlglf9nyVDFjOuSKXRpgcUCxo2hzREE9rrF2dOXOD5LFbX1HtHEpnL09eEL-ZbTqTt-K09wXQObeyz1ufSk4_dKFbXNQjPfYymBQs4UayJL94R3VtDKK3TbLxP3bdgZroBXD0b"
     }
   ]);
 

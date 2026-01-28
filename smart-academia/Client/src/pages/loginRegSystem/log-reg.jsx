@@ -329,14 +329,6 @@ const Register = () => {
               Continue as {formData.role === 'student' ? 'Student' : 'Teacher'}
             </button>
 
-            {/* ========== BACK TO LOGIN BUTTON ========== */}
-            <button
-              type="button"
-              onClick={handleBackToLogin}
-              className="w-full flex justify-center py-3 px-4 border border-gray-300 dark:border-gray-600 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-200"
-            >
-              Back to Login
-            </button>
 
             {/* ========== LOGIN LINK ========== */}
             <div className="text-center">

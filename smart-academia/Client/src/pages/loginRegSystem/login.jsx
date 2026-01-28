@@ -120,12 +120,7 @@ const Login = () => {
     }
   };
 
-  /**
-   * Handles institution login (future feature)
-   */
-  const handleInstitutionLogin = () => {
-    alert("Institution login clicked!");
-  };
+
 
   // ========== ANIMATION EFFECTS ==========
 
@@ -319,26 +314,11 @@ const Login = () => {
 
               {/* Remember Me & Forgot Password */}
               <div className="flex items-center justify-between">
-                <div className="flex items-center">
-                  <input
-                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                    id="rememberMe"
-                    name="rememberMe"
-                    type="checkbox"
-                    checked={formData.rememberMe}
-                    onChange={handleChange}
-                  />
-                  <label
-                    className="ml-2 block text-sm text-gray-700 dark:text-gray-300"
-                    htmlFor="rememberMe"
-                  >
-                    Remember me
-                  </label>
-                </div>
+                
                 <button
                   type="button"
                   onClick={handleForgotPassword}
-                  className="text-sm font-medium text-blue-600 hover:text-blue-500"
+                  className="text-sm font-medium text-blue-600 hover:text-blue-500 "
                 >
                   Forgot password?
                 </button>
@@ -360,17 +340,6 @@ const Login = () => {
                 )}
               </button>
 
-              {/* Institution Login Button */}
-              <button
-                type="button"
-                onClick={handleInstitutionLogin}
-                className="w-full flex justify-center items-center py-3 px-4 border border-gray-300 dark:border-gray-600 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-200"
-              >
-                <span className="material-symbols-outlined text-lg mr-2">
-                  badge
-                </span>
-                Sign in with your institution
-              </button>
             </form>
 
             {/* Registration Link */}
