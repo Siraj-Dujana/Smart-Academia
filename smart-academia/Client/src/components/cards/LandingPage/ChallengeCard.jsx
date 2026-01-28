@@ -4,23 +4,38 @@ const ChallengeCard = ({
   icon, 
   title, 
   challenges, 
-  color = "text-blue-500",
-  iconColor = "text-blue-600",
+  color = "text-blue-100",
+  iconColor = "text-white",
   className = "",
   onClick
 }) => {
   return (
-    <div className={`bg-white dark:bg-gray-800 rounded-xl p-4 sm:p-6 shadow-sm border border-gray-200 dark:border-gray-700 transition-all duration-500 hover:shadow-2xl hover:-translate-y-2 hover:border-blue-300 dark:hover:border-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 group ${className}`} 
-         onClick={onClick}>
-      <div className="flex items-center gap-3 mb-4">
-        <span className={`material-symbols-outlined text-xl sm:text-2xl ${iconColor} transform group-hover:scale-110 transition-transform duration-300`}>{icon}</span>
-        <h3 className="text-lg sm:text-xl font-bold group-hover:text-blue-600 transition-colors duration-300">{title}</h3>
+    <div 
+      className={`bg-white/10 backdrop-blur-sm rounded-2xl p-6 sm:p-8 border border-white/20 transition-all duration-300 hover:border-white/40 hover:shadow-2xl hover:scale-[1.02] group cursor-pointer ${className}`}
+      onClick={onClick}
+    >
+      <div className="flex items-center gap-4 mb-6">
+        <div className="flex items-center justify-center w-12 h-12 sm:w-14 sm:h-14 rounded-xl bg-white/20 group-hover:bg-white/30 transition-all duration-300">
+          <span className={`material-symbols-outlined text-xl sm:text-2xl ${iconColor}`}>
+            {icon}
+          </span>
+        </div>
+        <h3 className="text-xl sm:text-2xl font-bold leading-tight tracking-[-0.015em] text-white">
+          {title}
+        </h3>
       </div>
-      <ul className="space-y-2 sm:space-y-3 text-gray-600 dark:text-gray-400">
+      <ul className="space-y-4">
         {challenges.map((challenge, index) => (
-          <li key={index} className="flex items-start gap-2 group-hover:text-gray-700 dark:group-hover:text-gray-300 transition-colors duration-300">
-            <span className={`${color} text-sm sm:text-lg mt-0.5`}>•</span>
-            <span className="text-xs sm:text-sm">{challenge}</span>
+          <li 
+            key={index} 
+            className="flex items-start gap-3 transition-all duration-300 group-hover:translate-x-1"
+          >
+            <div className="flex items-center justify-center w-6 h-6 rounded-full bg-white/20 mt-0.5 flex-shrink-0">
+              <span className={`${color} text-sm font-bold`}>{index + 1}</span>
+            </div>
+            <span className="text-sm sm:text-base leading-normal tracking-[0.015em] text-blue-100 group-hover:text-white">
+              {challenge}
+            </span>
           </li>
         ))}
       </ul>

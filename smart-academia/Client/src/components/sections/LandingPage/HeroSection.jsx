@@ -4,7 +4,7 @@ import AIDashboard from './AIDashboard';
 const HeroSection = ({ 
   title = "Revolutionize Learning with AI",
   subtitle = "SmartAcademia empowers students to master complex topics with personalized AI support, while giving teachers powerful tools to automate grading and track progress.",
-  buttonText = "Get Started Free",
+  buttonText = "Get Started",
   onButtonClick,
   background = "bg-gradient-to-br from-blue-50 to-white dark:from-gray-800 dark:to-gray-900",
   padding = "py-12 sm:py-16 md:py-24 px-4 sm:px-6 lg:px-8",

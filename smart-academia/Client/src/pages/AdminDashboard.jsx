@@ -3,7 +3,6 @@ import Dashboard from "../components/dashboard/AdminDashboard/Admin tabs/Dashboa
 import ManageTeachers from "../components/dashboard/AdminDashboard/Admin tabs/ManageTeachers";
 import ManageStudents from "../components/dashboard/AdminDashboard/Admin tabs/ManageStudents";
 import ManageCourses from "../components/dashboard/AdminDashboard/Admin tabs/ManageCourses";
-import Settings from "../components/dashboard/AdminDashboard/Admin tabs/Settings";
 
 const AdminDashboard = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -15,7 +14,6 @@ const AdminDashboard = () => {
     { icon: "supervisor_account", label: "Manage Teachers", key: 'teachers' },
     { icon: "groups", label: "Manage Students", key: 'students' },
     { icon: "menu_book", label: "Manage Courses", key: 'courses' },
-    { icon: "settings", label: "Settings", key: 'settings' }
   ];
 
   // User data
@@ -38,9 +36,6 @@ const AdminDashboard = () => {
     console.log('Notifications');
   };
 
-  const handleAIAssistance = () => {
-    console.log('AI Assistance');
-  };
 
   // Render active tab content
   const renderActiveTab = () => {
@@ -53,8 +48,6 @@ const AdminDashboard = () => {
         return <ManageStudents />;
       case 'courses':
         return <ManageCourses />;
-      case 'settings':
-        return <Settings />;
       default:
         return <Dashboard />;
     }
@@ -113,21 +106,7 @@ const AdminDashboard = () => {
               ))}
             </div>
 
-            {/* AI Assistance */}
-            <div className="mt-6 px-3">
-              <button 
-                onClick={handleAIAssistance}
-                className="flex items-center gap-3 px-3 py-3 rounded-lg text-gray-600 dark:text-gray-400 hover:bg-gradient-to-r hover:from-indigo-50 hover:to-purple-50 dark:hover:from-indigo-900/20 dark:hover:to-purple-900/20 hover:text-gray-900 dark:hover:text-white transition-all duration-200 group w-full"
-              >
-                <span className="material-symbols-outlined text-purple-500 group-hover:scale-110 transition-transform duration-200">
-                  smart_toy
-                </span>
-                <p className="text-sm font-medium">AI Assistance</p>
-                <span className="ml-auto material-symbols-outlined text-xs opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-                  arrow_forward
-                </span>
-              </button>
-            </div>
+        
           </div>
 
           {/* User Profile */}

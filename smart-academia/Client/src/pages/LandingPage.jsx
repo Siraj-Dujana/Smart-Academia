@@ -7,7 +7,6 @@ import Footer from "../components/sections/LandingPage/Footer";
 import FloatingButtons from "../components/sections/LandingPage/FloatingButtons";
 import HeroSection from "../components/sections/LandingPage/HeroSection";
 import ProblemSection from "../components/sections/LandingPage/ProblemSection";
-import CourseSection from "../components/sections/LandingPage/CourseSection";
 import FeaturesSection from "../components/sections/LandingPage/FeaturesSection";
 import BenefitsSection from "../components/sections/LandingPage/BenefitsSection";
 import HowItWorksSection from "../components/sections/LandingPage/HowItWorksSection";
@@ -67,10 +66,7 @@ const LandingPage = () => {
         {/* Problem Section */}
         <ProblemSection />
 
-        {/* Course Highlights */}
-        <CourseSection 
-          onEnroll={handleRegister}
-        />
+       
 
         {/* Features Section */}
         <FeaturesSection />
@@ -84,7 +80,7 @@ const LandingPage = () => {
         {/* Final CTA */}
         <CTASection 
           primaryButton={{
-            text: "Get Started Free",
+            text: "Get Started",
             onClick: handleRegister
           }}
           secondaryButton={{
