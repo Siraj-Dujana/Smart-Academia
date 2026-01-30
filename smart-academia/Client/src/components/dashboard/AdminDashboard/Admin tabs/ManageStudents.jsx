@@ -8,10 +8,9 @@ const ManageStudents = () => {
       name: "Mubeen Channa",
       email: "mubeenchanna.bscs22@iba-suk.edu.pk",
       department: "Computer Science",
-      semester: "Fall 2024",
+      semester: "1st",
       enrollmentDate: "2023-09-01",
-      status: "active",
-      // avatar: "https://images.unsplash.com/photo-1494790108755-2616b612b786?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=100&q=80"
+      avatar: "https://images.unsplash.com/photo-1494790108755-2616b612b786?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=100&q=80"
     },
     {
       id: 2,
@@ -19,10 +18,9 @@ const ManageStudents = () => {
       name: "Manthar Ali",
       email: "mantharali.bscs22@iba-suk.edu.pk",
       department: "Computer Science",
-      semester: "Fall 2024",
+      semester: "1st",
       enrollmentDate: "2023-09-01",
-      status: "active",
-      // avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=100&q=80"
+      avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=100&q=80"
     },
     {
       id: 3,
@@ -30,10 +28,9 @@ const ManageStudents = () => {
       name: "Abdul Qadeer Odhano",
       email: "abdulqadeer.bscs22@iba-suk.edu.pk",
       department: "Computer Science",
-      semester: "Fall 2024",
+      semester: "2nd",
       enrollmentDate: "2023-09-01",
-      status: "active",
-      // avatar: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=100&q=80"
+      avatar: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=100&q=80"
     },
     {
       id: 4,
@@ -41,10 +38,9 @@ const ManageStudents = () => {
       name: "Saifullah Soomro",
       email: "saifullah.bscs22@iba-suk.edu.pk",
       department: "Computer Science",
-      semester: "Fall 2024",
+      semester: "2nd",
       enrollmentDate: "2023-09-01",
-      status: "active",
-      // avatar: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=100&q=80"
+      avatar: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=100&q=80"
     },
     {
       id: 5,
@@ -52,10 +48,9 @@ const ManageStudents = () => {
       name: "Sameer Ahmed",
       email: "sameerahmed.bba22@iba-suk.edu.pk",
       department: "Business Administration",
-      semester: "Spring 2024",
+      semester: "3rd",
       enrollmentDate: "2023-09-01",
-      status: "active",
-      // avatar: "https://images.unsplash.com/photo-1544725176-7c40e5a71c5e?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=100&q=80"
+      avatar: "https://images.unsplash.com/photo-1544725176-7c40e5a71c5e?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=100&q=80"
     }
   ]);
 
@@ -73,13 +68,7 @@ const ManageStudents = () => {
     "Biology"
   ];
 
-  const semesters = [
-    "Fall 2024", 
-    "Spring 2024", 
-    "Summer 2024",
-    "Fall 2023", 
-    "Spring 2023"
-  ];
+  const semesters = ["1st", "2nd", "3rd", "4th", "5th", "6th", "7th", "8th"];
 
   const filteredStudents = students.filter(student => {
     const matchesSearch = 
@@ -95,27 +84,16 @@ const ManageStudents = () => {
 
   const handleAddStudent = () => {
     console.log("Add new student");
-    // You can navigate to registration page or open a modal here
   };
 
   const handleEditStudent = (student) => {
     console.log("Edit student:", student);
-    // Open edit modal or navigate to edit page
   };
 
   const handleDeleteStudent = (student) => {
     if (window.confirm(`Are you sure you want to delete ${student.name} (${student.cmsId})?`)) {
       setStudents(students.filter(s => s.id !== student.id));
     }
-  };
-
-  const toggleStudentStatus = (student) => {
-    setStudents(students.map(s => 
-      s.id === student.id ? { 
-        ...s, 
-        status: s.status === "active" ? "inactive" : "active" 
-      } : s
-    ));
   };
 
   return (
@@ -141,93 +119,63 @@ const ManageStudents = () => {
         </button>
       </div>
 
-      
-     {/* Summary Stats */}
-<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
-  {/* Total Students */}
-  <div className="bg-white dark:bg-gray-800 rounded-xl p-4 sm:p-6 border border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-md transition-all duration-300 hover:scale-105 group">
-    <div className="flex items-start gap-4">
-      <div className="flex items-center justify-center size-12 rounded-lg bg-indigo-100 dark:bg-indigo-900/30 group-hover:scale-110 transition-transform duration-200">
-        <span className="material-symbols-outlined text-2xl text-indigo-600 dark:text-indigo-400">groups</span>
-      </div>
-      <div className="flex-1 min-w-0">
-        <p className="text-gray-600 dark:text-gray-400 text-sm font-medium mb-1">
-          Total Students
-        </p>
-        <p className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white mb-1">
-          {students.length}
-        </p>
-        <p className="text-xs font-medium text-green-600 dark:text-green-400">
-          +{students.length} total enrolled
-        </p>
-      </div>
-    </div>
-  </div>
+      {/* Summary Stats */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6">
+        {/* Total Students */}
+        <div className="bg-white dark:bg-gray-800 rounded-xl p-4 sm:p-6 border border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-md transition-all duration-300 hover:scale-105 group">
+          <div className="flex items-start gap-4">
+            <div className="flex items-center justify-center size-12 rounded-lg bg-indigo-100 dark:bg-indigo-900/30 group-hover:scale-110 transition-transform duration-200">
+              <span className="material-symbols-outlined text-2xl text-indigo-600 dark:text-indigo-400">groups</span>
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-gray-600 dark:text-gray-400 text-sm font-medium mb-1">
+                Total Students
+              </p>
+              <p className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white mb-1">
+                {students.length}
+              </p>
+            </div>
+          </div>
+        </div>
 
-  {/* Active Students */}
-  <div className="bg-white dark:bg-gray-800 rounded-xl p-4 sm:p-6 border border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-md transition-all duration-300 hover:scale-105 group">
-    <div className="flex items-start gap-4">
-      <div className="flex items-center justify-center size-12 rounded-lg bg-green-100 dark:bg-green-900/30 group-hover:scale-110 transition-transform duration-200">
-        <span className="material-symbols-outlined text-2xl text-green-600 dark:text-green-400">check_circle</span>
-      </div>
-      <div className="flex-1 min-w-0">
-        <p className="text-gray-600 dark:text-gray-400 text-sm font-medium mb-1">
-          Active Students
-        </p>
-        <p className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white mb-1">
-          {students.filter(s => s.status === 'active').length}
-        </p>
-        <p className="text-xs font-medium text-green-600 dark:text-green-400">
-          {((students.filter(s => s.status === 'active').length / students.length) * 100).toFixed(1)}% active rate
-        </p>
-      </div>
-    </div>
-  </div>
+        {/* Departments */}
+        <div className="bg-white dark:bg-gray-800 rounded-xl p-4 sm:p-6 border border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-md transition-all duration-300 hover:scale-105 group">
+          <div className="flex items-start gap-4">
+            <div className="flex items-center justify-center size-12 rounded-lg bg-blue-100 dark:bg-blue-900/30 group-hover:scale-110 transition-transform duration-200">
+              <span className="material-symbols-outlined text-2xl text-blue-600 dark:text-blue-400">corporate_fare</span>
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-gray-600 dark:text-gray-400 text-sm font-medium mb-1">
+                Departments
+              </p>
+              <p className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white mb-1">
+                {[...new Set(students.map(s => s.department))].length}
+              </p>
+            </div>
+          </div>
+        </div>
 
-  {/* Departments */}
-  <div className="bg-white dark:bg-gray-800 rounded-xl p-4 sm:p-6 border border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-md transition-all duration-300 hover:scale-105 group">
-    <div className="flex items-start gap-4">
-      <div className="flex items-center justify-center size-12 rounded-lg bg-blue-100 dark:bg-blue-900/30 group-hover:scale-110 transition-transform duration-200">
-        <span className="material-symbols-outlined text-2xl text-blue-600 dark:text-blue-400">corporate_fare</span>
+        {/* Semesters */}
+        <div className="bg-white dark:bg-gray-800 rounded-xl p-4 sm:p-6 border border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-md transition-all duration-300 hover:scale-105 group">
+          <div className="flex items-start gap-4">
+            <div className="flex items-center justify-center size-12 rounded-lg bg-purple-100 dark:bg-purple-900/30 group-hover:scale-110 transition-transform duration-200">
+              <span className="material-symbols-outlined text-2xl text-purple-600 dark:text-purple-400">calendar_today</span>
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-gray-600 dark:text-gray-400 text-sm font-medium mb-1">
+                Semesters
+              </p>
+              <p className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white mb-1">
+                {[...new Set(students.map(s => s.semester))].length}
+              </p>
+            </div>
+          </div>
+        </div>
       </div>
-      <div className="flex-1 min-w-0">
-        <p className="text-gray-600 dark:text-gray-400 text-sm font-medium mb-1">
-          Departments
-        </p>
-        <p className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white mb-1">
-          {[...new Set(students.map(s => s.department))].length}
-        </p>
-        <p className="text-xs font-medium text-blue-600 dark:text-blue-400">
-          Across all faculties
-        </p>
-      </div>
-    </div>
-  </div>
-
-  {/* Semesters */}
-  <div className="bg-white dark:bg-gray-800 rounded-xl p-4 sm:p-6 border border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-md transition-all duration-300 hover:scale-105 group">
-    <div className="flex items-start gap-4">
-      <div className="flex items-center justify-center size-12 rounded-lg bg-purple-100 dark:bg-purple-900/30 group-hover:scale-110 transition-transform duration-200">
-        <span className="material-symbols-outlined text-2xl text-purple-600 dark:text-purple-400">calendar_today</span>
-      </div>
-      <div className="flex-1 min-w-0">
-        <p className="text-gray-600 dark:text-gray-400 text-sm font-medium mb-1">
-          Semesters
-        </p>
-        <p className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white mb-1">
-          {[...new Set(students.map(s => s.semester))].length}
-        </p>
-        <p className="text-xs font-medium text-purple-600 dark:text-purple-400">
-          Current academic sessions
-        </p>
-      </div>
-    </div>
-  </div>
-</div>
 
       {/* Filters and Search */}
       <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm p-4 sm:p-6">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {/* Search */}
           <div className="relative">
             <span className="material-symbols-outlined absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400">
@@ -265,15 +213,6 @@ const ManageStudents = () => {
               <option key={sem} value={sem}>{sem}</option>
             ))}
           </select>
-
-          {/* Status Filter */}
-          <select
-            className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200"
-          >
-            <option value="all">All Status</option>
-            <option value="active">Active</option>
-            <option value="inactive">Inactive</option>
-          </select>
         </div>
       </div>
 
@@ -294,9 +233,6 @@ const ManageStudents = () => {
                 </th>
                 <th className="px-4 py-3 text-left font-semibold text-gray-600 dark:text-gray-400 uppercase text-xs tracking-wider">
                   Enrollment Date
-                </th>
-                <th className="px-4 py-3 text-left font-semibold text-gray-600 dark:text-gray-400 uppercase text-xs tracking-wider">
-                  Status
                 </th>
                 <th className="px-4 py-3 text-center font-semibold text-gray-600 dark:text-gray-400 uppercase text-xs tracking-wider">
                   Actions
@@ -350,21 +286,6 @@ const ManageStudents = () => {
                     })}
                   </td>
                   <td className="px-4 py-3">
-                    <button
-                      onClick={() => toggleStudentStatus(student)}
-                      className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium transition-all duration-200 hover:scale-105 ${
-                        student.status === "active" 
-                          ? "bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300 hover:bg-green-200 dark:hover:bg-green-900/50" 
-                          : "bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600"
-                      }`}
-                    >
-                      <span className={`w-1.5 h-1.5 rounded-full ${
-                        student.status === "active" ? "bg-green-500" : "bg-gray-500"
-                      }`}></span>
-                      {student.status === "active" ? "Active" : "Inactive"}
-                    </button>
-                  </td>
-                  <td className="px-4 py-3">
                     <div className="flex justify-center gap-1 sm:gap-2">
                       <button 
                         onClick={() => handleEditStudent(student)}
@@ -380,7 +301,6 @@ const ManageStudents = () => {
                       >
                         <span className="material-symbols-outlined text-sm sm:text-base">delete</span>
                       </button>
-                     
                     </div>
                   </td>
                 </tr>
@@ -389,7 +309,6 @@ const ManageStudents = () => {
           </table>
         </div>
       </div>
-
 
       {/* Empty State */}
       {filteredStudents.length === 0 && (
@@ -405,7 +324,7 @@ const ManageStudents = () => {
           </p>
           <button 
             onClick={handleAddStudent}
-            className="inline-flex items-center gap-2 text-sm font-medium px-4 py-2 rounded-lg text-white bg-indigo-600 hover:bg-indigo-700 transition-colors duration-200"
+            className="inline-flex items-center gap-2 text-sm font-medium px-4 py-2 rounded-lg text-white bg-indigo-600 hover:bg-indigo-700 transition-colors duration-200 hover:scale-105"
           >
             <span className="material-symbols-outlined text-base">add</span>
             Add New Student

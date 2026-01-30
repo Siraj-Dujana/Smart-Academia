@@ -8,8 +8,6 @@ const ManageCourses = () => {
       code: "CS101",
       department: "Computer Science",
       instructor: "Dr. Noor Nabi",
-      enrolled: 45,
-      capacity: 60,
       startDate: "2024-01-15",
       endDate: "2024-05-15"
     },
@@ -19,8 +17,6 @@ const ManageCourses = () => {
       code: "MATH201",
       department: "Mathematics",
       instructor: "Dr. Iftikhar Ahmed",
-      enrolled: 38,
-      capacity: 50,
       startDate: "2024-01-15",
       endDate: "2024-05-15"
     },
@@ -30,8 +26,6 @@ const ManageCourses = () => {
       code: "CS301",
       department: "Computer Science",
       instructor: "Dr. Faiz Ahmed Lakhani",
-      enrolled: 28,
-      capacity: 40,
       startDate: "2024-01-15",
       endDate: "2024-05-15"
     },
@@ -41,8 +35,6 @@ const ManageCourses = () => {
       code: "BUS202",
       department: "Business Administration",
       instructor: "Dr. Khair Bux",
-      enrolled: 32,
-      capacity: 50,
       startDate: "2024-01-15",
       endDate: "2024-05-15"
     },
@@ -52,8 +44,6 @@ const ManageCourses = () => {
       code: "CS302",
       department: "Computer Science",
       instructor: "Dr. Noor Nabi",
-      enrolled: 42,
-      capacity: 50,
       startDate: "2024-01-15",
       endDate: "2024-05-15"
     },
@@ -63,8 +53,6 @@ const ManageCourses = () => {
       code: "MATH202",
       department: "Mathematics",
       instructor: "Dr. Iftikhar Ahmed",
-      enrolled: 25,
-      capacity: 40,
       startDate: "2023-09-01",
       endDate: "2023-12-15"
     }
@@ -72,8 +60,19 @@ const ManageCourses = () => {
 
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedDepartment, setSelectedDepartment] = useState("all");
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingCourse, setEditingCourse] = useState(null);
+  const [formData, setFormData] = useState({
+    title: "",
+    code: "",
+    department: "",
+    instructor: "",
+    startDate: "",
+    endDate: ""
+  });
 
   const departments = ["Computer Science", "Mathematics", "Physics", "Biology", "Business Administration", "History", "Arts"];
+  const instructors = ["Dr. Noor Nabi", "Dr. Iftikhar Ahmed", "Dr. Faiz Ahmed Lakhani", "Dr. Khair Bux"];
 
   const filteredCourses = courses.filter(course => {
     const matchesSearch = course.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -88,17 +87,63 @@ const ManageCourses = () => {
   const totalDepartments = [...new Set(courses.map(c => c.department))].length;
 
   const handleAddCourse = () => {
-    console.log("Add new course");
+    setEditingCourse(null);
+    setFormData({
+      title: "",
+      code: "",
+      department: "",
+      instructor: "",
+      startDate: "",
+      endDate: ""
+    });
+    setIsModalOpen(true);
   };
 
   const handleEditCourse = (course) => {
-    console.log("Edit course:", course);
+    setEditingCourse(course);
+    setFormData({
+      title: course.title,
+      code: course.code,
+      department: course.department,
+      instructor: course.instructor,
+      startDate: course.startDate,
+      endDate: course.endDate
+    });
+    setIsModalOpen(true);
   };
 
   const handleDeleteCourse = (course) => {
-    if (window.confirm(`Are you sure you want to delete ${course.title}?`)) {
+    if (window.confirm(`Are you sure you want to delete "${course.title}"?`)) {
       setCourses(courses.filter(c => c.id !== course.id));
     }
+  };
+
+  const handleFormSubmit = (e) => {
+    e.preventDefault();
+    
+    if (editingCourse) {
+      // Update existing course
+      setCourses(courses.map(c => 
+        c.id === editingCourse.id ? { ...c, ...formData } : c
+      ));
+    } else {
+      // Add new course
+      const newCourse = {
+        id: courses.length > 0 ? Math.max(...courses.map(c => c.id)) + 1 : 1,
+        ...formData
+      };
+      setCourses([...courses, newCourse]);
+    }
+    
+    setIsModalOpen(false);
+  };
+
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
   };
 
   return (
@@ -207,13 +252,7 @@ const ManageCourses = () => {
             ))}
           </select>
 
-          {/* Teacher Filter (placeholder) */}
-          <select
-            className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200"
-            disabled
-          >
-            <option value="all">All Teachers</option>
-          </select>
+         
         </div>
       </div>
 
@@ -298,11 +337,143 @@ const ManageCourses = () => {
           </p>
           <button 
             onClick={handleAddCourse}
-            className="inline-flex items-center gap-2 text-sm font-medium px-4 py-2 rounded-lg text-white bg-indigo-600 hover:bg-indigo-700 transition-colors duration-200"
+            className="inline-flex items-center gap-2 text-sm font-medium px-4 py-2 rounded-lg text-white bg-indigo-600 hover:bg-indigo-700 transition-colors duration-200 hover:scale-105"
           >
             <span className="material-symbols-outlined text-base">add</span>
             Add New Course
           </button>
+        </div>
+      )}
+
+      {/* Course Modal */}
+      {isModalOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6">
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-xl font-bold text-gray-900 dark:text-white">
+                  {editingCourse ? "Edit Course" : "Add New Course"}
+                </h2>
+                <button 
+                  onClick={() => setIsModalOpen(false)}
+                  className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                >
+                  <span className="material-symbols-outlined">close</span>
+                </button>
+              </div>
+
+              <form onSubmit={handleFormSubmit} className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Course Title *
+                  </label>
+                  <input
+                    type="text"
+                    name="title"
+                    value={formData.title}
+                    onChange={handleInputChange}
+                    required
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                    placeholder="e.g., Introduction to Computer Science"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Course Code *
+                  </label>
+                  <input
+                    type="text"
+                    name="code"
+                    value={formData.code}
+                    onChange={handleInputChange}
+                    required
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                    placeholder="e.g., CS101"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Department *
+                  </label>
+                  <select
+                    name="department"
+                    value={formData.department}
+                    onChange={handleInputChange}
+                    required
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                  >
+                    <option value="">Select Department</option>
+                    {departments.map(dept => (
+                      <option key={dept} value={dept}>{dept}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Instructor *
+                  </label>
+                  <select
+                    name="instructor"
+                    value={formData.instructor}
+                    onChange={handleInputChange}
+                    required
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                  >
+                    <option value="">Select Instructor</option>
+                    {instructors.map(instructor => (
+                      <option key={instructor} value={instructor}>{instructor}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      Start Date
+                    </label>
+                    <input
+                      type="date"
+                      name="startDate"
+                      value={formData.startDate}
+                      onChange={handleInputChange}
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      End Date
+                    </label>
+                    <input
+                      type="date"
+                      name="endDate"
+                      value={formData.endDate}
+                      onChange={handleInputChange}
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex justify-end gap-3 pt-4">
+                  <button
+                    type="button"
+                    onClick={() => setIsModalOpen(false)}
+                    className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-colors duration-200"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg transition-colors duration-200 hover:scale-105"
+                  >
+                    {editingCourse ? "Update Course" : "Add Course"}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
         </div>
       )}
     </div>

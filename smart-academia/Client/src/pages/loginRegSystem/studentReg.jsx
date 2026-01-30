@@ -16,7 +16,7 @@ const StudentRegistration = () => {
     password: "",
     confirmPassword: "",
     department: "Computer Science",
-    semester: "Fall 2024",
+    semester: "1st",
     terms: false,
   });
 
@@ -100,12 +100,13 @@ const StudentRegistration = () => {
     "Business Administration",
     "Mechanical Engineering",
     "Fine Arts",
+    "Mathematics"
   ];
 
   /**
    * Available semesters for selection
    */
-  const semesters = ["Fall 2024", "Spring 2025", "Summer 2025"];
+  const semesters = ["1st", "2nd", "3rd","4th","5th","6th","7th","8th"];
 
   // ========== NAVIGATION HANDLERS ==========
 

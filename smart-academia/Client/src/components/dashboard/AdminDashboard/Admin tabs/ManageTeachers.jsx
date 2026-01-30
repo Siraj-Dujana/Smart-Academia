@@ -10,9 +10,8 @@ const ManageTeachers = () => {
       department: "Computer Science",
       courses: 3,
       specialization: "Artificial Intelligence",
-      status: "active",
       joinDate: "2022-03-15",
-      // avatar: "https://lh3.googleusercontent.com/aida-public/AB6AXuAfPTeEMhMiED4qhmQAOotpYXPxbkz0JE7o_K1HptVxnuBK0HyuUSfhIm98TfaNun5NY90nyLCnQkvq2J2vUgeP450wvExuY5o9hjOaM-Pg7e-Oc-ozwfkYAAzNCK2iwrhZ3fyRKLXx8ixuezruT0auBF5fx6XQbKOWmqTHVkMQVi3JsPGBo8cUXOkn6XksgBKMLMyRBUx6pzCeuUAxWjyqQHxqStSoaYm4Fwc1LZ19b0rwJcldaBrC2XHz2OOTAya6ZP-9Ci2TtJ01"
+      avatar: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=100&q=80"
     },
     {
       id: 2,
@@ -22,9 +21,8 @@ const ManageTeachers = () => {
       department: "Computer Science",
       courses: 4,
       specialization: "Calculus",
-      status: "active",
       joinDate: "2021-08-22",
-      // avatar: "https://lh3.googleusercontent.com/aida-public/AB6AXuDR3UIICWRxpLXy2-ZT5DRGJgUPDD9B_OgP94OtA62iwt9wInk1CWtjneGF3WfNAlxi7PZP_fgkcnpjnqIhk-hKA7L1Hr89vPkL34QRw90UyiVJURBPO04Hgt4kpfcmfAIMTV5R0hASJLoXYNOtcqStVs6U-sbPCSMSy75h1Zv8ofrVUvANF53PXeiyHpsinX_6ApMlb1XRqUZn-0Kuqvp5vdNNDwi2d4ueRRhITL_rNZ0vG9H1AuDEF0JncW8r6KZnw3m8XRIyNq84"
+      avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=100&q=80"
     },
     {
       id: 3,
@@ -34,9 +32,8 @@ const ManageTeachers = () => {
       department: "Mathematics",
       courses: 2,
       specialization: "Quantum Mechanics",
-      status: "active",
       joinDate: "2023-01-10",
-      // avatar: "https://lh3.googleusercontent.com/aida-public/AB6AXuCA7cmsTtpmxprpoNL3hk2D9zfyG7nrHk8B8jhENZ2PMysq09baQmTguIB7YD7drdghlaf1QUmQNN_i3lc7T2mjXKuHsAvSKeR9QTit5wIekTh6OEunaCETlBI_O1gVlhpX_e5KjbUZh34JOzL5mZwf3cw86gQus9cn5VCmd62FSr6N5L6cwGg-1z_H7ANOuSLIB3gALrUy__CgsRdM1eQJMICwXEYYAkV2eDWc39OymB4LGvhGyMHXpVdNc3I26cUG3tXICiG2IIKu"
+      avatar: "https://images.unsplash.com/photo-1544725176-7c40e5a71c5e?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=100&q=80"
     },
     {
       id: 4,
@@ -46,9 +43,8 @@ const ManageTeachers = () => {
       department: "Business Administration",
       courses: 3,
       specialization: "Genetics",
-      status: "active",
       joinDate: "2022-11-05",
-      // avatar: "https://lh3.googleusercontent.com/aida-public/AB6AXuCBIbkpOtI2w0Xlpq_fwmhZstv_c4JY4qjC41VHJvTozCEs61mq-RhA3iojwyqRTYZJv7ewgsmtyGpL0pbOcWgAaSkNn4keZd0Lk_UYMBxFKMHKfaeD_W5OlSlNqHQjC2iztQePW5g4tmCki_qDDlK8ld-yVaBrvpYV2f22Kz4TeATX9aIDuKa1tXyg_ujlwdYPuf3WtXu05VdpA1WS18imCWPcW9SXN2zAKq_StXpE2HRbogXjL6ukfCb0FsBXzOCgELLgE7FzQ8FR"
+      avatar: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=100&q=80"
     },
     {
       id: 5,
@@ -58,9 +54,8 @@ const ManageTeachers = () => {
       department: "Business Administration",
       courses: 2,
       specialization: "Ancient Civilizations",
-      status: "active",
       joinDate: "2023-03-20",
-      // avatar: "https://lh3.googleusercontent.com/aida-public/AB6AXuAcf-ni8ThORU95cb_qoxVVegwcwN9_ijYqfeqOojDGOKdFAZ_oNeLU9uH0UsmjzxRpKXgnc6D2Z-NVKfHfXhzE4FKkvyMmHzePmwDlTufSUnqkxzDzw26QVWYRGbvJEjnQlDdWvGmlglf9nyVDFjOuSKXRpgcUCxo2hzREE9rrF2dOXOD5LFbX1HtHEpnL09eEL-ZbTqTt-K09wXQObeyz1ufSk4_dKFbXNQjPfYymBQs4UayJL94R3VtDKK3TbLxP3bdgZroBXD0b"
+      avatar: "https://images.unsplash.com/photo-1494790108755-2616b612b786?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=100&q=80"
     }
   ]);
 
@@ -70,8 +65,7 @@ const ManageTeachers = () => {
     email: "",
     department: "",
     courses: "",
-    specialization: "",
-    status: "active"
+    specialization: ""
   });
 
   const [editTeacher, setEditTeacher] = useState(null);
@@ -117,10 +111,10 @@ const ManageTeachers = () => {
         ...newTeacher,
         courses: parseInt(newTeacher.courses) || 0,
         joinDate: new Date().toISOString().split('T')[0],
-        avatar: "https://lh3.googleusercontent.com/aida-public/AB6AXuCkGYFou0KiLQduvDpVrVukFPGO-oipBBchzPH589jhUZPPaVHsNbQhldmzqux_NFJ0uzHeQh44AxrAG0VxEH3kqCROxpAoLinlovdD7HQN81LAMJj1_aczwVtFvSnOrDIcXaL7O2OzRUXVH4GxJkKIvQno4fQ1KhhdJVWvRTbyr2t9AOPKGg2S-hnfb-b3JBZcBDXlNE0FJ735Z1NH2KJq3EHO0InVpR-77RLL4JGgCxFTQeN7LpzJw1OwPVbDxKdvUSYJAOhnRLAD"
+        avatar: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=100&q=80"
       };
       setTeachers([...teachers, teacher]);
-      setNewTeacher({ cmsId: "", name: "", email: "", department: "", courses: "", specialization: "", status: "active" });
+      setNewTeacher({ cmsId: "", name: "", email: "", department: "", courses: "", specialization: "" });
       setShowAddModal(false);
     }
   };
@@ -133,12 +127,6 @@ const ManageTeachers = () => {
       setShowEditModal(false);
       setEditTeacher(null);
     }
-  };
-
-  const toggleTeacherStatus = (teacher) => {
-    setTeachers(teachers.map(t => 
-      t.id === teacher.id ? { ...t, status: t.status === "active" ? "inactive" : "active" } : t
-    ));
   };
 
   // Add Teacher Modal
@@ -395,7 +383,7 @@ const ManageTeachers = () => {
       </div>
 
       {/* Summary Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6">
         {/* Total Teachers */}
         <div className="bg-white dark:bg-gray-800 rounded-xl p-4 sm:p-6 border border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-md transition-all duration-300 hover:scale-105 group">
           <div className="flex items-start gap-4">
@@ -408,29 +396,6 @@ const ManageTeachers = () => {
               </p>
               <p className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white mb-1">
                 {teachers.length}
-              </p>
-              <p className="text-xs font-medium text-green-600 dark:text-green-400">
-                +{teachers.length} total employed
-              </p>
-            </div>
-          </div>
-        </div>
-
-        {/* Active Teachers */}
-        <div className="bg-white dark:bg-gray-800 rounded-xl p-4 sm:p-6 border border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-md transition-all duration-300 hover:scale-105 group">
-          <div className="flex items-start gap-4">
-            <div className="flex items-center justify-center size-12 rounded-lg bg-green-100 dark:bg-green-900/30 group-hover:scale-110 transition-transform duration-200">
-              <span className="material-symbols-outlined text-2xl text-green-600 dark:text-green-400">check_circle</span>
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-gray-600 dark:text-gray-400 text-sm font-medium mb-1">
-                Active Teachers
-              </p>
-              <p className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white mb-1">
-                {teachers.filter(t => t.status === 'active').length}
-              </p>
-              <p className="text-xs font-medium text-green-600 dark:text-green-400">
-                {((teachers.filter(t => t.status === 'active').length / teachers.length) * 100).toFixed(1)}% active rate
               </p>
             </div>
           </div>
@@ -449,9 +414,6 @@ const ManageTeachers = () => {
               <p className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white mb-1">
                 {[...new Set(teachers.map(t => t.department))].length}
               </p>
-              <p className="text-xs font-medium text-blue-600 dark:text-blue-400">
-                Across all faculties
-              </p>
             </div>
           </div>
         </div>
@@ -469,9 +431,6 @@ const ManageTeachers = () => {
               <p className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white mb-1">
                 {[...new Set(teachers.map(t => t.specialization))].length}
               </p>
-              <p className="text-xs font-medium text-purple-600 dark:text-purple-400">
-                Various expertise areas
-              </p>
             </div>
           </div>
         </div>
@@ -479,7 +438,7 @@ const ManageTeachers = () => {
 
       {/* Filters and Search */}
       <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm p-4 sm:p-6">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {/* Search */}
           <div className="relative">
             <span className="material-symbols-outlined absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400">
@@ -505,15 +464,6 @@ const ManageTeachers = () => {
               <option key={dept} value={dept}>{dept}</option>
             ))}
           </select>
-
-          {/* Status Filter */}
-          <select
-            className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200"
-          >
-            <option value="all">All Status</option>
-            <option value="active">Active</option>
-            <option value="inactive">Inactive</option>
-          </select>
         </div>
       </div>
 
@@ -534,9 +484,6 @@ const ManageTeachers = () => {
                 </th>
                 <th className="px-4 py-3 text-left font-semibold text-gray-600 dark:text-gray-400 uppercase text-xs tracking-wider">
                   Specialization
-                </th>
-                <th className="px-4 py-3 text-left font-semibold text-gray-600 dark:text-gray-400 uppercase text-xs tracking-wider">
-                  Status
                 </th>
                 <th className="px-4 py-3 text-left font-semibold text-gray-600 dark:text-gray-400 uppercase text-xs tracking-wider">
                   Join Date
@@ -591,21 +538,6 @@ const ManageTeachers = () => {
                       {teacher.specialization}
                     </span>
                   </td>
-                  <td className="px-4 py-3">
-                    <button
-                      onClick={() => toggleTeacherStatus(teacher)}
-                      className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium transition-all duration-200 hover:scale-105 ${
-                        teacher.status === "active" 
-                          ? "bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300 hover:bg-green-200 dark:hover:bg-green-900/50" 
-                          : "bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600"
-                      }`}
-                    >
-                      <span className={`w-1.5 h-1.5 rounded-full ${
-                        teacher.status === "active" ? "bg-green-500" : "bg-gray-500"
-                      }`}></span>
-                      {teacher.status === "active" ? "Active" : "Inactive"}
-                    </button>
-                  </td>
                   <td className="px-4 py-3 text-gray-600 dark:text-gray-400 text-sm sm:text-base">
                     {new Date(teacher.joinDate).toLocaleDateString('en-US', {
                       year: 'numeric',
@@ -652,7 +584,7 @@ const ManageTeachers = () => {
           </p>
           <button 
             onClick={handleAddNew}
-            className="inline-flex items-center gap-2 text-sm font-medium px-4 py-2 rounded-lg text-white bg-indigo-600 hover:bg-indigo-700 transition-colors duration-200"
+            className="inline-flex items-center gap-2 text-sm font-medium px-4 py-2 rounded-lg text-white bg-indigo-600 hover:bg-indigo-700 transition-colors duration-200 hover:scale-105"
           >
             <span className="material-symbols-outlined text-base">add</span>
             Add New Teacher

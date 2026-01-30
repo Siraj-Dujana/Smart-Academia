@@ -1,16 +1,14 @@
 import React, { useState } from "react";
-import Dashboard from "../components/dashboard/AdminDashboard/Admin tabs/Dashboard";
 import ManageTeachers from "../components/dashboard/AdminDashboard/Admin tabs/ManageTeachers";
 import ManageStudents from "../components/dashboard/AdminDashboard/Admin tabs/ManageStudents";
 import ManageCourses from "../components/dashboard/AdminDashboard/Admin tabs/ManageCourses";
 
 const AdminDashboard = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [activeMenu, setActiveMenu] = useState('dashboard');
+  const [activeMenu, setActiveMenu] = useState('teachers');
 
   // Menu items
   const menuItems = [
-    { icon: "dashboard", label: "Dashboard", key: 'dashboard' },
     { icon: "supervisor_account", label: "Manage Teachers", key: 'teachers' },
     { icon: "groups", label: "Manage Students", key: 'students' },
     { icon: "menu_book", label: "Manage Courses", key: 'courses' },
@@ -40,8 +38,6 @@ const AdminDashboard = () => {
   // Render active tab content
   const renderActiveTab = () => {
     switch (activeMenu) {
-      case 'dashboard':
-        return <Dashboard />;
       case 'teachers':
         return <ManageTeachers />;
       case 'students':
@@ -49,7 +45,7 @@ const AdminDashboard = () => {
       case 'courses':
         return <ManageCourses />;
       default:
-        return <Dashboard />;
+        return <ManageTeachers />;
     }
   };
 
