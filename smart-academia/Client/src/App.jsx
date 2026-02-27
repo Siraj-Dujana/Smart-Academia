@@ -10,37 +10,56 @@ import AdminDashboard from "./pages/AdminDashboard";
 import StudentDashboard from './pages/StudentDashboard';
 import TeacherDashboard from './pages/TeacherDashboard';
 import Lessons from './components/dashboard/StudentDashboard/Lesson';
-
-
+import ProtectedRoute from './components/ProtectedRoute';
 
 function App() {
   return (
     <Router>
       <div className="App">
         <Routes>
-          {/* Redirect root to dashboard */}
-          <Route path="/LandingPage" element={<LandingPage />} />
+
+          {/* ===== PUBLIC ROUTES ===== */}
           <Route path="/" element={<LandingPage />} />
-
-
-          <Route path="/lessons/:courseId" element={<Lessons />} />
-          <Route path="/TeacherDashboard" element={<TeacherDashboard />} />
-          <Route path="/StudentDashboard" element={<StudentDashboard />} />
-          <Route path="/AdminDashboard" element={<AdminDashboard />} />
-
-          {/* Main routes */}
+          <Route path="/LandingPage" element={<LandingPage />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
           <Route path="/register/student" element={<StudentRegistration />} />
           <Route path="/register/teacher" element={<TeacherRegistration />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
-          
-          {/* 404 page */}
+
+          {/* ===== PROTECTED STUDENT ROUTES ===== */}
+          <Route path="/student/dashboard" element={
+            <ProtectedRoute role="student">
+              <StudentDashboard />
+            </ProtectedRoute>
+          } />
+          <Route path="/lessons/:courseId" element={
+            <ProtectedRoute role="student">
+              <Lessons />
+            </ProtectedRoute>
+          } />
+
+          {/* ===== PROTECTED TEACHER ROUTES ===== */}
+          <Route path="/teacher/dashboard" element={
+            <ProtectedRoute role="teacher">
+              <TeacherDashboard />
+            </ProtectedRoute>
+          } />
+
+          {/* ===== PROTECTED ADMIN ROUTES ===== */}
+          <Route path="/AdminDashboard" element={
+            <ProtectedRoute role="admin">
+              <AdminDashboard />
+            </ProtectedRoute>
+          } />
+
+          {/* ===== 404 ===== */}
           <Route path="*" element={<div className="flex items-center justify-center min-h-screen">Page not found</div>} />
+
         </Routes>
       </div>
     </Router>
-  )
+  );
 }
 
 export default App;

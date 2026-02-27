@@ -17,56 +17,49 @@ const LandingPage = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [showScrollTop, setShowScrollTop] = useState(false);
 
-  const handleRegister = () => {
-    navigate("/register");
-    setMobileMenuOpen(false);
-  };
-
-  const handleLogin = () => {
-    navigate("/login");
+  const handleNavigate = (path) => {
+    navigate(path);
     setMobileMenuOpen(false);
   };
 
   const scrollToTop = () => {
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   useEffect(() => {
     const handleScroll = () => {
       setShowScrollTop(window.scrollY > 400);
+      if (mobileMenuOpen) setMobileMenuOpen(false);
     };
 
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, [mobileMenuOpen]);
 
   return (
     <div className="min-h-screen bg-white dark:bg-gray-900 font-sans text-gray-900 dark:text-white">
+      
       {/* Floating Buttons */}
-      <FloatingButtons 
+      <FloatingButtons
         showScrollTop={showScrollTop}
         onScrollToTop={scrollToTop}
-        onChatClick={() => navigate("/chat")}
+        onChatClick={() => handleNavigate("/chat")}
       />
 
       {/* Header */}
-      <Header 
+      <Header
         mobileMenuOpen={mobileMenuOpen}
         setMobileMenuOpen={setMobileMenuOpen}
-        onLogin={handleLogin}
-        onRegister={handleRegister}
+        onLogin={() => handleNavigate("/login")}
+        onRegister={() => handleNavigate("/register")}
       />
 
       <main>
         {/* Hero Section */}
-        <HeroSection 
-          onButtonClick={handleRegister}
-        />
+        <HeroSection onButtonClick={() => handleNavigate("/register")} />
 
         {/* Problem Section */}
         <ProblemSection />
-
-       
 
         {/* Features Section */}
         <FeaturesSection />
@@ -78,15 +71,9 @@ const LandingPage = () => {
         <HowItWorksSection />
 
         {/* Final CTA */}
-        <CTASection 
-          primaryButton={{
-            text: "Get Started",
-            onClick: handleRegister
-          }}
-          secondaryButton={{
-            text: "Login to Account", 
-            onClick: handleLogin
-          }}
+        <CTASection
+          primaryButton={{ text: "Get Started", onClick: () => handleNavigate("/register") }}
+          secondaryButton={{ text: "Login to Account", onClick: () => handleNavigate("/login") }}
         />
       </main>
 
@@ -97,4 +84,3 @@ const LandingPage = () => {
 };
 
 export default LandingPage;
-

@@ -1,0 +1,21 @@
+In 2–3 months, 2 BSCS students can properly build:
+
+✅ Full MERN stack LMS
+✅ Quiz auto-grading
+✅ Coding lab with test-case checking
+✅ Teacher dashboard
+✅ Basic AI chatbot (API-based)
+✅ Progress tracking
+✅ Tab-switch detection
+
+
+🗑 REMOVE These (Put in Future Work Section)
+
+Camera monitoring
+
+Deep LLM-based grading
+
+Auto question generation using AI
+
+Neural-based personalization
+
