@@ -43,7 +43,7 @@ const ForgotPassword = () => {
 
     setIsLoading(true);
     try {
-      const res = await fetch("http://localhost:5000/api/otp/send", {
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/otp/send`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email }),
@@ -94,7 +94,8 @@ const ForgotPassword = () => {
 
     setIsLoading(true);
     try {
-      const res = await fetch("http://localhost:5000/api/otp/verify", {
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/otp/verify`, {
+        
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, otp: otpValue }),
@@ -116,7 +117,8 @@ const ForgotPassword = () => {
     setOtp(["", "", "", "", "", ""]);
     setIsLoading(true);
     try {
-      const res = await fetch("http://localhost:5000/api/otp/send", {
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/otp/send`, {
+        
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email }),
@@ -146,7 +148,8 @@ const ForgotPassword = () => {
 
     setIsLoading(true);
     try {
-      const res = await fetch("http://localhost:5000/api/otp/reset-password", {
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/otp/reset-password`, {
+        
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, otp: otp.join(""), newPassword }),
