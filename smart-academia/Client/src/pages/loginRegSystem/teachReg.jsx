@@ -227,7 +227,7 @@ const TeacherRegistration = () => {
 
   return (
     <div className="min-h-screen bg-white dark:bg-gray-900 font-sans text-gray-900 dark:text-white">
-      <style jsx>{`
+      <style>{`
         @keyframes shake {
           0%, 100% { transform: translateX(0); }
           10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }

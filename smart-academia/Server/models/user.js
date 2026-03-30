@@ -26,22 +26,32 @@ const UserSchema = new mongoose.Schema(
       enum: ["student", "teacher", "admin"],
       required: true,
     },
+
+    // Student fields
     studentId: { type: String, default: null },
     department: { type: String, default: null },
     semester: { type: String, default: null },
+
+    // Teacher fields
     employeeId: { type: String, default: null },
     specialization: { type: String, default: null },
     qualification: { type: String, default: null },
+
+    // OTP fields for forgot password
+    resetOTP: { type: String, default: null },
+    resetOTPExpiry: { type: Date, default: null },
   },
   { timestamps: true }
 );
 
+// Mongoose 9.x: async pre hooks must NOT use next()
 UserSchema.pre("save", async function () {
   if (!this.isModified("password")) return;
   const salt = await bcrypt.genSalt(10);
   this.password = await bcrypt.hash(this.password, salt);
 });
 
+// Compare entered password with hashed password
 UserSchema.methods.matchPassword = async function (enteredPassword) {
   return await bcrypt.compare(enteredPassword, this.password);
 };

@@ -7,3 +7,21 @@ I have to add the loading effect on landing page
 I will work on the admin dashboard.(still under working)
 note: you have to improve the tabs of admin dashboard(teacher,student,courses)
 note: improve the Add new teacher and add new student
+
+
+
+add this new feature in to your
+Option 1: Add Email Verification During Registration (Most Secure) ✅
+Flow:
+
+Student registers with email
+
+System sends OTP to that email
+
+Student must verify OTP to complete registration
+
+Only verified emails can create accounts
+
+Pros: No fake emails, real users only
+Cons: More complex, requires extra step
+
