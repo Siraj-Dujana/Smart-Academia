@@ -1,7 +1,7 @@
-const User = require("../models/user");
+const User = require("../models/User");
 const jwt = require("jsonwebtoken");
 
-// ===== GENERATE JWT TOKEN =====
+// Generate JWT token
 const generateToken = (userId, role) => {
   return jwt.sign({ id: userId, role }, process.env.JWT_SECRET, {
     expiresIn: "7d",
@@ -11,32 +11,40 @@ const generateToken = (userId, role) => {
 // ===== REGISTER STUDENT =====
 const registerStudent = async (req, res) => {
   try {
-    const { fullName, studentId, email, password, department, semester } = req.body;
+    const { fullName, studentId, email, password, department, semester } =
+      req.body;
 
+    // 1. Check all fields present
     if (!fullName || !studentId || !email || !password || !department || !semester) {
       return res.status(400).json({ message: "All fields are required" });
     }
 
-    const emailExists = await User.findOne({ email });
+    // 2. Check email duplicate - case insensitive
+    const emailExists = await User.findOne({
+      email: email.toLowerCase().trim(),
+    });
     if (emailExists) {
-      return res.status(400).json({ message: "Email already registered" });
+      return res.status(400).json({ message: "Email already registered. Please use a different email or login." });
     }
 
-    const studentIdExists = await User.findOne({ studentId });
+    // 3. Check studentId duplicate
+    const studentIdExists = await User.findOne({ studentId: studentId.trim() });
     if (studentIdExists) {
       return res.status(400).json({ message: "Student ID already registered" });
     }
 
+    // 4. Create the user
     const user = await User.create({
-      fullName,
-      studentId,
-      email,
+      fullName: fullName.trim(),
+      studentId: studentId.trim(),
+      email: email.toLowerCase().trim(),
       password,
       department,
       semester,
       role: "student",
     });
 
+    // 5. Return token + user info
     res.status(201).json({
       message: "Student registered successfully",
       token: generateToken(user._id, user.role),
@@ -52,10 +60,20 @@ const registerStudent = async (req, res) => {
     });
   } catch (error) {
     console.error("Register student error:", error);
+
+    // Handle MongoDB duplicate key error (code 11000)
+    if (error.code === 11000) {
+      const field = Object.keys(error.keyPattern)[0];
+      return res.status(400).json({
+        message: `${field === "email" ? "Email" : "Student ID"} already registered`,
+      });
+    }
+
     if (error.name === "ValidationError") {
       const messages = Object.values(error.errors).map((e) => e.message);
       return res.status(400).json({ message: messages[0] });
     }
+
     res.status(500).json({ message: "Server error, please try again" });
   }
 };
@@ -63,32 +81,41 @@ const registerStudent = async (req, res) => {
 // ===== REGISTER TEACHER =====
 const registerTeacher = async (req, res) => {
   try {
-    const { fullName, employeeId, email, password, specialization, qualification } = req.body;
+    const { fullName, employeeId, email, password, department, specialization, qualification } =
+      req.body;
 
+    // 1. Check all fields present
     if (!fullName || !employeeId || !email || !password || !specialization || !qualification) {
       return res.status(400).json({ message: "All fields are required" });
     }
 
-    const emailExists = await User.findOne({ email });
+    // 2. Check email duplicate
+    const emailExists = await User.findOne({
+      email: email.toLowerCase().trim(),
+    });
     if (emailExists) {
-      return res.status(400).json({ message: "Email already registered" });
+      return res.status(400).json({ message: "Email already registered. Please use a different email or login." });
     }
 
-    const empIdExists = await User.findOne({ employeeId });
+    // 3. Check employeeId duplicate
+    const empIdExists = await User.findOne({ employeeId: employeeId.trim() });
     if (empIdExists) {
       return res.status(400).json({ message: "Employee ID already registered" });
     }
 
+    // 4. Create the user
     const user = await User.create({
-      fullName,
-      employeeId,
-      email,
+      fullName: fullName.trim(),
+      employeeId: employeeId.trim(),
+      email: email.toLowerCase().trim(),
       password,
-      specialization,
-      qualification,
+      department: department || null,
+      specialization: specialization.trim(),
+      qualification: qualification.trim(),
       role: "teacher",
     });
 
+    // 5. Return token + user info
     res.status(201).json({
       message: "Teacher registered successfully",
       token: generateToken(user._id, user.role),
@@ -104,10 +131,19 @@ const registerTeacher = async (req, res) => {
     });
   } catch (error) {
     console.error("Register teacher error:", error);
+
+    if (error.code === 11000) {
+      const field = Object.keys(error.keyPattern)[0];
+      return res.status(400).json({
+        message: `${field === "email" ? "Email" : "Employee ID"} already registered`,
+      });
+    }
+
     if (error.name === "ValidationError") {
       const messages = Object.values(error.errors).map((e) => e.message);
       return res.status(400).json({ message: messages[0] });
     }
+
     res.status(500).json({ message: "Server error, please try again" });
   }
 };
@@ -117,20 +153,24 @@ const login = async (req, res) => {
   try {
     const { email, password } = req.body;
 
+    // 1. Check fields
     if (!email || !password) {
       return res.status(400).json({ message: "Email and password are required" });
     }
 
-    const user = await User.findOne({ email });
+    // 2. Find user by email (case insensitive)
+    const user = await User.findOne({ email: email.toLowerCase().trim() });
     if (!user) {
       return res.status(401).json({ message: "Invalid email or password" });
     }
 
+    // 3. Check password
     const isMatch = await user.matchPassword(password);
     if (!isMatch) {
       return res.status(401).json({ message: "Invalid email or password" });
     }
 
+    // 4. Return token + user
     res.status(200).json({
       message: "Login successful",
       token: generateToken(user._id, user.role),
