@@ -43,7 +43,7 @@ const ForgotPassword = () => {
 
     setIsLoading(true);
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/otp/send`, {
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/otp/send-otp`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email }),
@@ -94,7 +94,7 @@ const ForgotPassword = () => {
 
     setIsLoading(true);
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/otp/verify`, {
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/otp/verify-otp`, {
         
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -117,7 +117,7 @@ const ForgotPassword = () => {
     setOtp(["", "", "", "", "", ""]);
     setIsLoading(true);
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/otp/send`, {
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/otp/send-otp`, {
         
         method: "POST",
         headers: { "Content-Type": "application/json" },
