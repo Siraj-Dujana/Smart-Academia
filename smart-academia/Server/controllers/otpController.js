@@ -1,14 +1,141 @@
 const User = require("../models/User");
-const sendEmail = require("../utils/sendEmail");
-const bcrypt = require("bcryptjs");
+const { sendEmail, otpEmailTemplate } = require("../utils/sendEmail");
 
 // Generate a random 6-digit OTP
 const generateOTP = () => {
   return Math.floor(100000 + Math.random() * 900000).toString();
 };
 
-// ===== STEP 1: Send OTP to email =====
-const sendOTP = async (req, res) => {
+// ============================================================
+// REGISTRATION OTP — send OTP before account is created
+// ============================================================
+const sendRegistrationOTP = async (req, res) => {
+  try {
+    const { email, fullName } = req.body;
+
+    if (!email || !fullName) {
+      return res.status(400).json({ message: "Email and full name are required" });
+    }
+
+    // Check if email already registered and verified
+    const existingUser = await User.findOne({ email: email.toLowerCase().trim() });
+    if (existingUser && existingUser.isEmailVerified) {
+      return res.status(400).json({ message: "Email already registered. Please login instead." });
+    }
+
+    // Generate OTP
+    const otp = generateOTP();
+    const expiry = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+
+    // If user exists but not verified (previous incomplete registration)
+    // update their OTP, otherwise store in a temporary way via a temp record
+    if (existingUser && !existingUser.isEmailVerified) {
+      // Check resend limit (max 3 per hour)
+      const now = new Date();
+      if (
+        existingUser.otpResendResetTime &&
+        now < existingUser.otpResendResetTime &&
+        existingUser.otpResendCount >= 3
+      ) {
+        const minutesLeft = Math.ceil(
+          (existingUser.otpResendResetTime - now) / 60000
+        );
+        return res.status(429).json({
+          message: `Too many OTP requests. Try again in ${minutesLeft} minute(s).`,
+        });
+      }
+
+      // Reset counter if the hour window has passed
+      if (!existingUser.otpResendResetTime || now >= existingUser.otpResendResetTime) {
+        existingUser.otpResendCount = 0;
+        existingUser.otpResendResetTime = new Date(Date.now() + 60 * 60 * 1000);
+      }
+
+      existingUser.resetOTP = otp;
+      existingUser.resetOTPExpiry = expiry;
+      existingUser.otpResendCount += 1;
+      await existingUser.save();
+    } else {
+      // Store a temporary unverified placeholder so we can track the OTP
+      const tempUser = new User({
+        fullName: fullName.trim(),
+        email: email.toLowerCase().trim(),
+        password: "TEMP_NOT_REGISTERED_YET",
+        role: "student", // placeholder, will be overwritten on real registration
+        isEmailVerified: false,
+        resetOTP: otp,
+        resetOTPExpiry: expiry,
+        otpResendCount: 1,
+        otpResendResetTime: new Date(Date.now() + 60 * 60 * 1000),
+      });
+      await tempUser.save();
+    }
+
+    // Send OTP email
+    await sendEmail({
+      to: email.toLowerCase().trim(),
+      subject: "SmartAcademia — Verify Your Email",
+      html: otpEmailTemplate({
+        fullName: fullName.trim(),
+        otp,
+        purpose: "registration",
+      }),
+    });
+
+    res.status(200).json({ message: `Verification OTP sent to ${email}` });
+  } catch (error) {
+    console.error("Send registration OTP error:", error);
+    res.status(500).json({ message: "Failed to send OTP. Please try again." });
+  }
+};
+
+// ============================================================
+// VERIFY REGISTRATION OTP
+// ============================================================
+const verifyRegistrationOTP = async (req, res) => {
+  try {
+    const { email, otp } = req.body;
+
+    if (!email || !otp) {
+      return res.status(400).json({ message: "Email and OTP are required" });
+    }
+
+    const user = await User.findOne({ email: email.toLowerCase().trim() });
+    if (!user) {
+      return res.status(404).json({ message: "No OTP request found. Please start registration again." });
+    }
+
+    if (!user.resetOTP || !user.resetOTPExpiry) {
+      return res.status(400).json({ message: "No OTP found. Please request a new one." });
+    }
+
+    if (new Date() > user.resetOTPExpiry) {
+      user.resetOTP = null;
+      user.resetOTPExpiry = null;
+      await user.save();
+      return res.status(400).json({ message: "OTP has expired. Please request a new one." });
+    }
+
+    if (user.resetOTP !== otp.toString().trim()) {
+      return res.status(400).json({ message: "Invalid OTP. Please try again." });
+    }
+
+    // Mark OTP as verified — clear OTP fields
+    user.resetOTP = null;
+    user.resetOTPExpiry = null;
+    await user.save();
+
+    res.status(200).json({ message: "Email verified successfully! Please complete your registration." });
+  } catch (error) {
+    console.error("Verify registration OTP error:", error);
+    res.status(500).json({ message: "Server error. Please try again." });
+  }
+};
+
+// ============================================================
+// FORGOT PASSWORD — Send OTP
+// ============================================================
+const sendForgotPasswordOTP = async (req, res) => {
   try {
     const { email } = req.body;
 
@@ -16,66 +143,60 @@ const sendOTP = async (req, res) => {
       return res.status(400).json({ message: "Email is required" });
     }
 
-    // Check if user exists
-    const user = await User.findOne({ email: email.toLowerCase().trim() });
+    const user = await User.findOne({
+      email: email.toLowerCase().trim(),
+      isEmailVerified: true,
+    });
+
     if (!user) {
-      return res.status(404).json({ message: "No account found with this email" });
+      return res.status(404).json({ message: "No verified account found with this email" });
     }
 
-    // Generate OTP and set expiry to 10 minutes from now
-    const otp = generateOTP();
-    console.log("my name is siraj");
-    const expiry = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+    // Check resend limit
+    const now = new Date();
+    if (
+      user.otpResendResetTime &&
+      now < user.otpResendResetTime &&
+      user.otpResendCount >= 3
+    ) {
+      const minutesLeft = Math.ceil((user.otpResendResetTime - now) / 60000);
+      return res.status(429).json({
+        message: `Too many OTP requests. Try again in ${minutesLeft} minute(s).`,
+      });
+    }
 
-    // Save OTP to user (plain text — we verify directly)
+    if (!user.otpResendResetTime || now >= user.otpResendResetTime) {
+      user.otpResendCount = 0;
+      user.otpResendResetTime = new Date(Date.now() + 60 * 60 * 1000);
+    }
+
+    const otp = generateOTP();
     user.resetOTP = otp;
-    user.resetOTPExpiry = expiry;
+    user.resetOTPExpiry = new Date(Date.now() + 10 * 60 * 1000);
+    user.otpResendCount += 1;
     await user.save();
 
-    // Send email
     await sendEmail({
       to: user.email,
-      subject: "SmartAcademia — Your Password Reset OTP",
-      html: `
-        <div style="font-family: Arial, sans-serif; max-width: 480px; margin: 0 auto; padding: 32px; background: #f9fafb; border-radius: 12px;">
-          <div style="text-align: center; margin-bottom: 24px;">
-            <h1 style="color: #2563eb; font-size: 24px; margin: 0;">SmartAcademia</h1>
-            <p style="color: #6b7280; margin-top: 4px;">Password Reset Request</p>
-          </div>
-
-          <div style="background: white; border-radius: 8px; padding: 24px; margin-bottom: 24px; border: 1px solid #e5e7eb;">
-            <p style="color: #374151; margin: 0 0 16px;">Hi <strong>${user.fullName}</strong>,</p>
-            <p style="color: #374151; margin: 0 0 24px;">Use the OTP below to reset your password. It expires in <strong>10 minutes</strong>.</p>
-
-            <div style="text-align: center; margin: 24px 0;">
-              <div style="display: inline-block; background: #eff6ff; border: 2px dashed #2563eb; border-radius: 12px; padding: 16px 40px;">
-                <span style="font-size: 36px; font-weight: bold; letter-spacing: 12px; color: #1d4ed8;">${otp}</span>
-              </div>
-            </div>
-
-            <p style="color: #6b7280; font-size: 13px; margin: 0; text-align: center;">
-              If you didn't request this, please ignore this email.
-            </p>
-          </div>
-
-          <p style="color: #9ca3af; font-size: 12px; text-align: center; margin: 0;">
-            © ${new Date().getFullYear()} SmartAcademia · Sukkur IBA University
-          </p>
-        </div>
-      `,
+      subject: "SmartAcademia — Password Reset OTP",
+      html: otpEmailTemplate({
+        fullName: user.fullName,
+        otp,
+        purpose: "password-reset",
+      }),
     });
 
-    res.status(200).json({
-      message: `OTP sent to ${user.email}`,
-    });
+    res.status(200).json({ message: `OTP sent to ${user.email}` });
   } catch (error) {
-    console.error("Send OTP error:", error);
+    console.error("Send forgot password OTP error:", error);
     res.status(500).json({ message: "Failed to send OTP. Please try again." });
   }
 };
 
-// ===== STEP 2: Verify OTP =====
-const verifyOTP = async (req, res) => {
+// ============================================================
+// FORGOT PASSWORD — Verify OTP
+// ============================================================
+const verifyForgotPasswordOTP = async (req, res) => {
   try {
     const { email, otp } = req.body;
 
@@ -88,12 +209,10 @@ const verifyOTP = async (req, res) => {
       return res.status(404).json({ message: "No account found with this email" });
     }
 
-    // Check OTP exists
     if (!user.resetOTP || !user.resetOTPExpiry) {
       return res.status(400).json({ message: "No OTP requested. Please request a new one." });
     }
 
-    // Check OTP expiry
     if (new Date() > user.resetOTPExpiry) {
       user.resetOTP = null;
       user.resetOTPExpiry = null;
@@ -101,20 +220,20 @@ const verifyOTP = async (req, res) => {
       return res.status(400).json({ message: "OTP has expired. Please request a new one." });
     }
 
-    // Check OTP match
     if (user.resetOTP !== otp.toString().trim()) {
       return res.status(400).json({ message: "Invalid OTP. Please try again." });
     }
 
-    // OTP is valid
     res.status(200).json({ message: "OTP verified successfully" });
   } catch (error) {
-    console.error("Verify OTP error:", error);
+    console.error("Verify forgot password OTP error:", error);
     res.status(500).json({ message: "Server error. Please try again." });
   }
 };
 
-// ===== STEP 3: Reset Password =====
+// ============================================================
+// FORGOT PASSWORD — Reset Password
+// ============================================================
 const resetPassword = async (req, res) => {
   try {
     const { email, otp, newPassword } = req.body;
@@ -132,9 +251,8 @@ const resetPassword = async (req, res) => {
       return res.status(404).json({ message: "No account found with this email" });
     }
 
-    // Re-verify OTP one more time for security
     if (!user.resetOTP || !user.resetOTPExpiry) {
-      return res.status(400).json({ message: "No OTP requested. Please start again." });
+      return res.status(400).json({ message: "Session expired. Please start again." });
     }
 
     if (new Date() > user.resetOTPExpiry) {
@@ -148,10 +266,11 @@ const resetPassword = async (req, res) => {
       return res.status(400).json({ message: "Invalid OTP." });
     }
 
-    // All good — update password and clear OTP
+    // Update password and clear OTP
     user.password = newPassword;
     user.resetOTP = null;
     user.resetOTPExpiry = null;
+    user.otpResendCount = 0;
     await user.save();
 
     res.status(200).json({ message: "Password reset successfully. You can now login." });
@@ -161,4 +280,10 @@ const resetPassword = async (req, res) => {
   }
 };
 
-module.exports = { sendOTP, verifyOTP, resetPassword };
+module.exports = {
+  sendRegistrationOTP,
+  verifyRegistrationOTP,
+  sendForgotPasswordOTP,
+  verifyForgotPasswordOTP,
+  resetPassword,
+};

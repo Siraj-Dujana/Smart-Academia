@@ -11,10 +11,12 @@ connectDB();
 const app = express();
 
 // Middleware
+// Use CLIENT_URL from .env directly
 app.use(cors({
-  origin: ["http://localhost:5173", "http://localhost:3000"],
+  origin: process.env.CLIENT_URL,
   credentials: true,
 }));
+
 app.use(express.json());
 
 // Routes

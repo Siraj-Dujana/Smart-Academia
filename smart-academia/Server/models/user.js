@@ -27,6 +27,12 @@ const UserSchema = new mongoose.Schema(
       required: true,
     },
 
+    // Email verification
+    isEmailVerified: {
+      type: Boolean,
+      default: false,
+    },
+
     // Student fields
     studentId: { type: String, default: null },
     department: { type: String, default: null },
@@ -37,9 +43,11 @@ const UserSchema = new mongoose.Schema(
     specialization: { type: String, default: null },
     qualification: { type: String, default: null },
 
-    // OTP fields for forgot password
+    // OTP fields (used for both registration verification & forgot password)
     resetOTP: { type: String, default: null },
     resetOTPExpiry: { type: Date, default: null },
+    otpResendCount: { type: Number, default: 0 },
+    otpResendResetTime: { type: Date, default: null },
   },
   { timestamps: true }
 );
