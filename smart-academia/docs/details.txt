@@ -1,32 +1,17 @@
 work done:
-I have done login ,register and landing page
+I have done login ,register(otp) and landing page
+forget password(otp)
 
+
+
+if you need adjastment in UI so you can do that
 
 work remanining
 I have to add the loading effect on landing page
+I have to add loading effects on certain areas where it would be suitable dude
+login is ready but what about logout?
+
+
 I will work on the admin dashboard.(still under working)
 note: you have to improve the tabs of admin dashboard(teacher,student,courses)
 note: improve the Add new teacher and add new student
-
-
-
-note: VITE_API_URL=http://localhost:5000
-
-I have added env variable in .env so tell the calude ai
-
-
-add this new feature in to your
-Option 1: Add Email Verification During Registration (Most Secure) ✅
-Flow:
-
-Student registers with email
-
-System sends OTP to that email
-
-Student must verify OTP to complete registration
-
-Only verified emails can create accounts
-
-Pros: No fake emails, real users only
-Cons: More complex, requires extra step
-
