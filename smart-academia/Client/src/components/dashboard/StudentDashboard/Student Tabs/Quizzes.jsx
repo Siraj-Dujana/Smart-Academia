@@ -116,12 +116,21 @@ const QuizPlayer = ({ quiz, attempt, questions, onSubmit, onCancel }) => {
   const [warningMsg, setWarningMsg] = useState("");
   const startTime = useRef(Date.now());
 
+  // Wrap handleSubmit in useCallback with proper dependencies
+  const handleSubmit = useCallback(async (autoSubmit = false) => {
+    if (isSubmitting) return;
+    if (!autoSubmit && !window.confirm("Are you sure you want to submit the quiz?")) return;
+    setIsSubmitting(true);
+    const timeTaken = Math.round((Date.now() - startTime.current) / 1000);
+    await onSubmit({ attemptId: attempt._id, answers, timeTaken, tabSwitchCount });
+  }, [isSubmitting, onSubmit, attempt._id, answers, tabSwitchCount]);
+
   // Timer countdown
   useEffect(() => {
     if (timeLeft <= 0) { handleSubmit(true); return; }
     const timer = setInterval(() => setTimeLeft(t => t - 1), 1000);
     return () => clearInterval(timer);
-  }, [timeLeft]);
+  }, [timeLeft, handleSubmit]);
 
   // Tab switch detection (anti-cheating)
   useEffect(() => {
@@ -139,15 +148,7 @@ const QuizPlayer = ({ quiz, attempt, questions, onSubmit, onCancel }) => {
     };
     document.addEventListener("visibilitychange", handleVisibility);
     return () => document.removeEventListener("visibilitychange", handleVisibility);
-  }, []);
-
-  const handleSubmit = useCallback(async (autoSubmit = false) => {
-    if (isSubmitting) return;
-    if (!autoSubmit && !window.confirm("Are you sure you want to submit the quiz?")) return;
-    setIsSubmitting(true);
-    const timeTaken = Math.round((Date.now() - startTime.current) / 1000);
-    await onSubmit({ attemptId: attempt._id, answers, timeTaken, tabSwitchCount });
-  }, [isSubmitting, attempt, answers, tabSwitchCount]);
+  }, [handleSubmit]);
 
   const formatTime = (s) => {
     const m = Math.floor(s / 60);
@@ -428,7 +429,6 @@ const Quizzes = () => {
   const [activeQuiz, setActiveQuiz] = useState(null);
   const [activeAttempt, setActiveAttempt] = useState(null);
   const [activeQuestions, setActiveQuestions] = useState([]);
-  const [isStarting, setIsStarting] = useState(false);
 
   // Results state
   const [result, setResult] = useState(null);
@@ -438,10 +438,8 @@ const Quizzes = () => {
   const [filter, setFilter] = useState("all");
   const [search, setSearch] = useState("");
 
-  useEffect(() => { fetchEnrolledCourses(); }, []);
-  useEffect(() => { if (selectedCourse) fetchQuizzes(); }, [selectedCourse]);
-
-  const fetchEnrolledCourses = async () => {
+  // Wrap fetch functions in useCallback
+  const fetchEnrolledCourses = useCallback(async () => {
     try {
       const res = await fetch(`${API}/api/courses/enrolled`, {
         headers: { Authorization: `Bearer ${token}` },
@@ -452,9 +450,9 @@ const Quizzes = () => {
         setSelectedCourse(data.courses[0]._id);
       }
     } catch { setError("Cannot connect to server"); }
-  };
+  }, [token]);
 
-  const fetchQuizzes = async () => {
+  const fetchQuizzes = useCallback(async () => {
     if (!selectedCourse) return;
     setIsLoading(true); setError("");
     try {
@@ -466,10 +464,17 @@ const Quizzes = () => {
       else setError(data.message);
     } catch { setError("Cannot connect to server"); }
     finally { setIsLoading(false); }
-  };
+  }, [selectedCourse, token]);
+
+  useEffect(() => { 
+    fetchEnrolledCourses(); 
+  }, [fetchEnrolledCourses]);
+
+  useEffect(() => { 
+    if (selectedCourse) fetchQuizzes(); 
+  }, [selectedCourse, fetchQuizzes]);
 
   const handleStartQuiz = async (quiz) => {
-    setIsStarting(true);
     try {
       const res = await fetch(`${API}/api/quizzes/${quiz._id}/attempt`, {
         method: "POST",
@@ -481,7 +486,6 @@ const Quizzes = () => {
       setActiveAttempt(data.attempt);
       setActiveQuestions(data.questions);
     } catch { alert("Cannot connect to server"); }
-    finally { setIsStarting(false); }
   };
 
   const handleSubmitQuiz = async ({ attemptId, answers, timeTaken, tabSwitchCount }) => {
@@ -519,7 +523,7 @@ const Quizzes = () => {
           timeTaken: best.timeTaken,
           results: [], // no detailed results for historical view
         });
-        setResultQuiz(quiz);
+        setResultQuiz(quiz);     
       }
     } catch { alert("Cannot connect to server"); }
   };

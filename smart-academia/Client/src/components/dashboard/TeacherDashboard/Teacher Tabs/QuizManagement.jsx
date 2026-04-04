@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 
 const API = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
@@ -33,10 +33,8 @@ const QuizManagement = () => {
     ],
   });
 
-  useEffect(() => { fetchCourses(); }, []);
-  useEffect(() => { if (selectedCourse) fetchQuizzes(); }, [selectedCourse]);
-
-  const fetchCourses = async () => {
+  // Wrap fetchCourses in useCallback
+  const fetchCourses = useCallback(async () => {
     try {
       const res = await fetch(`${API}/api/courses/my-courses`, {
         headers: { Authorization: `Bearer ${token}` },
@@ -47,9 +45,10 @@ const QuizManagement = () => {
         if (data.courses.length > 0) setSelectedCourse(data.courses[0]._id);
       }
     } catch { setApiError("Cannot connect to server"); }
-  };
+  }, [token]);
 
-  const fetchQuizzes = async () => {
+  // Wrap fetchQuizzes in useCallback
+  const fetchQuizzes = useCallback(async () => {
     if (!selectedCourse) return;
     setIsLoading(true);
     try {
@@ -60,7 +59,15 @@ const QuizManagement = () => {
       if (res.ok) setQuizzes(data.quizzes);
     } catch { setApiError("Cannot connect to server"); }
     finally { setIsLoading(false); }
-  };
+  }, [selectedCourse, token]);
+
+  useEffect(() => { 
+    fetchCourses(); 
+  }, [fetchCourses]); // Added fetchCourses as dependency
+
+  useEffect(() => { 
+    if (selectedCourse) fetchQuizzes(); 
+  }, [selectedCourse, fetchQuizzes]); // Added fetchQuizzes as dependency
 
   const fetchQuizQuestions = async (quiz) => {
     try {

@@ -1,9 +1,11 @@
+import { useNavigate } from "react-router-dom";
 import React, { useState } from "react";
 import ManageTeachers from "../components/dashboard/AdminDashboard/Admin tabs/ManageTeachers";
 import ManageStudents from "../components/dashboard/AdminDashboard/Admin tabs/ManageStudents";
 import ManageCourses from "../components/dashboard/AdminDashboard/Admin tabs/ManageCourses";
 
 const AdminDashboard = () => {
+  const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [activeMenu, setActiveMenu] = useState('teachers');
 
@@ -15,20 +17,22 @@ const AdminDashboard = () => {
   ];
 
   // User data
-  const user = {
-    name: "Siraj Dujana",
-    role: "System Administrator",
-    // avatar: "https://lh3.googleusercontent.com/aida-public/AB6AXuCkGYFou0KiLQduvDpVrVukFPGO-oipBBchzPH589jhUZPPaVHsNbQhldmzqux_NFJ0uzHeQh44AxrAG0VxEH3kqCROxpAoLinlovdD7HQN81LAMJj1_aczwVtFvSnOrDIcXaL7O2OzRUXVH4GxJkKIvQno4fQ1KhhdJVWvRTbyr2t9AOPKGg2S-hnfb-b3JBZcBDXlNE0FJ735Z1NH2KJq3EHO0InVpR-77RLL4JGgCxFTQeN7LpzJw1OwPVbDxKdvUSYJAOhnRLAD"
-  };
+  // 3. REPLACE hardcoded user name
+const user = JSON.parse(localStorage.getItem("user") || "{}");
+// Then use {user.fullName} everywhere instead of "Dr. Vance" or "Abdul Qadeer"
 
   const handleMenuClick = (menuKey) => {
     setActiveMenu(menuKey);
     setSidebarOpen(false);
   };
 
-  const handleLogout = () => {
-    console.log('Logout');
-  };
+  // 2. REPLACE handleLogout
+const handleLogout = () => {
+  localStorage.removeItem("token");
+  localStorage.removeItem("user");
+  navigate("/login");
+};
+
 
   const handleNotifications = () => {
     console.log('Notifications');

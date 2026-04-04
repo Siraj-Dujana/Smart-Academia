@@ -19,11 +19,10 @@ app.use("/api/auth", require("./routes/auth"));
 app.use("/api/otp", require("./routes/otp"));
 app.use("/api/courses", require("./routes/courses"));
 app.use("/api/quizzes", require("./routes/quizzes"));
+app.use("/api/admin", require("./routes/admin"));
 
 app.get("/", (req, res) => res.json({ message: "SmartAcademia API is running" }));
-
 app.use((req, res) => res.status(404).json({ message: `Route ${req.originalUrl} not found` }));
-
 app.use((err, req, res, next) => {
   console.error(err.stack);
   res.status(500).json({ message: "Something went wrong" });

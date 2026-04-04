@@ -26,20 +26,21 @@ const TeacherDashboard = () => {
   ];
 
   // User data
-  const user = {
-    name: "Dr. Noor Nabi",
-    role: "Professor of CS",
-    // avatar: "https://lh3.googleusercontent.com/aida-public/AB6AXuAfPTeEMhMiED4qhmQAOotpYXPxbkz0JE7o_K1HptVxnuBK0HyuUSfhIm98TfaNun5NY90nyLCnQkvq2J2vUgeP450wvExuY5o9hjOaM-Pg7e-Oc-ozwfkYAAzNCK2iwrhZ3fyRKLXx8ixuezruT0auBF5fx6XQbKOWmqTHVkMQVi3JsPGBo8cUXOkn6XksgBKMLMyRBUx6pzCeuUAxWjyqQHxqStSoaYm4Fwc1LZ19b0rwJcldaBrC2XHz2OOTAya6ZP-9Ci2TtJ01"
-  };
+  // 3. REPLACE hardcoded user name
+const user = JSON.parse(localStorage.getItem("user") || "{}");
+// Then use {user.fullName} everywhere instead of "Dr. Vance" or "Abdul Qadeer"
 
   const handleMenuClick = (menuKey) => {
     setActiveMenu(menuKey);
     setSidebarOpen(false);
   };
 
-  const handleLogout = () => {
-    console.log('Logout');
-  };
+// 2. REPLACE handleLogout
+const handleLogout = () => {
+  localStorage.removeItem("token");
+  localStorage.removeItem("user");
+  navigate("/login");
+};
 
   const handleNotifications = () => {
     console.log('Notifications');
