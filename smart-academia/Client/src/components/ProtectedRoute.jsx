@@ -24,12 +24,13 @@ const ProtectedRoute = ({ children, role }) => {
   }
 
   // ===== WRONG ROLE =====
-  // Student trying to access teacher route or vice versa
-  if (role && user.role !== role) {
-    if (user.role === "student") return <Navigate to="/student/dashboard" replace />;
-    if (user.role === "teacher") return <Navigate to="/teacher/dashboard" replace />;
-    return <Navigate to="/login" replace />;
-  }
+  // WITH this
+if (role && user.role !== role) {
+  if (user.role === "student") return <Navigate to="/student/dashboard" replace />;
+  if (user.role === "teacher") return <Navigate to="/teacher/dashboard" replace />;
+  if (user.role === "admin") return <Navigate to="/AdminDashboard" replace />;
+  return <Navigate to="/login" replace />;
+}
 
   // ===== AUTHORIZED =====
   return children;

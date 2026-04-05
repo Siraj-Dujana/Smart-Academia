@@ -101,6 +101,9 @@ const Login = () => {
       } else if (data.user.role === "teacher") {
         navigate("/teacher/dashboard");
       }
+      else if (data.user.role === "admin") {   // ← ADD THIS
+  navigate("/AdminDashboard");             // ← ADD THIS
+}    
 
     // eslint-disable-next-line no-unused-vars
     } catch (error) {

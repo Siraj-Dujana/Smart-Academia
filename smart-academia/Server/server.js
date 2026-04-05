@@ -14,12 +14,14 @@ app.use(cors({
 }));
 app.use(express.json());
 
+
 // Routes
 app.use("/api/auth", require("./routes/auth"));
 app.use("/api/otp", require("./routes/otp"));
 app.use("/api/courses", require("./routes/courses"));
 app.use("/api/quizzes", require("./routes/quizzes"));
 app.use("/api/admin", require("./routes/admin"));
+app.use("/api/setup", require("./setup/setupRoute")); // ← setup route
 
 app.get("/", (req, res) => res.json({ message: "SmartAcademia API is running" }));
 app.use((req, res) => res.status(404).json({ message: `Route ${req.originalUrl} not found` }));

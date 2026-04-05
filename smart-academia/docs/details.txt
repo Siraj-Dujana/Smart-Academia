@@ -3,9 +3,6 @@ I have done login ,register(otp) and landing page
 forget password(otp)
 
 
-
-if you need adjastment in UI so you can do that
-
 work remanining
 I have to add the loading effect on landing page
 I have to add loading effects on certain areas where it would be suitable dude
@@ -15,3 +12,33 @@ login is ready but what about logout?
 I will work on the admin dashboard.(still under working)
 note: you have to improve the tabs of admin dashboard(teacher,student,courses)
 note: improve the Add new teacher and add new student
+
+
+
+
+
+I have to tell the calude ai tommorow okay:
+how to acces admin now
+use env variables insead hard codes okay dude
+Critical — must fix now
+Quiz submit bug — answers sent as { questionId: index } but backend expects Map
+This will cause wrong grading — all answers will score 0
+Logout button does nothing — just console.log. Token stays in localStorage forever
+Anyone can stay logged in indefinitely, no way to switch accounts
+Admin dashboard has no real backend — ManageStudents/Teachers shows hardcoded data
+Admin can't actually delete or manage real users from MongoDB
+Important — fix before demo
+No token expiry handling — if JWT expires (7 days) user gets blank errors, not redirected to login
+Need a global API handler that catches 401 and redirects to login
+Student dashboard hardcoded name — "Welcome back, Abdul Qadeer Odhano!" not real user name
+Should read from localStorage user object
+Lesson viewer (Lesson.jsx) still uses hardcoded mock data — not connected to real backend
+When student clicks a lesson it shows fake content, not real lessons from DB
+Teacher dashboard name hardcoded as "Dr. Vance" — should show logged-in teacher name
+All dashboards should read user info from localStorage
+Minor — fix when you have time
+No loading skeleton — just spinner
+No 404 page designed yet
+App.css still has default Vite styles
+No input sanitization on backend
+Copy failed — try from claude.ai in browser
