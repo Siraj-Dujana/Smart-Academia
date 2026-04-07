@@ -2,15 +2,83 @@ import React, { useState, useEffect, useRef } from "react";
 
 const API = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
-// Format message text — convert markdown-like syntax to JSX
+// Format message text — convert markdown-like syntax to JSX with table support
 const formatMessage = (text) => {
   const lines = text.split("\n");
   const elements = [];
   let inCodeBlock = false;
   let codeLines = [];
   let codeLanguage = "";
+  let inTable = false;
+  let tableRows = [];
+  let tableAlignments = [];
 
-  lines.forEach((line, i) => {
+  const renderTable = () => {
+    if (tableRows.length === 0) return null;
+    
+    return (
+      <div className="my-3 overflow-x-auto">
+        <table className="min-w-full border-collapse border border-gray-300 dark:border-gray-600 text-sm">
+          <thead>
+            <tr className="bg-gray-100 dark:bg-gray-800">
+              {tableRows[0].map((cell, i) => (
+                <th 
+                  key={i} 
+                  className={`border border-gray-300 dark:border-gray-600 px-3 py-2 text-left font-semibold text-gray-900 dark:text-white ${
+                    tableAlignments[i] === 'center' ? 'text-center' : 
+                    tableAlignments[i] === 'right' ? 'text-right' : 'text-left'
+                  }`}
+                >
+                  {cell.trim()}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {tableRows.slice(1).map((row, rowIdx) => (
+              <tr key={rowIdx} className="hover:bg-gray-50 dark:hover:bg-gray-800/50">
+                {row.map((cell, cellIdx) => (
+                  <td 
+                    key={cellIdx} 
+                    className={`border border-gray-300 dark:border-gray-600 px-3 py-2 text-gray-700 dark:text-gray-300 ${
+                      tableAlignments[cellIdx] === 'center' ? 'text-center' : 
+                      tableAlignments[cellIdx] === 'right' ? 'text-right' : 'text-left'
+                    }`}
+                  >
+                    {cell.trim()}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    );
+  };
+
+  const parseTableRow = (line) => {
+    const match = line.match(/^\|(.+)\|$/);
+    if (!match) return null;
+    const cells = match[1].split('|').map(cell => cell.trim());
+    return cells;
+  };
+
+  const parseTableAlignment = (line) => {
+    const match = line.match(/^\|(.+)\|$/);
+    if (!match) return null;
+    const alignments = match[1].split('|').map(cell => {
+      const trimmed = cell.trim();
+      if (trimmed.startsWith(':') && trimmed.endsWith(':')) return 'center';
+      if (trimmed.endsWith(':')) return 'right';
+      if (trimmed.startsWith(':')) return 'left';
+      return 'left';
+    });
+    return alignments;
+  };
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    
     if (line.startsWith("```")) {
       if (!inCodeBlock) {
         inCodeBlock = true;
@@ -38,40 +106,75 @@ const formatMessage = (text) => {
         codeLines = [];
         codeLanguage = "";
       }
-      return;
+      continue;
     }
 
-    if (inCodeBlock) { codeLines.push(line); return; }
+    if (inCodeBlock) { 
+      codeLines.push(line); 
+      continue; 
+    }
+
+    // Handle tables
+    if (line.startsWith('|') && line.endsWith('|')) {
+      if (line.includes('---')) {
+        tableAlignments = parseTableAlignment(line) || [];
+        continue;
+      }
+      
+      const row = parseTableRow(line);
+      if (row) {
+        if (!inTable) {
+          inTable = true;
+          tableRows = [row];
+        } else {
+          tableRows.push(row);
+        }
+      }
+      continue;
+    } else if (inTable) {
+      elements.push(renderTable());
+      inTable = false;
+      tableRows = [];
+      tableAlignments = [];
+    }
 
     // Bold text **text**
     const boldText = line.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
     // Inline code `code`
     const withCode = boldText.replace(/`(.*?)`/g, '<code class="bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 rounded text-sm font-mono text-blue-600 dark:text-blue-400">$1</code>');
+    // Italic *text*
+    const withItalic = withCode.replace(/\*(.*?)\*/g, '<em>$1</em>');
 
     if (line.startsWith("### ")) {
       elements.push(<h3 key={i} className="font-bold text-base mt-3 mb-1 text-gray-900 dark:text-white">{line.slice(4)}</h3>);
     } else if (line.startsWith("## ")) {
       elements.push(<h2 key={i} className="font-bold text-lg mt-4 mb-2 text-gray-900 dark:text-white">{line.slice(3)}</h2>);
+    } else if (line.startsWith("# ")) {
+      elements.push(<h1 key={i} className="font-bold text-xl mt-5 mb-3 text-gray-900 dark:text-white">{line.slice(2)}</h1>);
     } else if (line.startsWith("- ") || line.startsWith("• ")) {
       elements.push(
         <div key={i} className="flex items-start gap-2 my-0.5">
           <span className="text-blue-500 mt-1 flex-shrink-0">•</span>
-          <span dangerouslySetInnerHTML={{ __html: withCode }} />
+          <span dangerouslySetInnerHTML={{ __html: withItalic }} />
         </div>
       );
     } else if (line.match(/^\d+\.\s/)) {
       elements.push(
         <div key={i} className="flex items-start gap-2 my-0.5">
           <span className="text-blue-500 font-medium flex-shrink-0 min-w-[20px]">{line.match(/^\d+/)[0]}.</span>
-          <span dangerouslySetInnerHTML={{ __html: withCode }} />
+          <span dangerouslySetInnerHTML={{ __html: withItalic }} />
         </div>
       );
     } else if (line.trim() === "") {
       elements.push(<div key={i} className="h-2" />);
     } else {
-      elements.push(<p key={i} className="my-0.5" dangerouslySetInnerHTML={{ __html: withCode }} />);
+      elements.push(<p key={i} className="my-0.5" dangerouslySetInnerHTML={{ __html: withItalic }} />);
     }
-  });
+  }
+
+  if (inTable) {
+    elements.push(renderTable());
+  }
 
   return <div className="text-sm leading-relaxed">{elements}</div>;
 };
@@ -90,30 +193,64 @@ const AITutor = () => {
   const token = localStorage.getItem("token");
   const user = JSON.parse(localStorage.getItem("user") || "{}");
 
-  const [messages, setMessages] = useState([]);
+  const [messages, setMessages] = useState(() => {
+    const saved = localStorage.getItem('ai_tutor_chat_history');
+    if (saved && saved !== "undefined") {
+      try {
+        const parsed = JSON.parse(saved);
+        return parsed.map(msg => ({
+          ...msg,
+          timestamp: new Date(msg.timestamp)
+        }));
+      } catch {
+        return [];
+      }
+    }
+    return [];
+  });
+
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [courses, setCourses] = useState([]);
   const [selectedCourse, setSelectedCourse] = useState("");
   const [error, setError] = useState("");
   const [showSuggestions, setShowSuggestions] = useState(true);
+  
+  const [editingId, setEditingId] = useState(null);
+  const [editText, setEditText] = useState("");
 
   const messagesEndRef = useRef(null);
   const textareaRef = useRef(null);
+  const editTextareaRef = useRef(null);
+
+  useEffect(() => {
+    if (messages.length > 0) {
+      localStorage.setItem('ai_tutor_chat_history', JSON.stringify(messages));
+    }
+  }, [messages]);
 
   useEffect(() => {
     fetchCourses();
-    // Welcome message
-    setMessages([{
-      role: "assistant",
-      content: `Hello ${user.fullName?.split(" ")[0] || "there"}! 👋 I'm your AI Tutor. I'm here to help you understand concepts, debug code, and answer any academic questions you have.\n\nWhat would you like to learn today?`,
-      timestamp: new Date(),
-    }]);
+    if (messages.length === 0) {
+      setMessages([{
+        role: "assistant",
+        content: `Hello ${user.fullName?.split(" ")[0] || "there"}! 👋 I'm your AI Tutor. I'm here to help you understand concepts, debug code, and answer any academic questions you have.\n\nWhat would you like to learn today?`,
+        timestamp: new Date(),
+      }]);
+    }
   }, []);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
+
+  useEffect(() => {
+    if (editingId !== null && editTextareaRef.current) {
+      editTextareaRef.current.focus();
+      editTextareaRef.current.style.height = 'auto';
+      editTextareaRef.current.style.height = editTextareaRef.current.scrollHeight + 'px';
+    }
+  }, [editingId]);
 
   const fetchCourses = async () => {
     try {
@@ -133,12 +270,16 @@ const AITutor = () => {
     setShowSuggestions(false);
     setError("");
 
-    const userMessage = { role: "user", content: text, timestamp: new Date() };
+    const userMessage = { 
+      role: "user", 
+      content: text, 
+      timestamp: new Date(),
+      id: Date.now()
+    };
     setMessages(prev => [...prev, userMessage]);
     setIsLoading(true);
 
     try {
-      // Build history for context (exclude timestamps)
       const history = messages
         .filter(m => m.role !== "system")
         .map(m => ({ role: m.role, content: m.content }));
@@ -168,6 +309,7 @@ const AITutor = () => {
         content: data.reply,
         timestamp: new Date(),
         tokens: data.usage,
+        id: Date.now() + 1
       };
       setMessages(prev => [...prev, aiMessage]);
     } catch {
@@ -177,21 +319,121 @@ const AITutor = () => {
     }
   };
 
+  // FIXED: Edit message and regenerate AI response
+  const startEdit = (index) => {
+    setEditingId(index);
+    setEditText(messages[index].content);
+  };
+
+  const saveEdit = async (index) => {
+    if (!editText.trim()) return;
+    
+    const originalMessage = messages[index];
+    const nextMessage = messages[index + 1];
+    
+    // Update the user message
+    setMessages(prev => prev.map((msg, i) => 
+      i === index 
+        ? { 
+            ...msg, 
+            content: editText, 
+            edited: true, 
+            originalContent: originalMessage.content,
+            editedAt: new Date() 
+          } 
+        : msg
+    ));
+    
+    setEditingId(null);
+    setEditText("");
+    
+    // If there's an AI response right after this message, delete it and regenerate
+    if (nextMessage && nextMessage.role === "assistant") {
+      // Remove the old AI response
+      setMessages(prev => prev.filter((_, i) => i !== index + 1));
+      
+      // Generate new AI response for the edited message
+      setIsLoading(true);
+      
+      try {
+        // Get history up to the edited message (excluding the old AI response)
+        const history = messages
+          .filter((_, i) => i < index && messages[i].role !== "system")
+          .map(m => ({ role: m.role, content: m.content }));
+        
+        // Add the edited message to history
+        history.push({ role: "user", content: editText });
+        
+        const res = await fetch(`${API}/api/ai/chat`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            message: editText,
+            history: history.slice(0, -1), // Don't include the current message twice
+            courseId: selectedCourse || null,
+          }),
+        });
+  
+        const data = await res.json();
+  
+        if (!res.ok) {
+          setError(data.message || "Failed to get response");
+          return;
+        }
+  
+        const newAiMessage = {
+          role: "assistant",
+          content: data.reply,
+          timestamp: new Date(),
+          tokens: data.usage,
+          id: Date.now(),
+          isRegenerated: true
+        };
+        
+        setMessages(prev => {
+          const newMessages = [...prev];
+          newMessages.splice(index + 1, 0, newAiMessage);
+          return newMessages;
+        });
+      } catch {
+        setError("Cannot connect to server. Make sure backend is running.");
+      } finally {
+        setIsLoading(false);
+      }
+    }
+  };
+
+  const cancelEdit = () => {
+    setEditingId(null);
+    setEditText("");
+  };
+
+  const deleteMessage = (index) => {
+    if (window.confirm('Delete this message?')) {
+      setMessages(prev => prev.filter((_, i) => i !== index));
+    }
+  };
+
+  const handleClearChat = () => {
+    if (window.confirm('Delete ALL chat history? This cannot be undone!')) {
+      setMessages([{
+        role: "assistant",
+        content: `Chat cleared! I'm ready for your next question, ${user.fullName?.split(" ")[0] || ""}. What would you like to learn?`,
+        timestamp: new Date(),
+      }]);
+      setShowSuggestions(true);
+      setError("");
+    }
+  };
+
   const handleKeyDown = (e) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       handleSend();
     }
-  };
-
-  const handleClearChat = () => {
-    setMessages([{
-      role: "assistant",
-      content: `Chat cleared! I'm ready for your next question, ${user.fullName?.split(" ")[0] || ""}. What would you like to learn?`,
-      timestamp: new Date(),
-    }]);
-    setShowSuggestions(true);
-    setError("");
   };
 
   const formatTime = (date) => {
@@ -209,11 +451,10 @@ const AITutor = () => {
             AI Tutor
           </h1>
           <p className="text-gray-600 dark:text-gray-400 mt-0.5 text-sm">
-            Powered by Claude AI — ask me anything about your studies
+            Powered by Claude AI — {messages.length} messages • {messages.filter(m => m.edited).length} edited
           </p>
         </div>
         <div className="flex items-center gap-2">
-          {/* Course context selector */}
           <select value={selectedCourse} onChange={e => setSelectedCourse(e.target.value)}
             className="text-sm px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent max-w-[180px]">
             <option value="">No course context</option>
@@ -234,7 +475,7 @@ const AITutor = () => {
         <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4">
 
           {messages.map((msg, index) => (
-            <div key={index} className={`flex items-start gap-3 ${msg.role === "user" ? "flex-row-reverse" : ""}`}>
+            <div key={index} className={`group flex items-start gap-3 ${msg.role === "user" ? "flex-row-reverse" : ""}`}>
 
               {/* Avatar */}
               <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ${
@@ -250,17 +491,82 @@ const AITutor = () => {
 
               {/* Message bubble */}
               <div className={`max-w-[80%] ${msg.role === "user" ? "items-end" : "items-start"} flex flex-col gap-1`}>
-                <div className={`px-4 py-3 rounded-2xl ${
-                  msg.role === "user"
-                    ? "bg-blue-600 text-white rounded-tr-sm"
-                    : "bg-gray-50 dark:bg-gray-700/50 text-gray-900 dark:text-white border border-gray-200 dark:border-gray-600 rounded-tl-sm"
-                }`}>
-                  {msg.role === "user"
-                    ? <p className="text-sm leading-relaxed">{msg.content}</p>
-                    : formatMessage(msg.content)
-                  }
+                
+                {/* Edit mode */}
+                {editingId === index ? (
+                  <div className="w-full min-w-[300px]">
+                    <textarea
+                      ref={editTextareaRef}
+                      value={editText}
+                      onChange={(e) => {
+                        setEditText(e.target.value);
+                        e.target.style.height = 'auto';
+                        e.target.style.height = Math.min(e.target.scrollHeight, 200) + 'px';
+                      }}
+                      className="w-full px-4 py-3 rounded-2xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none text-sm"
+                      rows={3}
+                      style={{ minWidth: '280px', maxWidth: '500px' }}
+                    />
+                    <div className="flex gap-2 mt-2">
+                      <button
+                        onClick={() => saveEdit(index)}
+                        className="px-3 py-1 text-sm bg-green-500 text-white rounded-lg hover:bg-green-600 transition"
+                      >
+                        Save & Regenerate
+                      </button>
+                      <button
+                        onClick={cancelEdit}
+                        className="px-3 py-1 text-sm bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className={`px-4 py-3 rounded-2xl ${
+                    msg.role === "user"
+                      ? "bg-blue-600 text-white rounded-tr-sm"
+                      : "bg-gray-50 dark:bg-gray-700/50 text-gray-900 dark:text-white border border-gray-200 dark:border-gray-600 rounded-tl-sm"
+                  }`}>
+                    {msg.role === "user"
+                      ? <p className="text-sm leading-relaxed whitespace-pre-wrap">{msg.content}</p>
+                      : formatMessage(msg.content)
+                    }
+                    {msg.edited && (
+                      <span className="text-xs opacity-70 mt-1 block" title={`Originally: ${msg.originalContent?.substring(0, 100)}`}>
+                        (edited)
+                      </span>
+                    )}
+                    {msg.isRegenerated && (
+                      <span className="text-xs opacity-70 mt-1 block">
+                        (regenerated)
+                      </span>
+                    )}
+                  </div>
+                )}
+                
+                {/* Timestamp and edit/delete buttons */}
+                <div className="flex items-center gap-2 px-1">
+                  <span className="text-xs text-gray-400">{formatTime(msg.timestamp)}</span>
+                  {!editingId && msg.role === "user" && (
+                    <div className="opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
+                      <button
+                        onClick={() => startEdit(index)}
+                        className="text-xs text-gray-400 hover:text-blue-500"
+                        title="Edit message"
+                      >
+                        ✏️
+                      </button>
+                      <button
+                        onClick={() => deleteMessage(index)}
+                        className="text-xs text-gray-400 hover:text-red-500"
+                        title="Delete message"
+                      >
+                        🗑️
+                      </button>
+                    </div>
+                  )}
                 </div>
-                <span className="text-xs text-gray-400 px-1">{formatTime(msg.timestamp)}</span>
               </div>
             </div>
           ))}
@@ -321,7 +627,6 @@ const AITutor = () => {
                 value={input}
                 onChange={e => {
                   setInput(e.target.value);
-                  // Auto resize
                   e.target.style.height = "auto";
                   e.target.style.height = Math.min(e.target.scrollHeight, 120) + "px";
                 }}

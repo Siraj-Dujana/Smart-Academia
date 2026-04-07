@@ -14,10 +14,13 @@ const Dashboard = () => {
   const user = JSON.parse(localStorage.getItem("user") || "{}");
 
   const [enrolledCourses, setEnrolledCourses] = useState([]);
+  const [recentActivities, setRecentActivities] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState("");
 
   useEffect(() => {
     fetchDashboardData();
+    fetchRecentActivities();
   }, []);
 
   const fetchDashboardData = async () => {
@@ -26,11 +29,29 @@ const Dashboard = () => {
         headers: { Authorization: `Bearer ${token}` },
       });
       const data = await res.json();
-      if (res.ok) setEnrolledCourses(data.courses);
+      if (res.ok) {
+        setEnrolledCourses(data.courses || []);
+      } else {
+        setError(data.message || "Failed to fetch courses");
+      }
     } catch {
-      console.error("Failed to fetch dashboard data");
+      setError("Cannot connect to server");
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const fetchRecentActivities = async () => {
+    try {
+      const res = await fetch(`${API}/api/student/recent-activities`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setRecentActivities(data.activities || []);
+      }
+    } catch {
+      console.error("Failed to fetch activities");
     }
   };
 
@@ -70,22 +91,19 @@ const Dashboard = () => {
 
   // Build chart data from real courses
   useEffect(() => {
-    if (isLoading) return;
+    if (isLoading || enrolledCourses.length === 0) return;
 
+    // Bar Chart
     if (barChartRef.current) {
       if (barChartInstance.current) barChartInstance.current.destroy();
       const ctx = barChartRef.current.getContext("2d");
       barChartInstance.current = new Chart(ctx, {
         type: "bar",
         data: {
-          labels: enrolledCourses.length > 0
-            ? enrolledCourses.map(c => c.code || c.title.slice(0, 8))
-            : ["No courses yet"],
+          labels: enrolledCourses.map(c => c.code || c.title.slice(0, 8)),
           datasets: [{
             label: "Progress %",
-            data: enrolledCourses.length > 0
-              ? enrolledCourses.map(c => c.progress || 0)
-              : [0],
+            data: enrolledCourses.map(c => c.progress || 0),
             backgroundColor: "#4f46e5",
             borderRadius: 8,
           }],
@@ -103,18 +121,20 @@ const Dashboard = () => {
       });
     }
 
+    // Pie Chart
     if (pieChartRef.current) {
       if (pieChartInstance.current) pieChartInstance.current.destroy();
       const completed = enrolledCourses.filter(c => c.isCompleted).length;
       const inProgress = enrolledCourses.filter(c => !c.isCompleted && (c.progress || 0) > 0).length;
       const notStarted = enrolledCourses.filter(c => (c.progress || 0) === 0).length;
+      
       const ctx = pieChartRef.current.getContext("2d");
       pieChartInstance.current = new Chart(ctx, {
         type: "pie",
         data: {
           labels: ["Completed", "In Progress", "Not Started"],
           datasets: [{
-            data: [completed || 0, inProgress || 0, notStarted || (enrolledCourses.length === 0 ? 1 : 0)],
+            data: [completed, inProgress, notStarted],
             backgroundColor: ["#10b981", "#f59e0b", "#ef4444"],
             borderWidth: 2,
             borderColor: "#ffffff",
@@ -137,6 +157,18 @@ const Dashboard = () => {
     };
   }, [isLoading, enrolledCourses]);
 
+  // Get color for course card
+  const getCourseColor = (index) => {
+    const colors = [
+      "from-blue-500 to-indigo-600",
+      "from-purple-500 to-pink-600",
+      "from-green-500 to-teal-600",
+      "from-orange-500 to-red-600",
+      "from-cyan-500 to-blue-600",
+    ];
+    return colors[index % colors.length];
+  };
+
   return (
     <div className="space-y-8">
       {/* Header */}
@@ -146,6 +178,17 @@ const Dashboard = () => {
           Welcome back, {user.fullName || "Student"}! Here's your learning overview.
         </p>
       </div>
+
+      {/* Error Banner */}
+      {error && (
+        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl p-4 flex items-center gap-3">
+          <span className="material-symbols-outlined text-red-500">error</span>
+          <p className="text-red-600 dark:text-red-400 flex-1">{error}</p>
+          <button onClick={() => setError("")} className="text-red-400 hover:text-red-600">
+            <span className="material-symbols-outlined text-sm">close</span>
+          </button>
+        </div>
+      )}
 
       {/* Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
@@ -171,9 +214,9 @@ const Dashboard = () => {
       <div>
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-xl font-bold text-gray-900 dark:text-white">My Courses</h2>
-          <button onClick={() => navigate("/student/dashboard")}
-            className="text-sm text-blue-600 hover:text-blue-700 font-medium">
-            View All →
+          <button onClick={() => navigate("/courses")}
+            className="text-sm text-blue-600 hover:text-blue-700 font-medium flex items-center gap-1">
+            View All <span className="material-symbols-outlined text-sm">arrow_forward</span>
           </button>
         </div>
 
@@ -186,28 +229,40 @@ const Dashboard = () => {
           </div>
         ) : enrolledCourses.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {enrolledCourses.slice(0, 3).map(course => (
+            {enrolledCourses.slice(0, 3).map((course, idx) => (
               <div key={course._id}
                 onClick={() => navigate(`/lessons/${course._id}`)}
                 className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-lg transition-all hover:scale-105 overflow-hidden group cursor-pointer">
-                <div className="p-4">
-                  <div className="flex items-start gap-3 mb-4">
-                    <div className="flex items-center justify-center size-10 rounded-lg bg-indigo-100 dark:bg-indigo-900/50 text-indigo-600">
-                      <span className="material-symbols-outlined text-base">menu_book</span>
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <h3 className="font-semibold text-gray-900 dark:text-white truncate group-hover:text-blue-600 transition-colors">
-                        {course.title}
-                      </h3>
-                      <p className="text-xs text-gray-500">{course.code} · {course.teacher?.fullName}</p>
-                    </div>
+                
+                {/* Course Image/Gradient Header */}
+                <div className={`h-32 bg-gradient-to-r ${getCourseColor(idx)} relative overflow-hidden`}>
+                  <div className="absolute inset-0 bg-black/10 group-hover:bg-black/20 transition-all"></div>
+                  <div className="absolute bottom-3 left-4">
+                    <span className="text-xs font-medium px-2 py-1 bg-white/20 backdrop-blur-sm rounded-full text-white">
+                      {course.code}
+                    </span>
                   </div>
+                  {course.progress === 100 && (
+                    <div className="absolute top-3 right-3">
+                      <span className="text-xs font-medium px-2 py-1 bg-green-500 rounded-full text-white flex items-center gap-1">
+                        <span className="material-symbols-outlined text-xs">check_circle</span>
+                        Completed
+                      </span>
+                    </div>
+                  )}
+                </div>
+                
+                <div className="p-4">
+                  <h3 className="font-semibold text-gray-900 dark:text-white group-hover:text-blue-600 transition-colors mb-1 line-clamp-1">
+                    {course.title}
+                  </h3>
+                  <p className="text-xs text-gray-500 mb-3">{course.teacher?.fullName || "Instructor"}</p>
 
                   {/* Progress bar */}
                   <div className="mb-3">
                     <div className="flex justify-between text-xs text-gray-500 mb-1">
                       <span>Progress</span>
-                      <span>{course.progress || 0}%</span>
+                      <span className="font-medium">{course.progress || 0}%</span>
                     </div>
                     <div className="h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
                       <div className="h-full bg-blue-600 rounded-full transition-all duration-500"
@@ -215,9 +270,11 @@ const Dashboard = () => {
                     </div>
                   </div>
                 </div>
+                
                 <div className="border-t border-gray-200 dark:border-gray-700 px-4 py-3">
                   <button className="w-full flex items-center justify-center gap-2 text-sm font-medium px-3 py-2 rounded-lg text-white bg-blue-600 hover:bg-blue-700 transition-all">
-                    Continue <span className="material-symbols-outlined text-sm">arrow_forward</span>
+                    {course.progress === 100 ? "Review Course" : "Continue Learning"}
+                    <span className="material-symbols-outlined text-sm">arrow_forward</span>
                   </button>
                 </div>
               </div>
@@ -228,7 +285,7 @@ const Dashboard = () => {
             <span className="material-symbols-outlined text-6xl text-gray-300 dark:text-gray-600">import_contacts</span>
             <h3 className="text-lg font-medium text-gray-900 dark:text-white mt-4 mb-2">No courses yet</h3>
             <p className="text-gray-500 dark:text-gray-400 mb-4">Enroll in a course to start learning</p>
-            <button onClick={() => navigate("/student/dashboard")}
+            <button onClick={() => navigate("/courses")}
               className="inline-flex items-center gap-2 text-sm font-medium px-4 py-2 rounded-lg text-white bg-blue-600 hover:bg-blue-700 transition-colors">
               Browse Courses
             </button>
@@ -236,18 +293,51 @@ const Dashboard = () => {
         )}
       </div>
 
-      {/* Charts */}
+      {/* Charts & Recent Activity Row */}
       {enrolledCourses.length > 0 && (
-        <div>
-          <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-6">Reports Overview</h2>
-          <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-            <div className="xl:col-span-2 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm p-4 sm:p-6">
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Progress by Course</h3>
-              <div className="h-64"><canvas ref={barChartRef}/></div>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Charts Section - Takes 2/3 */}
+          <div className="lg:col-span-2 space-y-6">
+            <h2 className="text-xl font-bold text-gray-900 dark:text-white">Reports Overview</h2>
+            <div className="grid grid-cols-1 gap-6">
+              <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm p-4 sm:p-6">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Progress by Course</h3>
+                <div className="h-64"><canvas ref={barChartRef}/></div>
+              </div>
+              <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm p-4 sm:p-6">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Course Status Distribution</h3>
+                <div className="h-64 flex items-center justify-center"><canvas ref={pieChartRef}/></div>
+              </div>
             </div>
-            <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm p-4 sm:p-6">
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Course Status</h3>
-              <div className="h-64 flex items-center justify-center"><canvas ref={pieChartRef}/></div>
+          </div>
+
+          {/* Recent Activity Section - Takes 1/3 */}
+          <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm p-4 sm:p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Recent Activity</h3>
+              <span className="material-symbols-outlined text-gray-400 text-sm">schedule</span>
+            </div>
+            <div className="space-y-4">
+              {recentActivities.length > 0 ? (
+                recentActivities.slice(0, 5).map((activity, idx) => (
+                  <div key={idx} className="flex items-start gap-3 pb-3 border-b border-gray-100 dark:border-gray-700 last:border-0">
+                    <div className="flex-shrink-0 w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
+                      <span className="material-symbols-outlined text-blue-600 text-sm">{activity.icon || "play_circle"}</span>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm text-gray-900 dark:text-white font-medium">{activity.title}</p>
+                      <p className="text-xs text-gray-500">{activity.description}</p>
+                      <p className="text-xs text-gray-400 mt-1">{activity.time}</p>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="text-center py-8">
+                  <span className="material-symbols-outlined text-4xl text-gray-300 dark:text-gray-600">history</span>
+                  <p className="text-sm text-gray-500 mt-2">No recent activity</p>
+                  <p className="text-xs text-gray-400">Start a lesson to see activity here</p>
+                </div>
+              )}
             </div>
           </div>
         </div>
