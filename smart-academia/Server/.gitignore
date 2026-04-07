@@ -7,10 +7,28 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
+# Dependencies
 node_modules
 dist
 dist-ssr
 *.local
+
+# Environment variables (SECURITY: prevent committing secrets)
+*.env
+*.env.*
+!.env.example
+!.env.sample
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# API Keys and Secrets (additional safety)
+*.pem
+*.key
+*.secret
+secrets/
+credentials.json
 
 # Editor directories and files
 .vscode/*
@@ -22,3 +40,90 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+*.swp
+*~
+
+# OS generated files
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+desktop.ini
+
+# Build outputs
+build/
+dist/
+out/
+*.tsbuildinfo
+
+# Test coverage
+coverage/
+.nyc_output/
+*.lcov
+
+# Debug files
+*.log
+*.pid
+*.seed
+*.pid.lock
+
+# Misc
+.cache/
+.temp/
+.tmp/
+.env-backup/
+
+# Server specific
+smart-academia/Server/.env
+smart-academia/Server/.env.*
+Server/.env
+Server/.env.*
+server/.env
+server/.env.*
+
+# Client specific
+smart-academia/Client/.env
+smart-academia/Client/.env.*
+Client/.env
+Client/.env.*
+client/.env
+client/.env.*
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+
+# Backup files
+*.bak
+*.backup
+*.old
+*.orig
+
+# Docker
+*.pid
+docker-compose.override.yml
+
+# Python (if any)
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.env/
+.venv/
+
+# Next.js (if using)
+.next/
+out/
+*.next
+
+# React/Webpack
+*.chunk.js
+*.chunk.css
+
+# Certificate files
+*.crt
+*.cer
+*.p12
