@@ -85,8 +85,13 @@ Evaluation:
   suggestions
 }
 
-I don't want to have the pistion api in my project dude 
-remove it fully
 
-Lab PDF submission via Cloudinary is not achieved yet dude
-Lab system — AI generation (Gemini) not achieved yet dude
+
+dude I have to follow the things:
+1. I don't want judge0 api as well dude
+
+2. Lab PDF submission via Cloudinary is not achieved yet dude
+3. Lab system — AI generation (Gemini) not achieved yet dude
+
+
+

@@ -1,4 +1,4 @@
-// models/LabSubmission.js — UPDATED: adds PDF fields + grading fields
+// models/LabSubmission.js
 const mongoose = require("mongoose");
 
 const LabSubmissionSchema = new mongoose.Schema(
@@ -7,26 +7,28 @@ const LabSubmissionSchema = new mongoose.Schema(
     lesson:  { type: mongoose.Schema.Types.ObjectId, ref: "Lesson", required: true },
     course:  { type: mongoose.Schema.Types.ObjectId, ref: "Course", required: true },
     student: { type: mongoose.Schema.Types.ObjectId, ref: "User",   required: true },
-    // Text answer (kept optional — either answer or pdfUrl must exist)
-    answer:  { type: String, default: "" },
-    // NEW: PDF upload fields
-    pdfUrl:       { type: String, default: null },    // Cloudinary secure_url
-    pdfFileName:  { type: String, default: null },    // original filename
-    pdfPublicId:  { type: String, default: null },    // for Cloudinary deletion
-    // Code run results
-    testResults:  { type: mongoose.Schema.Types.Mixed, default: [] },
-    submittedAt:  { type: Date, default: Date.now },
-    // GRADING
+
+    // Text answer — optional when PDF is uploaded
+    answer: { type: String, default: "" },
+
+    // PDF upload fields (Cloudinary)
+    pdfUrl:      { type: String, default: null },
+    pdfFileName: { type: String, default: null },
+    pdfPublicId: { type: String, default: null },
+
+    submittedAt: { type: Date, default: Date.now },
+
+    // Teacher grading
     marks:    { type: Number, default: null },
     feedback: { type: String, default: null },
-    status:   { type: String, enum: ["submitted","graded"], default: "submitted" },
+    status:   { type: String, enum: ["submitted", "graded"], default: "submitted" },
     gradedAt: { type: Date,   default: null },
     gradedBy: { type: mongoose.Schema.Types.ObjectId, ref: "User", default: null },
   },
   { timestamps: true }
 );
 
-// Compound index — one submission per student per lab
+// One submission per student per lab
 LabSubmissionSchema.index({ lab: 1, student: 1 }, { unique: true });
 
 module.exports = mongoose.model("LabSubmission", LabSubmissionSchema);
