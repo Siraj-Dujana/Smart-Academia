@@ -88,10 +88,11 @@ Evaluation:
 
 
 dude I have to follow the things:
-1. I don't want judge0 api as well dude
-
+1. update the UIS as well
 2. Lab PDF submission via Cloudinary is not achieved yet dude
 3. Lab system — AI generation (Gemini) not achieved yet dude
+4. I don't want judge0 api as well dude
+
 
 
 
