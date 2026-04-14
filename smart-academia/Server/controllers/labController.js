@@ -62,7 +62,7 @@ const createLab = async (req, res) => {
 };
 
 // ─────────────────────────────────────────────────────────────
-// TEACHER: AI Generate Lab
+// TEACHER: AI Generate Lab (FIXED - handles array instructions)
 // POST /api/courses/:courseId/lessons/:lessonId/lab/ai-generate
 // Body: { topic, difficulty, labType }
 // Returns: { title, description, outputExample, difficulty }
@@ -85,9 +85,8 @@ const aiGenerateLab = async (req, res) => {
       return res.status(403).json({ message: "Not your lesson" });
 
     const diff = difficulty || "medium";
-    const type = labType    || "theory";
+    const type = labType    || "programming";
 
-    // @google/genai — gemini-2.5-flash-lite
     const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
     const prompt = `You are a university lab assignment creator for computer science students.
@@ -96,12 +95,14 @@ Create a lab assignment for the topic: "${topic}"
 Difficulty level: ${diff}
 Lab type: ${type}
 
+IMPORTANT: The "instructions" field MUST be a single string with numbered steps separated by newlines (\\n). DO NOT return an array.
+
 Return ONLY a valid JSON object. No markdown, no explanation, no code blocks. Just raw JSON.
 
 {
   "title": "concise descriptive lab title",
   "description": "2-3 sentences explaining what the lab covers and what students will practice",
-  "instructions": "detailed numbered steps — at least 4 steps — explaining exactly what to do",
+  "instructions": "1. First step\\n2. Second step\\n3. Third step\\n4. Fourth step",
   "outputExample": "the exact expected output or result a correct solution should produce",
   "starterCode": "starter code template if programming lab, empty string otherwise"
 }`;
@@ -111,7 +112,6 @@ Return ONLY a valid JSON object. No markdown, no explanation, no code blocks. Ju
       contents: prompt,
     });
 
-    // Extract text from response
     let text = response.text;
     if (!text)
       return res.status(500).json({ message: "AI returned empty response. Try again." });
@@ -133,6 +133,15 @@ Return ONLY a valid JSON object. No markdown, no explanation, no code blocks. Ju
     if (!generated.title?.trim() || !generated.description?.trim())
       return res.status(500).json({ message: "AI response incomplete. Try again." });
 
+    // ✅ FIX: Convert instructions to string if it's an array
+    let instructions = generated.instructions || "";
+    if (Array.isArray(instructions)) {
+      instructions = instructions.join("\n");
+    }
+    if (typeof instructions !== "string") {
+      instructions = String(instructions);
+    }
+
     // Save — replace any existing lab for this lesson
     await Lab.deleteOne({ lesson: lessonId });
 
@@ -145,8 +154,8 @@ Return ONLY a valid JSON object. No markdown, no explanation, no code blocks. Ju
       course:        lesson.course._id,
       createdBy:     req.user._id,
       labType:       type,
-      instructions:  generated.instructions  || "",
-      starterCode:   generated.starterCode   || "",
+      instructions:  instructions,
+      starterCode:   generated.starterCode || "",
       language:      "python",
       testCases:     [],
       totalMarks:    100,
@@ -360,7 +369,6 @@ const aiEvaluateSubmission = async (req, res) => {
 
     const lab = submission.lab;
 
-    // Build context from what student submitted
     const submittedContent = submission.answer || "(No text answer — student uploaded a PDF)";
 
     const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
@@ -420,56 +428,67 @@ Evaluate the student's submission strictly and fairly. Return ONLY valid JSON. N
 // POST /api/courses/:courseId/lessons/:lessonId/lab/:labId/submit
 // Content-Type: multipart/form-data
 // Fields: answer (text, optional), pdf (file, optional)
-// At least one of answer or pdf is required
+// ─────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────
+// STUDENT: Submit lab — text answer + optional PDF upload
+// POST /api/courses/:courseId/lessons/:lessonId/lab/:labId/submit
+// Content-Type: multipart/form-data
+// Fields: answer (text, optional), file (file, optional)
 // ─────────────────────────────────────────────────────────────
 const submitLab = async (req, res) => {
   try {
-    const lab = await Lab.findById(req.params.labId);
-    if (!lab)             return res.status(404).json({ message: "Lab not found" });
-    if (!lab.isPublished) return res.status(400).json({ message: "Lab is not available" });
+    const { courseId, lessonId, labId } = req.params;
+    
+    console.log("=== SUBMIT LAB ===");
+    console.log("Course ID:", courseId);
+    console.log("Lesson ID:", lessonId);
+    console.log("Lab ID:", labId);
+    console.log("Has file:", !!req.file);
+    console.log("File field name:", req.file?.fieldname);
+    console.log("Answer:", req.body.answer);
+    
+    const lab = await Lab.findById(labId);
+    if (!lab) {
+      console.log("Lab not found");
+      return res.status(404).json({ message: "Lab not found" });
+    }
+    if (!lab.isPublished) {
+      console.log("Lab not published");
+      return res.status(400).json({ message: "Lab is not available" });
+    }
 
     const answer = req.body.answer?.trim() || "";
-    let pdfUrl      = null;
+    let pdfUrl = null;
     let pdfFileName = null;
     let pdfPublicId = null;
 
-    // Upload PDF to Cloudinary if file was sent
+    // ✅ Check for file in req.file (multer puts it here)
     if (req.file) {
-      if (!process.env.CLOUDINARY_CLOUD_NAME)
-        return res.status(400).json({ message: "Cloudinary is not configured on the server" });
-
-      try {
-        const uploadResult = await cloudinary.uploader.upload(req.file.path, {
-          folder:          `smartacademia/lab-submissions/${lab._id}`,
-          resource_type:   "auto",       // handles PDF correctly
-          use_filename:    true,
-          unique_filename: true,
-        });
-        pdfUrl      = uploadResult.secure_url;
-        pdfPublicId = uploadResult.public_id;
-        pdfFileName = req.file.originalname;
-      } catch (uploadErr) {
-        console.error("Cloudinary PDF upload error:", uploadErr.message);
-        return res.status(500).json({ message: "PDF upload failed: " + uploadErr.message });
-      }
+      pdfUrl = req.file.path || req.file.secure_url;
+      pdfFileName = req.file.originalname;
+      pdfPublicId = req.file.filename || req.file.public_id;
+      console.log("PDF uploaded:", pdfUrl);
     }
 
     // Must have at least answer text or a PDF
-    if (!answer && !pdfUrl)
+    if (!answer && !pdfUrl) {
+      console.log("No answer and no PDF");
       return res.status(400).json({ message: "Please write an answer or upload a PDF" });
+    }
 
     // If student is resubmitting and had an old PDF, delete it from Cloudinary
-    const existing = await LabSubmission.findOne({ lab: lab._id, student: req.user._id });
+    const existing = await LabSubmission.findOne({ lab: labId, student: req.user._id });
     if (existing?.pdfPublicId && pdfUrl) {
       try {
         await cloudinary.uploader.destroy(existing.pdfPublicId, { resource_type: "raw" });
-      } catch {
-        // Non-critical — old file deletion failure does not block submission
+        console.log("Old PDF deleted");
+      } catch (err) {
+        console.log("Failed to delete old PDF:", err.message);
       }
     }
 
     const submission = await LabSubmission.findOneAndUpdate(
-      { lab: lab._id, student: req.user._id },
+      { lab: labId, student: req.user._id },
       {
         $set: {
           answer,
@@ -477,40 +496,50 @@ const submitLab = async (req, res) => {
           pdfFileName,
           pdfPublicId,
           submittedAt: new Date(),
-          // Reset grading fields on resubmit
-          marks:    null,
+          marks: null,
           feedback: null,
-          status:   "submitted",
+          status: "submitted",
           gradedAt: null,
           gradedBy: null,
         },
         $setOnInsert: {
-          lab:     lab._id,
-          lesson:  lab.lesson,
-          course:  lab.course,
+          lab: labId,
+          lesson: lessonId,
+          course: courseId,
           student: req.user._id,
         },
       },
       { upsert: true, new: true }
     );
 
+    console.log("Submission saved:", submission._id);
+
     // Mark lab as completed and fire lesson unlock check
     await LessonProgress.findOneAndUpdate(
-      { student: req.user._id, lesson: lab.lesson },
+      { student: req.user._id, lesson: lessonId },
       {
-        $set:         { labCompleted: true },
+        $set: { labCompleted: true },
         $setOnInsert: {
           student: req.user._id,
-          lesson:  lab.lesson,
-          course:  lab.course,
+          lesson: lessonId,
+          course: courseId,
         },
       },
       { upsert: true }
     );
 
-    await checkAndUnlockNext(req.user._id, lab.lesson, lab.course);
+    await checkAndUnlockNext(req.user._id, lessonId, courseId);
 
-    res.status(200).json({ message: "Lab submitted successfully", submission });
+    res.status(200).json({ 
+      message: "Lab submitted successfully", 
+      submission: {
+        _id: submission._id,
+        answer: submission.answer,
+        pdfUrl: submission.pdfUrl,
+        status: submission.status,
+        submittedAt: submission.submittedAt
+      }
+    });
   } catch (err) {
     console.error("submitLab error:", err.message);
     res.status(500).json({ message: "Server error: " + err.message });

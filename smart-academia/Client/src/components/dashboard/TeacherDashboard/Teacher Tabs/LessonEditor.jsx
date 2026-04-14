@@ -30,7 +30,27 @@ const LessonEditor = ({ courseId, editLesson = null, onClose, onSaved }) => {
   const [aiDiff, setAiDiff] = useState("medium");
   const [aiCount, setAiCount] = useState(5);
   const [lab, setLab] = useState(null);
-  const [labForm, setLabForm] = useState({ title: "", labType: "theory", instructions: "", starterCode: "", language: "python", testCases: [] });
+  const [labForm, setLabForm] = useState({ 
+    title: "", 
+    labType: "programming", 
+    instructions: "", 
+    starterCode: "", 
+    language: "python", 
+    testCases: [],
+    description: "",
+    outputExample: "",
+    difficulty: "medium",
+    totalMarks: 100,
+    dueDate: ""
+  });
+  
+  // AI Lab Generation State
+  const [showAIGenerator, setShowAIGenerator] = useState(false);
+  const [aiLabTopic, setAiLabTopic] = useState("");
+  const [aiLabDifficulty, setAiLabDifficulty] = useState("medium");
+  const [aiLabType, setAiLabType] = useState("programming");
+  const [isGeneratingLab, setIsGeneratingLab] = useState(false);
+  
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState("");
@@ -61,16 +81,172 @@ const LessonEditor = ({ courseId, editLesson = null, onClose, onSaved }) => {
       if (data.lab) {
         setLab(data.lab);
         setLabForm({
-          title: data.lab.title,
-          labType: data.lab.labType,
-          instructions: data.lab.instructions,
+          title: data.lab.title || "",
+          labType: data.lab.labType || "programming",
+          instructions: data.lab.instructions || "",
           starterCode: data.lab.starterCode || "",
           language: data.lab.language || "python",
-          testCases: data.lab.testCases || []
+          testCases: data.lab.testCases || [],
+          description: data.lab.description || "",
+          outputExample: data.lab.outputExample || "",
+          difficulty: data.lab.difficulty || "medium",
+          totalMarks: data.lab.totalMarks || 100,
+          dueDate: data.lab.dueDate ? data.lab.dueDate.slice(0, 10) : ""
         });
       }
     } catch { /* ignore */ }
   };
+
+  // ==================== AI LAB GENERATION ====================
+  const handleAIGenerateLab = async () => {
+    if (!savedLessonId) {
+      setError("Please save the lesson first before generating lab");
+      return;
+    }
+    if (!aiLabTopic.trim()) {
+      setError("Please enter a topic for AI generation");
+      return;
+    }
+    setIsGeneratingLab(true);
+    setError("");
+    try {
+      const res = await fetch(`${API}/api/courses/${courseId}/lessons/${savedLessonId}/lab/ai-generate`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+        body: JSON.stringify({
+          topic: aiLabTopic,
+          difficulty: aiLabDifficulty,
+          labType: aiLabType,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.message);
+        return;
+      }
+      setLab(data.lab);
+      setLabForm({
+        title: data.lab.title || "",
+        labType: data.lab.labType || "programming",
+        instructions: data.lab.instructions || "",
+        starterCode: data.lab.starterCode || "",
+        language: data.lab.language || "python",
+        testCases: data.lab.testCases || [],
+        description: data.lab.description || "",
+        outputExample: data.lab.outputExample || "",
+        difficulty: data.lab.difficulty || aiLabDifficulty,
+        totalMarks: data.lab.totalMarks || 100,
+        dueDate: ""
+      });
+      setSuccess(`AI generated: "${data.lab.title}"`);
+      setShowAIGenerator(false);
+      setAiLabTopic("");
+    } catch {
+      setError("AI generation failed");
+    } finally {
+      setIsGeneratingLab(false);
+    }
+  };
+
+  // ==================== LAB CRUD OPERATIONS ====================
+  const saveLab = async () => {
+    if (!savedLessonId) {
+      setError("Save lesson first");
+      return;
+    }
+    if (!labForm.title.trim()) {
+      setError("Lab title required");
+      return;
+    }
+    if (!labForm.instructions.trim()) {
+      setError("Lab instructions required");
+      return;
+    }
+    setSaving(true);
+    setError("");
+    setSuccess("");
+    try {
+      const res = lab
+        ? await apiFetch(`/api/courses/${courseId}/lessons/${savedLessonId}/lab/${lab._id}`, { 
+            method: "PUT", 
+            headers: { "Content-Type": "application/json" }, 
+            body: JSON.stringify(labForm) 
+          })
+        : await apiFetch(`/api/courses/${courseId}/lessons/${savedLessonId}/lab`, { 
+            method: "POST", 
+            headers: { "Content-Type": "application/json" }, 
+            body: JSON.stringify(labForm) 
+          });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.message);
+        return;
+      }
+      setLab(data.lab);
+      setSuccess("Lab saved successfully!");
+      // Refresh lesson data to update completion status
+      onSaved && onSaved();
+    } catch {
+      setError("Cannot connect to server");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const deleteLab = async () => {
+    if (!lab) return;
+    if (!window.confirm(`Delete "${lab.title}"? This action cannot be undone.`)) return;
+    setSaving(true);
+    try {
+      const res = await apiFetch(`/api/courses/${courseId}/lessons/${savedLessonId}/lab/${lab._id}`, {
+        method: "DELETE",
+      });
+      if (res.ok) {
+        setLab(null);
+        setLabForm({
+          title: "",
+          labType: "programming",
+          instructions: "",
+          starterCode: "",
+          language: "python",
+          testCases: [],
+          description: "",
+          outputExample: "",
+          difficulty: "medium",
+          totalMarks: 100,
+          dueDate: ""
+        });
+        setSuccess("Lab deleted successfully!");
+        onSaved && onSaved();
+      } else {
+        const data = await res.json();
+        setError(data.message);
+      }
+    } catch {
+      setError("Cannot connect to server");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const addTestCase = () => setLabForm(p => ({ 
+    ...p, 
+    testCases: [...p.testCases, { input: "", expectedOutput: "", description: "", points: 10 }] 
+  }));
+  
+  const updateTestCase = (i, field, val) => {
+    const tc = [...labForm.testCases];
+    tc[i] = { ...tc[i], [field]: val };
+    setLabForm(p => ({ ...p, testCases: tc }));
+  };
+  
+  const removeTestCase = (i) => setLabForm(p => ({ 
+    ...p, 
+    testCases: p.testCases.filter((_, idx) => idx !== i) 
+  }));
 
   const handleFileUpload = async (e) => {
     const file = e.target.files[0];
@@ -237,48 +413,6 @@ const LessonEditor = ({ courseId, editLesson = null, onClose, onSaved }) => {
     }
   };
 
-  const saveLab = async () => {
-    if (!savedLessonId) {
-      setError("Save lesson first");
-      return;
-    }
-    if (!labForm.title.trim()) {
-      setError("Lab title required");
-      return;
-    }
-    if (!labForm.instructions.trim()) {
-      setError("Lab instructions required");
-      return;
-    }
-    setSaving(true);
-    setError("");
-    setSuccess("");
-    try {
-      const res = lab
-        ? await apiFetch(`/api/courses/${courseId}/lessons/${savedLessonId}/lab/${lab._id}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(labForm) })
-        : await apiFetch(`/api/courses/${courseId}/lessons/${savedLessonId}/lab`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(labForm) });
-      const data = await res.json();
-      if (!res.ok) {
-        setError(data.message);
-        return;
-      }
-      setLab(data.lab);
-      setSuccess("Lab saved!");
-    } catch {
-      setError("Cannot connect to server");
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const addTestCase = () => setLabForm(p => ({ ...p, testCases: [...p.testCases, { input: "", expectedOutput: "" }] }));
-  const updateTestCase = (i, field, val) => {
-    const tc = [...labForm.testCases];
-    tc[i] = { ...tc[i], [field]: val };
-    setLabForm(p => ({ ...p, testCases: tc }));
-  };
-  const removeTestCase = (i) => setLabForm(p => ({ ...p, testCases: p.testCases.filter((_, idx) => idx !== i) }));
-
   const tabs = [
     { key: "content", icon: "article", label: "Content" },
     { key: "quiz", icon: "quiz", label: "Quiz" },
@@ -312,7 +446,7 @@ const LessonEditor = ({ courseId, editLesson = null, onClose, onSaved }) => {
           </button>
         </div>
 
-        {/* Tabs - Responsive */}
+        {/* Tabs */}
         <div className="flex overflow-x-auto border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
           {tabs.map(t => (
             <button
@@ -347,7 +481,7 @@ const LessonEditor = ({ courseId, editLesson = null, onClose, onSaved }) => {
         {/* Body */}
         <div className="flex-1 overflow-y-auto px-4 sm:px-6 pb-4 sm:pb-6">
 
-          {/* ══ CONTENT TAB ══ */}
+          {/* CONTENT TAB */}
           {tab === "content" && (
             <div className="space-y-4 sm:space-y-5 pt-4">
               <div>
@@ -473,7 +607,7 @@ const LessonEditor = ({ courseId, editLesson = null, onClose, onSaved }) => {
                     value={lesson.content}
                     onChange={e => setLesson(p => ({ ...p, content: e.target.value }))}
                     rows={10}
-                    placeholder="Write lesson content...\n\n<h3>Section Title</h3>\n<p>Paragraph text</p>\n<ul><li>Point</li></ul>\n<pre><code>code block</code></pre>"
+                    placeholder="Write lesson content..."
                     className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 font-mono resize-none"
                   />
                   {lesson.content && (
@@ -498,7 +632,7 @@ const LessonEditor = ({ courseId, editLesson = null, onClose, onSaved }) => {
             </div>
           )}
 
-          {/* ══ QUIZ TAB ══ */}
+          {/* QUIZ TAB */}
           {tab === "quiz" && (
             <div className="space-y-4 sm:space-y-5 pt-4">
               {!savedLessonId && (
@@ -507,7 +641,6 @@ const LessonEditor = ({ courseId, editLesson = null, onClose, onSaved }) => {
                 </div>
               )}
 
-              {/* Quiz settings */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                 {[
                   { label: "Time Limit (min)", key: "timeLimit", type: "number", min: 5 },
@@ -547,7 +680,6 @@ const LessonEditor = ({ courseId, editLesson = null, onClose, onSaved }) => {
                 {saving ? <><Spinner />Saving...</> : <><span className="material-symbols-outlined text-base">save</span>{quiz ? "Update Quiz" : "Create Quiz"}</>}
               </button>
 
-              {/* AI Generation */}
               {quiz && (
                 <div className="border border-purple-200 dark:border-purple-700 rounded-xl p-3 sm:p-4 bg-purple-50 dark:bg-purple-900/10 space-y-3">
                   <p className="text-xs sm:text-sm font-semibold text-purple-700 dark:text-purple-300 flex items-center gap-2">
@@ -595,7 +727,6 @@ const LessonEditor = ({ courseId, editLesson = null, onClose, onSaved }) => {
                 </div>
               )}
 
-              {/* Question list */}
               {questions.length > 0 && (
                 <div className="space-y-2">
                   <p className="text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300">{questions.length} Question{questions.length !== 1 ? "s" : ""}</p>
@@ -614,7 +745,6 @@ const LessonEditor = ({ courseId, editLesson = null, onClose, onSaved }) => {
                 </div>
               )}
 
-              {/* Add manual question */}
               {quiz && (
                 <div className="border border-gray-200 dark:border-gray-600 rounded-xl p-3 sm:p-4 space-y-3">
                   <p className="text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300">Add Question Manually</p>
@@ -692,7 +822,7 @@ const LessonEditor = ({ courseId, editLesson = null, onClose, onSaved }) => {
             </div>
           )}
 
-          {/* ══ LAB TAB ══ */}
+          {/* ==================== LAB TAB (FULLY FIXED) ==================== */}
           {tab === "lab" && (
             <div className="space-y-4 sm:space-y-5 pt-4">
               {!savedLessonId && (
@@ -700,6 +830,21 @@ const LessonEditor = ({ courseId, editLesson = null, onClose, onSaved }) => {
                   Save lesson first.
                 </div>
               )}
+
+              {/* AI Generator Button */}
+              {savedLessonId && (
+                <div className="flex justify-end">
+                  <button
+                    onClick={() => setShowAIGenerator(true)}
+                    className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 rounded-xl text-white text-sm font-medium transition-all"
+                  >
+                    <span className="material-symbols-outlined text-base">auto_awesome</span>
+                    AI Generate Lab
+                  </button>
+                </div>
+              )}
+
+              {/* Lab Form */}
               <div>
                 <label className="block text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Lab Title *</label>
                 <input
@@ -709,39 +854,68 @@ const LessonEditor = ({ courseId, editLesson = null, onClose, onSaved }) => {
                   className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
                 />
               </div>
+
               <div>
-                <label className="block text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Lab Type</label>
-                <div className="grid grid-cols-2 gap-2 sm:gap-3">
-                  {[
-                    { v: "programming", icon: "terminal", l: "Programming" },
-                    { v: "dld", icon: "schema", l: "DLD" },
-                    { v: "networking", icon: "hub", l: "Networking" },
-                    { v: "theory", icon: "description", l: "Theory" }
-                  ].map(o => (
-                    <button
-                      key={o.v}
-                      type="button"
-                      onClick={() => setLabForm(p => ({ ...p, labType: o.v }))}
-                      className={`flex items-center gap-2 sm:gap-3 p-2.5 sm:p-3 rounded-xl border-2 transition-all ${
-                        labForm.labType === o.v ? "border-purple-500 bg-purple-50 dark:bg-purple-900/20" : "border-gray-200 dark:border-gray-600"
-                      }`}
-                    >
-                      <span className={`material-symbols-outlined text-base sm:text-lg ${labForm.labType === o.v ? "text-purple-600" : "text-gray-400"}`}>{o.icon}</span>
-                      <span className={`text-xs sm:text-sm font-medium ${labForm.labType === o.v ? "text-purple-600 dark:text-purple-400" : "text-gray-600 dark:text-gray-400"}`}>{o.l}</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-              <div>
-                <label className="block text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Instructions *</label>
+                <label className="block text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Description</label>
                 <textarea
-                  value={labForm.instructions}
-                  onChange={e => setLabForm(p => ({ ...p, instructions: e.target.value }))}
-                  rows={4}
+                  value={labForm.description}
+                  onChange={e => setLabForm(p => ({ ...p, description: e.target.value }))}
+                  rows={2}
+                  placeholder="Brief description of the lab"
                   className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 resize-none"
-                  placeholder={labForm.labType === "programming" ? "Write a function that..." : labForm.labType === "dld" ? "Design a logic circuit..." : labForm.labType === "networking" ? "Configure a network..." : "Explain the concept..."}
                 />
               </div>
+
+              <div className="grid grid-cols-2 gap-3 sm:gap-4">
+                <div>
+                  <label className="block text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Lab Type</label>
+                  <select
+                    value={labForm.labType}
+                    onChange={e => setLabForm(p => ({ ...p, labType: e.target.value }))}
+                    className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="programming">Programming Lab</option>
+                    <option value="theory">Theory Lab</option>
+                    <option value="networking">Networking Lab</option>
+                    <option value="dld">DLD Lab</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Difficulty</label>
+                  <select
+                    value={labForm.difficulty}
+                    onChange={e => setLabForm(p => ({ ...p, difficulty: e.target.value }))}
+                    className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="easy">Easy</option>
+                    <option value="medium">Medium</option>
+                    <option value="hard">Hard</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+  <label className="block text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Instructions *</label>
+  <textarea
+    value={labForm.instructions}
+    onChange={e => setLabForm(p => ({ ...p, instructions: e.target.value }))}
+    rows={6}
+    className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 resize-none"
+    placeholder="1. First step\n2. Second step\n3. Third step"
+  />
+</div>
+
+              <div>
+                <label className="block text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Expected Output Example</label>
+                <textarea
+                  value={labForm.outputExample}
+                  onChange={e => setLabForm(p => ({ ...p, outputExample: e.target.value }))}
+                  rows={2}
+                  placeholder="Example output students should produce"
+                  className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 resize-none"
+                />
+              </div>
+
               {labForm.labType === "programming" && (
                 <>
                   <div>
@@ -751,7 +925,7 @@ const LessonEditor = ({ courseId, editLesson = null, onClose, onSaved }) => {
                       onChange={e => setLabForm(p => ({ ...p, language: e.target.value }))}
                       className="w-32 sm:w-40 px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
                     >
-                      {["python", "javascript", "cpp", "java", "c"].map(l => <option key={l} value={l}>{l}</option>)}
+                      {["python", "javascript", "java", "cpp", "c", "csharp", "go", "ruby", "php"].map(l => <option key={l} value={l}>{l.toUpperCase()}</option>)}
                     </select>
                   </div>
                   <div>
@@ -761,7 +935,7 @@ const LessonEditor = ({ courseId, editLesson = null, onClose, onSaved }) => {
                       onChange={e => setLabForm(p => ({ ...p, starterCode: e.target.value }))}
                       rows={5}
                       placeholder="def solve():\n    pass"
-                      className="w-full px-3 py-2 text-sm font-mono border border-gray-300 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 resize-none"
+                      className="w-full px-3 py-2 text-sm font-mono border border-gray-300 dark:border-gray-600 rounded-xl bg-gray-900 text-gray-100 focus:ring-2 focus:ring-blue-500 resize-none"
                     />
                   </div>
                   <div>
@@ -782,8 +956,21 @@ const LessonEditor = ({ courseId, editLesson = null, onClose, onSaved }) => {
                         <input
                           value={tc.expectedOutput}
                           onChange={e => updateTestCase(i, "expectedOutput", e.target.value)}
-                          placeholder="Expected output"
+                          placeholder="Expected Output"
                           className="flex-1 min-w-[100px] px-2 py-1.5 text-xs border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-1 focus:ring-blue-500 font-mono"
+                        />
+                        <input
+                          value={tc.description}
+                          onChange={e => updateTestCase(i, "description", e.target.value)}
+                          placeholder="Description"
+                          className="w-32 px-2 py-1.5 text-xs border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-1 focus:ring-blue-500"
+                        />
+                        <input
+                          type="number"
+                          value={tc.points}
+                          onChange={e => updateTestCase(i, "points", Number(e.target.value))}
+                          placeholder="Points"
+                          className="w-20 px-2 py-1.5 text-xs border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-1 focus:ring-blue-500"
                         />
                         <button onClick={() => removeTestCase(i)} className="text-red-400 hover:text-red-500">
                           <span className="material-symbols-outlined text-sm">close</span>
@@ -796,17 +983,51 @@ const LessonEditor = ({ courseId, editLesson = null, onClose, onSaved }) => {
                   </div>
                 </>
               )}
-              <button
-                onClick={saveLab}
-                disabled={saving || !savedLessonId}
-                className="w-full py-2.5 sm:py-3 rounded-xl text-sm font-medium text-white bg-purple-600 hover:bg-purple-700 disabled:opacity-50 flex items-center justify-center gap-2"
-              >
-                {saving ? <><Spinner />Saving...</> : <><span className="material-symbols-outlined text-base">save</span>{lab ? "Update Lab" : "Create Lab"}</>}
-              </button>
+
+              <div className="grid grid-cols-2 gap-3 sm:gap-4">
+                <div>
+                  <label className="block text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Total Marks</label>
+                  <input
+                    type="number"
+                    value={labForm.totalMarks}
+                    onChange={e => setLabForm(p => ({ ...p, totalMarks: Number(e.target.value) }))}
+                    min={1}
+                    className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Due Date</label>
+                  <input
+                    type="date"
+                    value={labForm.dueDate}
+                    onChange={e => setLabForm(p => ({ ...p, dueDate: e.target.value }))}
+                    className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+              </div>
+
+              <div className="flex gap-3">
+                <button
+                  onClick={saveLab}
+                  disabled={saving || !savedLessonId}
+                  className="flex-1 py-2.5 sm:py-3 rounded-xl text-sm font-medium text-white bg-purple-600 hover:bg-purple-700 disabled:opacity-50 flex items-center justify-center gap-2"
+                >
+                  {saving ? <><Spinner />Saving...</> : <><span className="material-symbols-outlined text-base">save</span>{lab ? "Update Lab" : "Create Lab"}</>}
+                </button>
+                {lab && (
+                  <button
+                    onClick={deleteLab}
+                    disabled={saving}
+                    className="px-4 py-2.5 rounded-xl text-sm font-medium text-white bg-red-600 hover:bg-red-700 disabled:opacity-50 transition-colors"
+                  >
+                    Delete
+                  </button>
+                )}
+              </div>
             </div>
           )}
 
-          {/* ══ SETTINGS TAB ══ */}
+          {/* SETTINGS TAB */}
           {tab === "settings" && (
             <div className="space-y-4 sm:space-y-5 pt-4">
               <div className="grid grid-cols-2 gap-3 sm:gap-4">
@@ -863,6 +1084,72 @@ const LessonEditor = ({ courseId, editLesson = null, onClose, onSaved }) => {
           )}
         </div>
       </div>
+
+      {/* AI Lab Generator Modal */}
+      {showAIGenerator && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={() => setShowAIGenerator(false)}>
+          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-md" onClick={(e) => e.stopPropagation()}>
+            <div className="bg-gradient-to-r from-purple-600 to-pink-600 p-5 text-white rounded-t-2xl">
+              <h2 className="text-xl font-bold">AI Lab Generator</h2>
+              <p className="text-purple-100 text-sm">Generate a lab with AI</p>
+            </div>
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-medium mb-1">Topic *</label>
+                <input
+                  type="text"
+                  value={aiLabTopic}
+                  onChange={(e) => setAiLabTopic(e.target.value)}
+                  placeholder="e.g., Python Lists and Dictionaries"
+                  className="w-full px-4 py-2.5 border rounded-xl"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium mb-1">Difficulty</label>
+                  <select
+                    value={aiLabDifficulty}
+                    onChange={(e) => setAiLabDifficulty(e.target.value)}
+                    className="w-full px-4 py-2.5 border rounded-xl"
+                  >
+                    <option value="easy">Easy</option>
+                    <option value="medium">Medium</option>
+                    <option value="hard">Hard</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Lab Type</label>
+                  <select
+                    value={aiLabType}
+                    onChange={(e) => setAiLabType(e.target.value)}
+                    className="w-full px-4 py-2.5 border rounded-xl"
+                  >
+                    <option value="programming">Programming Lab</option>
+                    <option value="theory">Theory Lab</option>
+                    <option value="networking">Networking Lab</option>
+                    <option value="dld">DLD Lab</option>
+                  </select>
+                </div>
+              </div>
+              <div className="flex gap-3 pt-2">
+                <button
+                  onClick={() => setShowAIGenerator(false)}
+                  className="flex-1 py-2.5 border rounded-xl"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleAIGenerateLab}
+                  disabled={isGeneratingLab || !aiLabTopic.trim()}
+                  className="flex-1 py-2.5 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-xl font-medium disabled:opacity-50"
+                >
+                  {isGeneratingLab ? "Generating..." : "Generate Lab"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

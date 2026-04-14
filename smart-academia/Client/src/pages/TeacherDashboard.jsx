@@ -4,6 +4,7 @@ import CourseManagement from "../components/dashboard/TeacherDashboard/Teacher T
 import LessonManagement from "../components/dashboard/TeacherDashboard/Teacher Tabs/LessonManagement";
 import QuizManagement   from "../components/dashboard/TeacherDashboard/Teacher Tabs/QuizManagement";
 import LabManagement    from "../components/dashboard/TeacherDashboard/Teacher Tabs/LabManagement";
+import LabSubmissions   from "../components/dashboard/TeacherDashboard/Teacher Tabs/LabSubmissions"; // NEW
 import StudentProgress  from "../components/dashboard/TeacherDashboard/Teacher Tabs/StudentProgress";
 import Announcements    from "../components/dashboard/TeacherDashboard/Teacher Tabs/Announcements";
 import AITutor          from "../components/dashboard/TeacherDashboard/Teacher Tabs/AITutor";
@@ -27,6 +28,7 @@ const TeacherDashboard = () => {
     { icon: "menu_book",    label: "Lesson Management", key: "lessons"      },
     { icon: "quiz",         label: "Quiz Management",   key: "quizzes"      },
     { icon: "science",      label: "Lab Management",    key: "labs"         },
+    { icon: "grading",      label: "Grade Labs",        key: "lab-submissions" }, // NEW - Changed from "Lab Management" to "Grade Labs"
     { icon: "bar_chart",    label: "Student Progress",  key: "progress"     },
     { icon: "campaign",     label: "Announcements",     key: "announcements"},
     { icon: "smart_toy",    label: "AI Tutor",          key: "ai-tutor"     },
@@ -50,6 +52,7 @@ const TeacherDashboard = () => {
       case "lessons":       return <LessonManagement />;
       case "quizzes":       return <QuizManagement />;
       case "labs":          return <LabManagement />;
+      case "lab-submissions": return <LabSubmissions />; // NEW
       case "progress":      return <StudentProgress />;
       case "announcements": return <Announcements />;
       case "ai-tutor":      return <AITutor />;

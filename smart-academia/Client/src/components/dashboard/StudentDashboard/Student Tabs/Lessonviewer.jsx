@@ -223,81 +223,108 @@ const QuizSection = ({ quiz, courseId, lessonId, onCompleted }) => {
 };
 
 // ─────────────────────────────────────────────
-// LAB SECTION — code editor + run + submit
+// LAB SECTION — Submit only (NO Run Code)
 // ─────────────────────────────────────────────
 const LabSection = ({ lab, lessonId, courseId, onCompleted }) => {
-  const [answer,     setAnswer]     = useState("");
-  const [output,     setOutput]     = useState(null);
-  const [running,    setRunning]    = useState(false);
+  const [answer, setAnswer] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const [submitted,  setSubmitted]  = useState(false);
-  const [error,      setError]      = useState("");
+  const [submitted, setSubmitted] = useState(false);
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
+  const [pdfFile, setPdfFile] = useState(null);
+  const [pdfPreview, setPdfPreview] = useState(null);
+  const fileInputRef = useRef(null);
 
-  useEffect(() => { fetchMySubmission(); }, [lab._id]);
+  useEffect(() => { 
+    fetchMySubmission(); 
+  }, [lab._id]);
 
   const fetchMySubmission = async () => {
     try {
-      const res  = await apiFetch(`/api/courses/${courseId}/lessons/${lessonId}/lab/${lab._id}/my-submission`);
+      const res = await apiFetch(`/api/courses/${courseId}/lessons/${lessonId}/lab/${lab._id}/my-submission`);
       const data = await res.json();
       if (res.ok && data.submission) {
-        setAnswer(data.submission.answer);
+        setAnswer(data.submission.answer || "");
         setSubmitted(true);
+        if (data.submission.pdfUrl) {
+          setPdfPreview(data.submission.pdfUrl);
+        }
         onCompleted && onCompleted();
       } else if (lab.starterCode) {
         setAnswer(lab.starterCode);
       }
-    } catch { if (lab.starterCode) setAnswer(lab.starterCode); }
-  };
-
-  const handleRun = async () => {
-    if (!answer.trim()) { setError("Write some code first"); return; }
-    setRunning(true); setError(""); setOutput(null);
-    try {
-      const res  = await apiFetch(`/api/courses/${courseId}/lessons/${lessonId}/lab/run-code`, {
-        method: "POST",
-        body:   JSON.stringify({ code: answer, language: lab.language }),
-      });
-      const data = await res.json();
-      if (!res.ok) { setError(data.message); return; }
-      setOutput(data);
-    } catch { setError("Cannot connect to server"); }
-    finally { setRunning(false); }
+    } catch { 
+      if (lab.starterCode) setAnswer(lab.starterCode); 
+    }
   };
 
   const handleSubmit = async () => {
-    if (!answer.trim()) { setError("Cannot submit empty answer"); return; }
-    setSubmitting(true); setError("");
+    if (!answer.trim() && !pdfFile) { 
+      setError("Please write an answer or upload a PDF file"); 
+      return; 
+    }
+    
+    setSubmitting(true); 
+    setError("");
+    setSuccess("");
+    
     try {
-      const res  = await apiFetch(`/api/courses/${courseId}/lessons/${lessonId}/lab/${lab._id}/submit`, {
+      const formData = new FormData();
+      if (answer.trim()) formData.append("answer", answer.trim());
+      if (pdfFile) formData.append("pdf", pdfFile);
+      
+      const token = localStorage.getItem("token");
+      
+      const res = await fetch(`${API}/api/courses/${courseId}/lessons/${lessonId}/lab/${lab._id}/submit`, {
         method: "POST",
-        body:   JSON.stringify({ answer, testResults: output ? [output] : [] }),
+        body: formData,
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
       });
+      
       const data = await res.json();
-      if (!res.ok) { setError(data.message); return; }
+      
+      if (!res.ok) { 
+        setError(data.message || "Submission failed"); 
+        return; 
+      }
+      
       setSubmitted(true);
+      setPdfFile(null);
+      if (fileInputRef.current) fileInputRef.current.value = "";
       onCompleted && onCompleted();
-    } catch { setError("Cannot connect to server"); }
+      setSuccess("Lab submitted successfully!");
+      setTimeout(() => setSuccess(""), 3000);
+      
+      await fetchMySubmission();
+      
+    } catch (err) { 
+      setError("Cannot connect to server"); 
+    }
     finally { setSubmitting(false); }
   };
 
   const labCfg = {
-    programming: { icon: "terminal",    color: "text-green-600",  label: "Programming Lab" },
-    dld:         { icon: "schema",      color: "text-blue-600",   label: "DLD Lab" },
-    networking:  { icon: "hub",         color: "text-purple-600", label: "Networking Lab" },
-    theory:      { icon: "description", color: "text-amber-600",  label: "Theory Lab" },
+    programming: { icon: "terminal", color: "text-green-600", label: "Programming Lab" },
+    dld: { icon: "schema", color: "text-blue-600", label: "DLD Lab" },
+    networking: { icon: "hub", color: "text-purple-600", label: "Networking Lab" },
+    theory: { icon: "description", color: "text-amber-600", label: "Theory Lab" },
   };
   const cfg = labCfg[lab.labType] || labCfg.theory;
 
   return (
     <div className="border border-gray-200 dark:border-gray-600 rounded-xl overflow-hidden">
-      <div className="flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-3 bg-gray-50 dark:bg-gray-700/50 border-b border-gray-200 dark:border-gray-700">
-        <span className={`material-symbols-outlined ${cfg.color} text-lg sm:text-xl`}>{cfg.icon}</span>
-        <div>
-          <p className="font-semibold text-gray-900 dark:text-white text-xs sm:text-sm">{cfg.label}</p>
-          <p className="text-[10px] sm:text-xs text-gray-500">{lab.title}</p>
+      <div className="flex flex-wrap items-center justify-between gap-2 px-3 sm:px-4 py-3 bg-gray-50 dark:bg-gray-700/50 border-b border-gray-200 dark:border-gray-700">
+        <div className="flex items-center gap-2 sm:gap-3">
+          <span className={`material-symbols-outlined ${cfg.color} text-lg sm:text-xl`}>{cfg.icon}</span>
+          <div>
+            <p className="font-semibold text-gray-900 dark:text-white text-xs sm:text-sm">{cfg.label}</p>
+            <p className="text-[10px] sm:text-xs text-gray-500">{lab.title}</p>
+          </div>
         </div>
         {submitted && (
-          <span className="ml-auto px-2 py-0.5 rounded-full text-[10px] sm:text-xs font-medium bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300">
+          <span className="px-2 py-0.5 rounded-full text-[10px] sm:text-xs font-medium bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300">
             ✓ Submitted
           </span>
         )}
@@ -324,44 +351,63 @@ const LabSection = ({ lab, lessonId, courseId, onCompleted }) => {
         )}
 
         {error && <p className="text-xs sm:text-sm text-red-600">{error}</p>}
+        {success && <p className="text-xs sm:text-sm text-green-600">{success}</p>}
 
-        <textarea value={answer} onChange={e => setAnswer(e.target.value)} rows={lab.labType === "programming" ? 12 : 8}
-          placeholder={lab.labType==="programming" ? "Write your code here..." : "Write your answer here..."}
-          className={`w-full px-3 py-2.5 text-sm border border-gray-300 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 resize-none ${lab.labType==="programming"?"font-mono":""}`}/>
+        <textarea 
+          value={answer} 
+          onChange={e => setAnswer(e.target.value)} 
+          rows={lab.labType === "programming" ? 10 : 6}
+          placeholder={lab.labType === "programming" ? "Write your code here..." : "Write your answer here..."}
+          className={`w-full px-3 py-2.5 text-sm border border-gray-300 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 resize-none ${lab.labType === "programming" ? "font-mono" : ""}`}
+        />
 
-        {output && (
-          <div className="bg-gray-900 rounded-xl overflow-hidden">
-            <div className="flex flex-wrap items-center justify-between gap-2 px-3 sm:px-4 py-2 bg-gray-800">
-              <span className="text-xs text-gray-400">Output</span>
-              <span className={`text-xs font-medium ${output.status?.id===3?"text-green-400":"text-red-400"}`}>
-                {output.status?.description || "Unknown"}
-              </span>
-            </div>
-            <pre className="p-3 sm:p-4 text-xs sm:text-sm font-mono text-gray-100 overflow-x-auto whitespace-pre-wrap max-h-40">
-              {output.stdout || output.stderr || "No output"}
-            </pre>
-            {output.time && <p className="px-3 sm:px-4 pb-2 text-xs text-gray-500">Time: {output.time}s</p>}
-          </div>
-        )}
-
-        <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
-          {lab.labType === "programming" && (
-            <button onClick={handleRun} disabled={running}
-              className="flex-1 py-2.5 rounded-xl text-sm font-medium text-white bg-gray-700 hover:bg-gray-600 disabled:opacity-50 flex items-center justify-center gap-2">
-              {running
-                ? <><svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/></svg>Running...</>
-                : <><span className="material-symbols-outlined text-base">play_arrow</span>Run Code</>
-              }
+        {/* PDF Upload Section */}
+        <div className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-xl p-4">
+          <div className="flex flex-col sm:flex-row items-center gap-3">
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".pdf"
+              onChange={(e) => setPdfFile(e.target.files[0])}
+              className="hidden"
+            />
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+            >
+              <span className="material-symbols-outlined text-base">upload_file</span>
+              Upload PDF
             </button>
-          )}
-          <button onClick={handleSubmit} disabled={submitting}
-            className="flex-1 py-2.5 rounded-xl text-sm font-medium text-white bg-purple-600 hover:bg-purple-700 disabled:opacity-50 flex items-center justify-center gap-2">
-            {submitting
-              ? <><svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/></svg>Submitting...</>
-              : <><span className="material-symbols-outlined text-base">upload</span>{submitted?"Resubmit":"Submit Lab"}</>
-            }
-          </button>
+            {pdfFile && (
+              <div className="flex items-center gap-2 text-sm text-green-600">
+                <span className="material-symbols-outlined text-base">check_circle</span>
+                {pdfFile.name}
+                <button onClick={() => setPdfFile(null)} className="text-red-500 hover:text-red-700">
+                  <span className="material-symbols-outlined text-sm">close</span>
+                </button>
+              </div>
+            )}
+            {pdfPreview && !pdfFile && (
+              <div className="flex items-center gap-2 text-sm text-blue-600">
+                <span className="material-symbols-outlined text-base">description</span>
+                <a href={pdfPreview} target="_blank" rel="noopener noreferrer" className="hover:underline">
+                  View submitted PDF
+                </a>
+              </div>
+            )}
+          </div>
+          <p className="text-xs text-gray-500 mt-2 text-center">Upload your solution as a PDF file (optional)</p>
         </div>
+
+        {/* Only Submit Button - No Run Code */}
+        <button onClick={handleSubmit} disabled={submitting}
+          className="w-full py-2.5 rounded-xl text-sm font-medium text-white bg-purple-600 hover:bg-purple-700 disabled:opacity-50 flex items-center justify-center gap-2">
+          {submitting
+            ? <><svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/></svg>Submitting...</>
+            : <><span className="material-symbols-outlined text-base">upload</span>{submitted ? "Resubmit" : "Submit Lab"}</>
+          }
+        </button>
       </div>
     </div>
   );
