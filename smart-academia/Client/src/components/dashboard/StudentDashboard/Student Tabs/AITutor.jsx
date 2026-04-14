@@ -18,13 +18,13 @@ const formatMessage = (text) => {
     
     return (
       <div className="my-3 overflow-x-auto">
-        <table className="min-w-full border-collapse border border-gray-300 dark:border-gray-600 text-sm">
+        <table className="min-w-full border-collapse border border-gray-300 dark:border-gray-600 text-xs sm:text-sm">
           <thead>
             <tr className="bg-gray-100 dark:bg-gray-800">
               {tableRows[0].map((cell, i) => (
                 <th 
                   key={i} 
-                  className={`border border-gray-300 dark:border-gray-600 px-3 py-2 text-left font-semibold text-gray-900 dark:text-white ${
+                  className={`border border-gray-300 dark:border-gray-600 px-2 sm:px-3 py-1.5 sm:py-2 text-left font-semibold text-gray-900 dark:text-white ${
                     tableAlignments[i] === 'center' ? 'text-center' : 
                     tableAlignments[i] === 'right' ? 'text-right' : 'text-left'
                   }`}
@@ -40,15 +40,15 @@ const formatMessage = (text) => {
                 {row.map((cell, cellIdx) => (
                   <td 
                     key={cellIdx} 
-                    className={`border border-gray-300 dark:border-gray-600 px-3 py-2 text-gray-700 dark:text-gray-300 ${
+                    className={`border border-gray-300 dark:border-gray-600 px-2 sm:px-3 py-1.5 sm:py-2 text-gray-700 dark:text-gray-300 ${
                       tableAlignments[cellIdx] === 'center' ? 'text-center' : 
                       tableAlignments[cellIdx] === 'right' ? 'text-right' : 'text-left'
                     }`}
                   >
                     {cell.trim()}
-                  </td>
+                   </td>
                 ))}
-              </tr>
+               </tr>
             ))}
           </tbody>
         </table>
@@ -89,16 +89,16 @@ const formatMessage = (text) => {
         elements.push(
           <div key={i} className="my-3 rounded-xl overflow-hidden border border-gray-700">
             {codeLanguage && (
-              <div className="bg-gray-800 px-4 py-1.5 text-xs text-gray-400 font-mono flex items-center justify-between">
+              <div className="bg-gray-800 px-3 sm:px-4 py-1.5 text-xs text-gray-400 font-mono flex flex-wrap items-center justify-between gap-2">
                 <span>{codeLanguage}</span>
                 <button onClick={() => navigator.clipboard.writeText(codeLines.join("\n"))}
                   className="text-gray-500 hover:text-gray-300 flex items-center gap-1 transition-colors">
                   <span className="material-symbols-outlined text-xs">content_copy</span>
-                  Copy
+                  <span className="text-[10px] sm:text-xs">Copy</span>
                 </button>
               </div>
             )}
-            <pre className="bg-gray-900 text-gray-100 p-4 text-sm overflow-x-auto font-mono">
+            <pre className="bg-gray-900 text-gray-100 p-3 sm:p-4 text-xs sm:text-sm overflow-x-auto font-mono">
               {codeLines.join("\n")}
             </pre>
           </div>
@@ -141,34 +141,34 @@ const formatMessage = (text) => {
     // Bold text **text**
     const boldText = line.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
     // Inline code `code`
-    const withCode = boldText.replace(/`(.*?)`/g, '<code class="bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 rounded text-sm font-mono text-blue-600 dark:text-blue-400">$1</code>');
+    const withCode = boldText.replace(/`(.*?)`/g, '<code class="bg-gray-100 dark:bg-gray-700 px-1 py-0.5 rounded text-xs font-mono text-blue-600 dark:text-blue-400">$1</code>');
     // Italic *text*
     const withItalic = withCode.replace(/\*(.*?)\*/g, '<em>$1</em>');
 
     if (line.startsWith("### ")) {
-      elements.push(<h3 key={i} className="font-bold text-base mt-3 mb-1 text-gray-900 dark:text-white">{line.slice(4)}</h3>);
+      elements.push(<h3 key={i} className="font-bold text-sm mt-3 mb-1 text-gray-900 dark:text-white">{line.slice(4)}</h3>);
     } else if (line.startsWith("## ")) {
-      elements.push(<h2 key={i} className="font-bold text-lg mt-4 mb-2 text-gray-900 dark:text-white">{line.slice(3)}</h2>);
+      elements.push(<h2 key={i} className="font-bold text-base mt-4 mb-2 text-gray-900 dark:text-white">{line.slice(3)}</h2>);
     } else if (line.startsWith("# ")) {
-      elements.push(<h1 key={i} className="font-bold text-xl mt-5 mb-3 text-gray-900 dark:text-white">{line.slice(2)}</h1>);
+      elements.push(<h1 key={i} className="font-bold text-lg mt-5 mb-3 text-gray-900 dark:text-white">{line.slice(2)}</h1>);
     } else if (line.startsWith("- ") || line.startsWith("• ")) {
       elements.push(
         <div key={i} className="flex items-start gap-2 my-0.5">
-          <span className="text-blue-500 mt-1 flex-shrink-0">•</span>
-          <span dangerouslySetInnerHTML={{ __html: withItalic }} />
+          <span className="text-blue-500 mt-0.5 flex-shrink-0 text-sm">•</span>
+          <span dangerouslySetInnerHTML={{ __html: withItalic }} className="text-sm" />
         </div>
       );
     } else if (line.match(/^\d+\.\s/)) {
       elements.push(
         <div key={i} className="flex items-start gap-2 my-0.5">
-          <span className="text-blue-500 font-medium flex-shrink-0 min-w-[20px]">{line.match(/^\d+/)[0]}.</span>
-          <span dangerouslySetInnerHTML={{ __html: withItalic }} />
+          <span className="text-blue-500 font-medium flex-shrink-0 min-w-[20px] text-sm">{line.match(/^\d+/)[0]}.</span>
+          <span dangerouslySetInnerHTML={{ __html: withItalic }} className="text-sm" />
         </div>
       );
     } else if (line.trim() === "") {
       elements.push(<div key={i} className="h-2" />);
     } else {
-      elements.push(<p key={i} className="my-0.5" dangerouslySetInnerHTML={{ __html: withItalic }} />);
+      elements.push(<p key={i} className="my-0.5 text-sm" dangerouslySetInnerHTML={{ __html: withItalic }} />);
     }
   }
 
@@ -319,7 +319,6 @@ const AITutor = () => {
     }
   };
 
-  // FIXED: Edit message and regenerate AI response
   const startEdit = (index) => {
     setEditingId(index);
     setEditText(messages[index].content);
@@ -331,7 +330,6 @@ const AITutor = () => {
     const originalMessage = messages[index];
     const nextMessage = messages[index + 1];
     
-    // Update the user message
     setMessages(prev => prev.map((msg, i) => 
       i === index 
         ? { 
@@ -347,21 +345,16 @@ const AITutor = () => {
     setEditingId(null);
     setEditText("");
     
-    // If there's an AI response right after this message, delete it and regenerate
     if (nextMessage && nextMessage.role === "assistant") {
-      // Remove the old AI response
       setMessages(prev => prev.filter((_, i) => i !== index + 1));
       
-      // Generate new AI response for the edited message
       setIsLoading(true);
       
       try {
-        // Get history up to the edited message (excluding the old AI response)
         const history = messages
           .filter((_, i) => i < index && messages[i].role !== "system")
           .map(m => ({ role: m.role, content: m.content }));
         
-        // Add the edited message to history
         history.push({ role: "user", content: editText });
         
         const res = await fetch(`${API}/api/ai/chat`, {
@@ -372,7 +365,7 @@ const AITutor = () => {
           },
           body: JSON.stringify({
             message: editText,
-            history: history.slice(0, -1), // Don't include the current message twice
+            history: history.slice(0, -1),
             courseId: selectedCourse || null,
           }),
         });
@@ -441,29 +434,29 @@ const AITutor = () => {
   };
 
   return (
-    <div className="flex flex-col h-[calc(100vh-120px)] max-h-[800px]">
+    <div className="flex flex-col h-[calc(100vh-100px)] sm:h-[calc(100vh-120px)] max-h-[800px]">
 
-      {/* Header */}
-      <div className="flex items-center justify-between mb-4 flex-shrink-0">
+      {/* Header - Responsive */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4 flex-shrink-0">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
-            <span className="material-symbols-outlined text-blue-600">smart_toy</span>
+          <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+            <span className="material-symbols-outlined text-blue-600 text-2xl sm:text-3xl">smart_toy</span>
             AI Tutor
           </h1>
-          <p className="text-gray-600 dark:text-gray-400 mt-0.5 text-sm">
-            Powered by Claude AI — {messages.length} messages • {messages.filter(m => m.edited).length} edited
+          <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mt-0.5">
+            Powered by Gemini AI — {messages.length} messages
           </p>
         </div>
         <div className="flex items-center gap-2">
           <select value={selectedCourse} onChange={e => setSelectedCourse(e.target.value)}
-            className="text-sm px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent max-w-[180px]">
+            className="text-xs sm:text-sm px-2 sm:px-3 py-1.5 sm:py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent max-w-[140px] sm:max-w-[180px] truncate">
             <option value="">No course context</option>
             {courses.map(c => <option key={c._id} value={c._id}>{c.code} — {c.title.slice(0, 20)}</option>)}
           </select>
           <button onClick={handleClearChat}
-            className="p-2 rounded-lg text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+            className="p-1.5 sm:p-2 rounded-lg text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
             title="Clear chat">
-            <span className="material-symbols-outlined">delete_sweep</span>
+            <span className="material-symbols-outlined text-xl sm:text-2xl">delete_sweep</span>
           </button>
         </div>
       </div>
@@ -472,13 +465,13 @@ const AITutor = () => {
       <div className="flex-1 bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm flex flex-col overflow-hidden">
 
         {/* Messages */}
-        <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4">
+        <div className="flex-1 overflow-y-auto p-3 sm:p-4 md:p-6 space-y-3 sm:space-y-4">
 
           {messages.map((msg, index) => (
-            <div key={index} className={`group flex items-start gap-3 ${msg.role === "user" ? "flex-row-reverse" : ""}`}>
+            <div key={index} className={`group flex items-start gap-2 sm:gap-3 ${msg.role === "user" ? "flex-row-reverse" : ""}`}>
 
               {/* Avatar */}
-              <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ${
+              <div className={`flex-shrink-0 w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center text-xs font-bold ${
                 msg.role === "user"
                   ? "bg-blue-600 text-white"
                   : "bg-gradient-to-br from-purple-500 to-blue-600 text-white"
@@ -490,11 +483,11 @@ const AITutor = () => {
               </div>
 
               {/* Message bubble */}
-              <div className={`max-w-[80%] ${msg.role === "user" ? "items-end" : "items-start"} flex flex-col gap-1`}>
+              <div className={`max-w-[85%] sm:max-w-[80%] ${msg.role === "user" ? "items-end" : "items-start"} flex flex-col gap-1`}>
                 
                 {/* Edit mode */}
                 {editingId === index ? (
-                  <div className="w-full min-w-[300px]">
+                  <div className="w-full min-w-[260px] sm:min-w-[300px]">
                     <textarea
                       ref={editTextareaRef}
                       value={editText}
@@ -503,42 +496,41 @@ const AITutor = () => {
                         e.target.style.height = 'auto';
                         e.target.style.height = Math.min(e.target.scrollHeight, 200) + 'px';
                       }}
-                      className="w-full px-4 py-3 rounded-2xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none text-sm"
+                      className="w-full px-3 sm:px-4 py-2 sm:py-3 rounded-2xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none text-sm"
                       rows={3}
-                      style={{ minWidth: '280px', maxWidth: '500px' }}
                     />
                     <div className="flex gap-2 mt-2">
                       <button
                         onClick={() => saveEdit(index)}
-                        className="px-3 py-1 text-sm bg-green-500 text-white rounded-lg hover:bg-green-600 transition"
+                        className="px-2 sm:px-3 py-1 text-xs sm:text-sm bg-green-500 text-white rounded-lg hover:bg-green-600 transition"
                       >
-                        Save & Regenerate
+                        Save
                       </button>
                       <button
                         onClick={cancelEdit}
-                        className="px-3 py-1 text-sm bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition"
+                        className="px-2 sm:px-3 py-1 text-xs sm:text-sm bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition"
                       >
                         Cancel
                       </button>
                     </div>
                   </div>
                 ) : (
-                  <div className={`px-4 py-3 rounded-2xl ${
+                  <div className={`px-3 sm:px-4 py-2 sm:py-3 rounded-2xl ${
                     msg.role === "user"
                       ? "bg-blue-600 text-white rounded-tr-sm"
                       : "bg-gray-50 dark:bg-gray-700/50 text-gray-900 dark:text-white border border-gray-200 dark:border-gray-600 rounded-tl-sm"
                   }`}>
                     {msg.role === "user"
-                      ? <p className="text-sm leading-relaxed whitespace-pre-wrap">{msg.content}</p>
+                      ? <p className="text-sm leading-relaxed whitespace-pre-wrap break-words">{msg.content}</p>
                       : formatMessage(msg.content)
                     }
                     {msg.edited && (
-                      <span className="text-xs opacity-70 mt-1 block" title={`Originally: ${msg.originalContent?.substring(0, 100)}`}>
+                      <span className="text-[10px] sm:text-xs opacity-70 mt-1 block">
                         (edited)
                       </span>
                     )}
                     {msg.isRegenerated && (
-                      <span className="text-xs opacity-70 mt-1 block">
+                      <span className="text-[10px] sm:text-xs opacity-70 mt-1 block">
                         (regenerated)
                       </span>
                     )}
@@ -547,19 +539,19 @@ const AITutor = () => {
                 
                 {/* Timestamp and edit/delete buttons */}
                 <div className="flex items-center gap-2 px-1">
-                  <span className="text-xs text-gray-400">{formatTime(msg.timestamp)}</span>
+                  <span className="text-[10px] sm:text-xs text-gray-400">{formatTime(msg.timestamp)}</span>
                   {!editingId && msg.role === "user" && (
                     <div className="opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
                       <button
                         onClick={() => startEdit(index)}
-                        className="text-xs text-gray-400 hover:text-blue-500"
+                        className="text-[10px] sm:text-xs text-gray-400 hover:text-blue-500"
                         title="Edit message"
                       >
                         ✏️
                       </button>
                       <button
                         onClick={() => deleteMessage(index)}
-                        className="text-xs text-gray-400 hover:text-red-500"
+                        className="text-[10px] sm:text-xs text-gray-400 hover:text-red-500"
                         title="Delete message"
                       >
                         🗑️
@@ -573,16 +565,15 @@ const AITutor = () => {
 
           {/* Loading indicator */}
           {isLoading && (
-            <div className="flex items-start gap-3">
-              <div className="flex-shrink-0 w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 to-blue-600 flex items-center justify-center">
+            <div className="flex items-start gap-2 sm:gap-3">
+              <div className="flex-shrink-0 w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-gradient-to-br from-purple-500 to-blue-600 flex items-center justify-center">
                 <span className="material-symbols-outlined text-white text-sm">smart_toy</span>
               </div>
-              <div className="bg-gray-50 dark:bg-gray-700/50 border border-gray-200 dark:border-gray-600 px-4 py-3 rounded-2xl rounded-tl-sm">
-                <div className="flex items-center gap-1.5">
-                  {[0, 1, 2].map(i => (
-                    <div key={i} className="w-2 h-2 bg-blue-500 rounded-full animate-bounce"
-                      style={{ animationDelay: `${i * 0.15}s` }}/>
-                  ))}
+              <div className="bg-gray-50 dark:bg-gray-700/50 border border-gray-200 dark:border-gray-600 px-3 sm:px-4 py-2 sm:py-3 rounded-2xl rounded-tl-sm">
+                <div className="flex items-center gap-1">
+                  <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '0s' }}/>
+                  <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '0.15s' }}/>
+                  <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '0.3s' }}/>
                 </div>
               </div>
             </div>
@@ -591,12 +582,12 @@ const AITutor = () => {
           {/* Suggestions */}
           {showSuggestions && messages.length <= 1 && (
             <div className="mt-4">
-              <p className="text-xs text-gray-500 dark:text-gray-400 mb-3 text-center">Try asking...</p>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <p className="text-[11px] sm:text-xs text-gray-500 dark:text-gray-400 mb-3 text-center">Try asking...</p>
+              <div className="grid grid-cols-1 gap-2">
                 {SUGGESTIONS.map((suggestion, i) => (
                   <button key={i} onClick={() => handleSend(suggestion)}
-                    className="text-left text-sm px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-600 hover:border-blue-400 dark:hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 text-gray-700 dark:text-gray-300 transition-all duration-200 group">
-                    <span className="material-symbols-outlined text-blue-500 text-sm mr-2 group-hover:text-blue-600">lightbulb</span>
+                    className="text-left text-xs sm:text-sm px-3 sm:px-4 py-2 sm:py-3 rounded-xl border border-gray-200 dark:border-gray-600 hover:border-blue-400 dark:hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 text-gray-700 dark:text-gray-300 transition-all duration-200 group">
+                    <span className="material-symbols-outlined text-blue-500 text-sm mr-2 group-hover:text-blue-600 align-middle">lightbulb</span>
                     {suggestion}
                   </button>
                 ))}
@@ -609,18 +600,18 @@ const AITutor = () => {
 
         {/* Error banner */}
         {error && (
-          <div className="mx-4 mb-2 p-3 rounded-xl bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700 flex items-center gap-2">
+          <div className="mx-3 sm:mx-4 mb-2 p-2 sm:p-3 rounded-xl bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700 flex items-center gap-2">
             <span className="material-symbols-outlined text-red-600 text-sm">error</span>
-            <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
-            <button onClick={() => setError("")} className="ml-auto text-red-400 hover:text-red-600">
+            <p className="text-xs sm:text-sm text-red-600 dark:text-red-400 flex-1">{error}</p>
+            <button onClick={() => setError("")} className="text-red-400 hover:text-red-600">
               <span className="material-symbols-outlined text-sm">close</span>
             </button>
           </div>
         )}
 
         {/* Input area */}
-        <div className="border-t border-gray-200 dark:border-gray-700 p-4">
-          <div className="flex items-end gap-3">
+        <div className="border-t border-gray-200 dark:border-gray-700 p-3 sm:p-4">
+          <div className="flex items-end gap-2 sm:gap-3">
             <div className="flex-1 relative">
               <textarea
                 ref={textareaRef}
@@ -628,30 +619,30 @@ const AITutor = () => {
                 onChange={e => {
                   setInput(e.target.value);
                   e.target.style.height = "auto";
-                  e.target.style.height = Math.min(e.target.scrollHeight, 120) + "px";
+                  e.target.style.height = Math.min(e.target.scrollHeight, 100) + "px";
                 }}
                 onKeyDown={handleKeyDown}
-                placeholder="Ask me anything... (Enter to send, Shift+Enter for new line)"
+                placeholder="Ask me anything... (Enter to send)"
                 disabled={isLoading}
                 rows={1}
-                className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none transition-all disabled:opacity-50 text-sm"
-                style={{ minHeight: "48px", maxHeight: "120px" }}
+                className="w-full px-3 sm:px-4 py-2 sm:py-3 border border-gray-300 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none transition-all disabled:opacity-50 text-sm"
+                style={{ minHeight: "42px", maxHeight: "100px" }}
               />
             </div>
             <button
               onClick={() => handleSend()}
               disabled={!input.trim() || isLoading}
-              className="flex-shrink-0 w-12 h-12 flex items-center justify-center rounded-xl bg-blue-600 hover:bg-blue-700 text-white disabled:opacity-50 disabled:cursor-not-allowed transition-all hover:scale-105 active:scale-95">
+              className="flex-shrink-0 w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center rounded-xl bg-blue-600 hover:bg-blue-700 text-white disabled:opacity-50 disabled:cursor-not-allowed transition-all hover:scale-105 active:scale-95">
               {isLoading
-                ? <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24" fill="none">
+                ? <svg className="animate-spin h-4 w-4 sm:h-5 sm:w-5" viewBox="0 0 24 24" fill="none">
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
                   </svg>
-                : <span className="material-symbols-outlined">send</span>
+                : <span className="material-symbols-outlined text-xl sm:text-2xl">send</span>
               }
             </button>
           </div>
-          <p className="text-xs text-gray-400 mt-2 text-center">
+          <p className="text-[10px] sm:text-xs text-gray-400 mt-2 text-center">
             AI can make mistakes. Verify important information with your instructor.
           </p>
         </div>

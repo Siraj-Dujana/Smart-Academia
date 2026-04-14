@@ -17,6 +17,23 @@ const LessonProgressSchema = new mongoose.Schema(
       ref: "Course",
       required: true,
     },
+    lessonViewed: {
+      type: Boolean,
+      default: false,
+    },
+    quizCompleted: {
+      type: Boolean,
+      default: false,
+    },
+    quizScore: {
+      type: Number,
+      default: null,
+    },
+    labCompleted: {
+      type: Boolean,
+      default: false,
+    },
+    // true only when all required steps are done
     isCompleted: {
       type: Boolean,
       default: false,
@@ -29,7 +46,7 @@ const LessonProgressSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-// One progress record per student per lesson
+// One record per student per lesson — enforced at DB level
 LessonProgressSchema.index({ student: 1, lesson: 1 }, { unique: true });
 
 module.exports = mongoose.model("LessonProgress", LessonProgressSchema);

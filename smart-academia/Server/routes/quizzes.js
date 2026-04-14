@@ -1,33 +1,27 @@
 const express = require("express");
-const router = express.Router();
+const router  = express.Router();
 const {
-  createQuiz,
-  addQuestion,
-  getQuizWithQuestions,
-  getTeacherQuizzes,
-  updateQuiz,
-  deleteQuiz,
-  getStudentQuizzes,
-  startQuizAttempt,
-  submitQuizAttempt,
-  getMyQuizResults,
-  getQuizAnalytics,
+  createQuiz, updateQuiz, deleteQuiz, getQuizzes,
+  addQuestion, getQuestions, deleteQuestion,
+  aiGenerateQuestions,
+  getMyAttempts, submitQuiz,
 } = require("../controllers/quizController");
 const { protect, authorize } = require("../middleware/authMiddleware");
 
-// ===== TEACHER =====
-router.post("/", protect, authorize("teacher"), createQuiz);
-router.get("/course/:courseId", protect, authorize("teacher"), getTeacherQuizzes);
-router.get("/:id/manage", protect, authorize("teacher"), getQuizWithQuestions);
-router.post("/:quizId/questions", protect, authorize("teacher"), addQuestion);
-router.put("/:id", protect, authorize("teacher"), updateQuiz);
-router.delete("/:id", protect, authorize("teacher"), deleteQuiz);
-router.get("/:id/analytics", protect, authorize("teacher"), getQuizAnalytics);
+// Teacher
+router.post("/",                                  protect, authorize("teacher"), createQuiz);
+router.get("/",                                   protect, authorize("teacher"), getQuizzes);
+router.put("/:quizId",                            protect, authorize("teacher"), updateQuiz);
+router.delete("/:quizId",                         protect, authorize("teacher"), deleteQuiz);
+router.post("/:quizId/questions",                 protect, authorize("teacher"), addQuestion);
+router.delete("/:quizId/questions/:questionId",   protect, authorize("teacher"), deleteQuestion);
+router.post("/:quizId/ai-generate",               protect, authorize("teacher"), aiGenerateQuestions);
 
-// ===== STUDENT =====
-router.get("/student/course/:courseId", protect, authorize("student"), getStudentQuizzes);
-router.post("/:id/attempt", protect, authorize("student"), startQuizAttempt);
-router.post("/submit", protect, authorize("student"), submitQuizAttempt);
-router.get("/:id/my-results", protect, authorize("student"), getMyQuizResults);
+// Shared (both can get questions)
+router.get("/:quizId/questions",                  protect, getQuestions);
+
+// Student
+router.get("/:quizId/my-attempts",                protect, authorize("student"), getMyAttempts);
+router.post("/:quizId/submit",                    protect, authorize("student"), submitQuiz);
 
 module.exports = router;

@@ -16,19 +16,27 @@ const LessonSchema = new mongoose.Schema(
       ref: "Course",
       required: true,
     },
+    createdBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+    },
     order: {
       type: Number,
       required: true,
     },
+    // text | video | mixed
     format: {
       type: String,
-      enum: ["text", "video", "flowchart"],
+      enum: ["text", "video", "mixed"],
       default: "text",
     },
+    // HTML content written by teacher
     content: {
       type: String,
       default: "",
     },
+    // Video URL (YouTube embed, Cloudinary, etc.)
     videoUrl: {
       type: String,
       default: null,
@@ -41,11 +49,16 @@ const LessonSchema = new mongoose.Schema(
       type: Number,
       default: 100,
     },
-    isLocked: {
-      type: Boolean,
-      default: false,
-    },
     isPublished: {
+      type: Boolean,
+      default: true,
+    },
+    // Controls what student must finish before next lesson unlocks
+    requiresQuiz: {
+      type: Boolean,
+      default: true,
+    },
+    requiresLab: {
       type: Boolean,
       default: true,
     },

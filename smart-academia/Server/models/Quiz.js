@@ -7,53 +7,41 @@ const QuizSchema = new mongoose.Schema(
       required: [true, "Quiz title is required"],
       trim: true,
     },
-    description: {
-      type: String,
-      default: "",
-    },
     course: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Course",
       required: true,
     },
-    teacher: {
+    // ✅ NEW — link quiz to a specific lesson
+    lesson: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Lesson",
+      default: null,
+    },
+    createdBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
       required: true,
     },
     timeLimit: {
-      type: Number, // in minutes
+      type: Number,
       default: 30,
+    },
+    passingScore: {
+      type: Number,
+      default: 70,
     },
     maxAttempts: {
       type: Number,
       default: 3,
     },
-    passingScore: {
-      type: Number,
-      default: 70, // percentage
-    },
-    difficulty: {
-      type: String,
-      enum: ["Beginner", "Intermediate", "Advanced"],
-      default: "Beginner",
-    },
     isPublished: {
       type: Boolean,
       default: false,
     },
-    totalQuestions: {
-      type: Number,
-      default: 0,
-    },
-    // How many questions to show per attempt
-    questionsPerAttempt: {
-      type: Number,
-      default: 10,
-    },
-    dueDate: {
-      type: Date,
-      default: null,
+    shuffleQuestions: {
+      type: Boolean,
+      default: true,
     },
   },
   { timestamps: true }

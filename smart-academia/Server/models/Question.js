@@ -7,39 +7,34 @@ const QuestionSchema = new mongoose.Schema(
       ref: "Quiz",
       required: true,
     },
-    course: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Course",
-      required: true,
-    },
-    text: {
+    // Using questionText (not text) to match controller
+    questionText: {
       type: String,
       required: [true, "Question text is required"],
       trim: true,
     },
-    type: {
+    questionType: {
       type: String,
-      enum: ["multiple-choice", "true-false"],
-      default: "multiple-choice",
+      enum: ["mcq", "true_false", "short_answer"],
+      default: "mcq",
     },
-    options: [
-      {
-        text: { type: String, required: true },
-        isCorrect: { type: Boolean, default: false },
-      },
-    ],
+    // Plain array of strings — NOT subdocuments
+    options: {
+      type: [String],
+      default: [],
+    },
+    correctAnswer: {
+      type: String,
+      required: [true, "Correct answer is required"],
+      trim: true,
+    },
     explanation: {
       type: String,
-      default: "", // shown after attempt
+      default: "",
     },
     points: {
       type: Number,
-      default: 10,
-    },
-    difficulty: {
-      type: String,
-      enum: ["easy", "medium", "hard"],
-      default: "easy",
+      default: 1,
     },
   },
   { timestamps: true }

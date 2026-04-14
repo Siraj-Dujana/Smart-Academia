@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
-import AIQuizGenerator from "./AIQuizGenerator"; // Fixed import
+import AIQuizGenerator from "./AIQuizGenerator";
 
 const API = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
@@ -48,7 +48,7 @@ const QuizManagement = () => {
     } catch { 
       setApiError("Cannot connect to server"); 
     }
-  }, [token]); // ✅ Added token as dependency
+  }, [token]);
 
   const fetchQuizzes = useCallback(async () => {
     if (!selectedCourse) return;
@@ -64,7 +64,7 @@ const QuizManagement = () => {
     } finally { 
       setIsLoading(false); 
     }
-  }, [selectedCourse, token]); // ✅ Added token as dependency
+  }, [selectedCourse, token]);
 
   useEffect(() => { 
     fetchCourses(); 
@@ -213,26 +213,43 @@ const QuizManagement = () => {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5 sm:space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">
+          <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 dark:text-white">
             Quiz Management
           </h1>
-          <p className="text-gray-600 dark:text-gray-400 mt-1">
+          <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400 mt-1">
             Create and manage quizzes for your courses
           </p>
         </div>
         <button 
           onClick={openNewQuizModal} 
           disabled={!selectedCourse}
-          className="flex items-center gap-2 text-sm font-medium px-4 py-2.5 rounded-lg text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 transition-all"
+          className="flex items-center justify-center gap-2 text-sm font-medium px-4 sm:px-5 py-2.5 rounded-lg text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 transition-all w-full sm:w-auto"
         >
           <span className="material-symbols-outlined text-base">add</span>
           New Quiz
         </button>
       </div>
+
+      {/* Error & Success Messages */}
+      {apiError && (
+        <div className="p-3 rounded-xl bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700 flex items-center gap-2 text-red-600 dark:text-red-400 text-sm">
+          <span className="material-symbols-outlined text-base">error</span>
+          <span className="flex-1">{apiError}</span>
+          <button onClick={() => setApiError("")} className="text-red-400 hover:text-red-600">
+            <span className="material-symbols-outlined text-sm">close</span>
+          </button>
+        </div>
+      )}
+      {apiSuccess && (
+        <div className="p-3 rounded-xl bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-700 flex items-center gap-2 text-green-600 dark:text-green-400 text-sm">
+          <span className="material-symbols-outlined text-base">check_circle</span>
+          <span className="flex-1">{apiSuccess}</span>
+        </div>
+      )}
 
       {/* Course selector */}
       <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm p-4">
@@ -242,7 +259,7 @@ const QuizManagement = () => {
         <select 
           value={selectedCourse} 
           onChange={e => setSelectedCourse(e.target.value)}
-          className="w-full sm:w-72 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
+          className="w-full sm:w-72 px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
         >
           {courses.map(c => (
             <option key={c._id} value={c._id}>{c.title} ({c.code})</option>
@@ -251,10 +268,10 @@ const QuizManagement = () => {
       </div>
 
       {/* Main layout: quiz list + question panel */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="flex flex-col lg:flex-row gap-5 sm:gap-6">
         {/* Quiz List */}
-        <div className="space-y-4">
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+        <div className="w-full lg:w-1/2 space-y-3 sm:space-y-4">
+          <h2 className="text-base sm:text-lg font-semibold text-gray-900 dark:text-white">
             Quizzes ({quizzes.length})
           </h2>
           {isLoading ? (
@@ -267,88 +284,90 @@ const QuizManagement = () => {
           ) : quizzes.length === 0 ? (
             <div className="text-center py-12 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700">
               <span className="material-symbols-outlined text-5xl text-gray-300 dark:text-gray-600">quiz</span>
-              <p className="text-gray-500 mt-2">No quizzes yet. Create one!</p>
+              <p className="text-gray-500 mt-2 text-sm">No quizzes yet. Create one!</p>
             </div>
           ) : (
-            quizzes.map(quiz => (
-              <div key={quiz._id}
-                className={`bg-white dark:bg-gray-800 rounded-xl border shadow-sm p-4 cursor-pointer transition-all ${
-                  activeQuiz?._id === quiz._id
-                    ? "border-blue-500 ring-2 ring-blue-200"
-                    : "border-gray-200 dark:border-gray-700 hover:border-blue-300"
-                }`}
-                onClick={() => fetchQuizQuestions(quiz)}
-              >
-                <div className="flex items-start justify-between mb-3">
-                  <div className="flex-1 min-w-0">
-                    <h3 className="font-semibold text-gray-900 dark:text-white truncate">
-                      {quiz.title}
-                    </h3>
-                    <p className="text-xs text-gray-500 mt-0.5">
-                      {quiz.totalQuestions} questions · {quiz.timeLimit} min · Max {quiz.maxAttempts} attempts
-                    </p>
+            <div className="space-y-2 sm:space-y-3 max-h-[500px] lg:max-h-[600px] overflow-y-auto pr-1">
+              {quizzes.map(quiz => (
+                <div key={quiz._id}
+                  className={`bg-white dark:bg-gray-800 rounded-xl border shadow-sm p-3 sm:p-4 cursor-pointer transition-all ${
+                    activeQuiz?._id === quiz._id
+                      ? "border-blue-500 ring-2 ring-blue-200 dark:ring-blue-800"
+                      : "border-gray-200 dark:border-gray-700 hover:border-blue-300 dark:hover:border-blue-700"
+                  }`}
+                  onClick={() => fetchQuizQuestions(quiz)}
+                >
+                  <div className="flex flex-wrap items-start justify-between gap-2 mb-2 sm:mb-3">
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-semibold text-gray-900 dark:text-white text-sm sm:text-base truncate">
+                        {quiz.title}
+                      </h3>
+                      <p className="text-[10px] sm:text-xs text-gray-500 mt-0.5">
+                        {quiz.totalQuestions} questions · {quiz.timeLimit} min · Max {quiz.maxAttempts}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-1 flex-shrink-0">
+                      <button 
+                        onClick={e => { e.stopPropagation(); handleTogglePublish(quiz); }}
+                        className={`px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-full text-[10px] sm:text-xs font-medium transition-colors ${
+                          quiz.isPublished
+                            ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300"
+                            : "bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400"
+                        }`}
+                      >
+                        {quiz.isPublished ? "Published" : "Draft"}
+                      </button>
+                      <button 
+                        onClick={e => { e.stopPropagation(); openEditQuizModal(quiz); }}
+                        className="p-1 text-gray-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded transition-all"
+                      >
+                        <span className="material-symbols-outlined text-sm">edit</span>
+                      </button>
+                      <button 
+                        onClick={e => { e.stopPropagation(); handleDeleteQuiz(quiz); }}
+                        className="p-1 text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 rounded transition-all"
+                      >
+                        <span className="material-symbols-outlined text-sm">delete</span>
+                      </button>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-1 ml-2">
-                    <button 
-                      onClick={e => { e.stopPropagation(); handleTogglePublish(quiz); }}
-                      className={`px-2 py-1 rounded-full text-xs font-medium transition-colors ${
-                        quiz.isPublished
-                          ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300"
-                          : "bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400"
-                      }`}
-                    >
-                      {quiz.isPublished ? "Published" : "Draft"}
-                    </button>
-                    <button 
-                      onClick={e => { e.stopPropagation(); openEditQuizModal(quiz); }}
-                      className="p-1 text-gray-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded transition-all"
-                    >
-                      <span className="material-symbols-outlined text-sm">edit</span>
-                    </button>
-                    <button 
-                      onClick={e => { e.stopPropagation(); handleDeleteQuiz(quiz); }}
-                      className="p-1 text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 rounded transition-all"
-                    >
-                      <span className="material-symbols-outlined text-sm">delete</span>
-                    </button>
+                  <div className="flex flex-wrap gap-2 sm:gap-3 text-[10px] sm:text-xs text-gray-500">
+                    <span className="flex items-center gap-0.5 sm:gap-1">
+                      <span className="material-symbols-outlined text-xs">signal_cellular_alt</span>
+                      {quiz.difficulty}
+                    </span>
+                    <span className="flex items-center gap-0.5 sm:gap-1">
+                      <span className="material-symbols-outlined text-xs">flag</span>
+                      Pass: {quiz.passingScore}%
+                    </span>
                   </div>
                 </div>
-                <div className="flex gap-3 text-xs text-gray-500">
-                  <span className="flex items-center gap-1">
-                    <span className="material-symbols-outlined text-xs">signal_cellular_alt</span>
-                    {quiz.difficulty}
-                  </span>
-                  <span className="flex items-center gap-1">
-                    <span className="material-symbols-outlined text-xs">flag</span>
-                    Pass: {quiz.passingScore}%
-                  </span>
-                </div>
-              </div>
-            ))
+              ))}
+            </div>
           )}
         </div>
 
         {/* Questions Panel */}
-        <div>
+        <div className="w-full lg:w-1/2">
           {activeQuiz ? (
-            <div className="space-y-4">
-              <div className="flex items-center justify-between gap-2 flex-wrap">
-                <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+            <div className="space-y-3 sm:space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                <h2 className="text-base sm:text-lg font-semibold text-gray-900 dark:text-white">
                   Questions — {activeQuiz.title} ({questions.length})
                 </h2>
-                <div className="flex gap-2">
+                <div className="flex flex-wrap gap-2">
                   <button 
                     onClick={() => { setApiError(""); setApiSuccess(""); setShowQuestionModal(true); }}
-                    className="flex items-center gap-1 text-sm font-medium px-3 py-2 rounded-lg text-white bg-blue-600 hover:bg-blue-700 transition-all"
+                    className="flex items-center gap-1 text-xs sm:text-sm font-medium px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-lg text-white bg-blue-600 hover:bg-blue-700 transition-all"
                   >
-                    <span className="material-symbols-outlined text-base">add</span>
+                    <span className="material-symbols-outlined text-sm sm:text-base">add</span>
                     Add Question
                   </button>
                   <button 
                     onClick={() => setShowAIGenerator(true)}
-                    className="flex items-center gap-1 text-sm font-medium px-3 py-2 rounded-lg text-white bg-purple-600 hover:bg-purple-700 transition-all"
+                    className="flex items-center gap-1 text-xs sm:text-sm font-medium px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-lg text-white bg-purple-600 hover:bg-purple-700 transition-all"
                   >
-                    <span className="material-symbols-outlined text-base">auto_awesome</span>
+                    <span className="material-symbols-outlined text-sm sm:text-base">auto_awesome</span>
                     AI Generate
                   </button>
                 </div>
@@ -357,7 +376,7 @@ const QuizManagement = () => {
               {questions.length === 0 ? (
                 <div className="text-center py-12 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700">
                   <span className="material-symbols-outlined text-5xl text-gray-300 dark:text-gray-600">help_outline</span>
-                  <p className="text-gray-500 mt-2">No questions yet</p>
+                  <p className="text-gray-500 mt-2 text-sm">No questions yet</p>
                   <button 
                     onClick={() => setShowQuestionModal(true)}
                     className="mt-3 text-sm text-blue-600 hover:text-blue-700 font-medium"
@@ -366,30 +385,30 @@ const QuizManagement = () => {
                   </button>
                 </div>
               ) : (
-                <div className="space-y-3 max-h-[600px] overflow-y-auto pr-1">
+                <div className="space-y-2 sm:space-y-3 max-h-[500px] lg:max-h-[600px] overflow-y-auto pr-1">
                   {questions.map((q, index) => (
-                    <div key={q._id} className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm p-4">
-                      <div className="flex items-start gap-3">
-                        <div className="flex items-center justify-center size-7 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 text-xs font-bold flex-shrink-0">
+                    <div key={q._id} className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm p-3 sm:p-4">
+                      <div className="flex items-start gap-2 sm:gap-3">
+                        <div className="flex items-center justify-center w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 text-xs font-bold flex-shrink-0">
                           {index + 1}
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-gray-900 dark:text-white mb-2">
+                          <p className="text-sm font-medium text-gray-900 dark:text-white mb-2 break-words">
                             {q.text}
                           </p>
                           <div className="space-y-1">
                             {q.options.map((opt, i) => (
-                              <div key={i} className={`flex items-center gap-2 text-xs px-2 py-1 rounded ${
+                              <div key={i} className={`flex items-center gap-1.5 sm:gap-2 text-xs px-1.5 sm:px-2 py-1 rounded ${
                                 opt.isCorrect
                                   ? "bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300"
                                   : "text-gray-500 dark:text-gray-400"
                               }`}>
-                                <span>{opt.isCorrect ? "✓" : "·"}</span>
-                                <span>{opt.text}</span>
+                                <span className="flex-shrink-0">{opt.isCorrect ? "✓" : "·"}</span>
+                                <span className="break-words">{opt.text}</span>
                               </div>
                             ))}
                           </div>
-                          <div className="flex gap-3 mt-2 text-xs text-gray-400">
+                          <div className="flex flex-wrap gap-2 sm:gap-3 mt-2 text-[10px] sm:text-xs text-gray-400">
                             <span>{q.points} pts</span>
                             <span>{q.difficulty}</span>
                           </div>
@@ -402,7 +421,7 @@ const QuizManagement = () => {
             </div>
           ) : (
             <div className="flex items-center justify-center h-48 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 border-dashed">
-              <div className="text-center">
+              <div className="text-center p-4">
                 <span className="material-symbols-outlined text-4xl text-gray-300 dark:text-gray-600">quiz</span>
                 <p className="text-gray-500 text-sm mt-2">Select a quiz to manage questions</p>
               </div>
@@ -413,87 +432,84 @@ const QuizManagement = () => {
 
       {/* Quiz Modal */}
       {showQuizModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
-            <div className="p-6">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-3 sm:p-4 z-50">
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl max-w-lg w-full max-h-[95vh] sm:max-h-[90vh] overflow-y-auto">
+            <div className="p-4 sm:p-6">
               <div className="flex justify-between items-center mb-5">
-                <h2 className="text-xl font-bold text-gray-900 dark:text-white">
+                <h2 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-white">
                   {editingQuiz ? "Edit Quiz" : "Create Quiz"}
                 </h2>
                 <button onClick={() => setShowQuizModal(false)} className="text-gray-400 hover:text-gray-600">
                   <span className="material-symbols-outlined">close</span>
                 </button>
               </div>
-              {apiError && <div className="mb-4 p-3 rounded-lg bg-red-50 border border-red-200 text-red-600 text-sm">{apiError}</div>}
-              {apiSuccess && <div className="mb-4 p-3 rounded-lg bg-green-50 border border-green-200 text-green-600 text-sm">{apiSuccess}</div>}
-              <form onSubmit={handleQuizSubmit} className="space-y-4">
-                {/* Form fields remain the same */}
+              <form onSubmit={handleQuizSubmit} className="space-y-3 sm:space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Quiz Title *</label>
+                  <label className="block text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Quiz Title *</label>
                   <input 
                     type="text" 
                     value={quizForm.title} 
                     onChange={e => setQuizForm(p => ({ ...p, title: e.target.value }))}
                     required 
                     placeholder="e.g. Python Basics Quiz"
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Description</label>
+                  <label className="block text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Description</label>
                   <textarea 
                     value={quizForm.description} 
                     onChange={e => setQuizForm(p => ({ ...p, description: e.target.value }))}
                     rows={2} 
                     placeholder="Brief description..."
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 resize-none"
+                    className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 resize-none"
                   />
                 </div>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Time Limit (min)</label>
+                    <label className="block text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Time Limit (min)</label>
                     <input 
                       type="number" 
                       value={quizForm.timeLimit} 
                       min={5} 
                       max={180}
                       onChange={e => setQuizForm(p => ({ ...p, timeLimit: Number(e.target.value) }))}
-                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
+                      className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Max Attempts</label>
+                    <label className="block text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Max Attempts</label>
                     <select 
                       value={quizForm.maxAttempts} 
                       onChange={e => setQuizForm(p => ({ ...p, maxAttempts: Number(e.target.value) }))}
-                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
+                      className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
                     >
                       {[1,2,3,4,5].map(n => <option key={n} value={n}>{n}</option>)}
                     </select>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Passing Score (%)</label>
+                    <label className="block text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Passing Score (%)</label>
                     <input 
                       type="number" 
                       value={quizForm.passingScore} 
                       min={0} 
                       max={100}
                       onChange={e => setQuizForm(p => ({ ...p, passingScore: Number(e.target.value) }))}
-                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
+                      className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Difficulty</label>
+                    <label className="block text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Difficulty</label>
                     <select 
                       value={quizForm.difficulty} 
                       onChange={e => setQuizForm(p => ({ ...p, difficulty: e.target.value }))}
-                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
+                      className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
                     >
                       {["Beginner","Intermediate","Advanced"].map(d => <option key={d} value={d}>{d}</option>)}
                     </select>
                   </div>
                 </div>
-                <div className="flex justify-end gap-3 pt-2">
+                <div className="flex flex-col xs:flex-row justify-end gap-2 pt-2">
                   <button 
                     type="button" 
                     onClick={() => setShowQuizModal(false)}
@@ -504,7 +520,7 @@ const QuizManagement = () => {
                   <button 
                     type="submit" 
                     disabled={isSubmitting}
-                    className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg disabled:opacity-50 transition-colors flex items-center gap-2"
+                    className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg disabled:opacity-50 transition-colors flex items-center justify-center gap-2"
                   >
                     {isSubmitting ? (
                       <>
@@ -525,59 +541,56 @@ const QuizManagement = () => {
 
       {/* Add Question Modal */}
       {showQuestionModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
-            <div className="p-6">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-3 sm:p-4 z-50">
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl max-w-lg w-full max-h-[95vh] sm:max-h-[90vh] overflow-y-auto">
+            <div className="p-4 sm:p-6">
               <div className="flex justify-between items-center mb-5">
-                <h2 className="text-xl font-bold text-gray-900 dark:text-white">Add Question</h2>
+                <h2 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-white">Add Question</h2>
                 <button onClick={() => setShowQuestionModal(false)} className="text-gray-400 hover:text-gray-600">
                   <span className="material-symbols-outlined">close</span>
                 </button>
               </div>
-              {apiError && <div className="mb-4 p-3 rounded-lg bg-red-50 border border-red-200 text-red-600 text-sm">{apiError}</div>}
-              {apiSuccess && <div className="mb-4 p-3 rounded-lg bg-green-50 border border-green-200 text-green-600 text-sm">{apiSuccess}</div>}
-              <form onSubmit={handleAddQuestion} className="space-y-4">
-                {/* Question form fields remain the same */}
+              <form onSubmit={handleAddQuestion} className="space-y-3 sm:space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Question Text *</label>
+                  <label className="block text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Question Text *</label>
                   <textarea 
                     value={questionForm.text} 
                     onChange={e => setQuestionForm(p => ({ ...p, text: e.target.value }))}
                     required 
                     rows={3} 
                     placeholder="Enter your question..."
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 resize-none"
+                    className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 resize-none"
                   />
                 </div>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Points</label>
+                    <label className="block text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Points</label>
                     <input 
                       type="number" 
                       value={questionForm.points} 
                       min={1}
                       onChange={e => setQuestionForm(p => ({ ...p, points: Number(e.target.value) }))}
-                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
+                      className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Difficulty</label>
+                    <label className="block text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Difficulty</label>
                     <select 
                       value={questionForm.difficulty} 
                       onChange={e => setQuestionForm(p => ({ ...p, difficulty: e.target.value }))}
-                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
+                      className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
                     >
                       {["easy","medium","hard"].map(d => <option key={d} value={d}>{d}</option>)}
                     </select>
                   </div>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  <label className="block text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                     Options — click the radio button to mark correct answer
                   </label>
                   <div className="space-y-2">
                     {questionForm.options.map((opt, index) => (
-                      <div key={index} className={`flex items-center gap-2 p-2 rounded-lg border transition-colors ${
+                      <div key={index} className={`flex flex-wrap items-center gap-2 p-2 rounded-lg border transition-colors ${
                         opt.isCorrect ? "border-green-400 bg-green-50 dark:bg-green-900/20" : "border-gray-200 dark:border-gray-600"
                       }`}>
                         <input 
@@ -593,7 +606,7 @@ const QuizManagement = () => {
                           onChange={e => handleOptionChange(index, "text", e.target.value)}
                           placeholder={`Option ${index + 1}`} 
                           required
-                          className="flex-1 bg-transparent text-sm text-gray-900 dark:text-white border-none outline-none placeholder-gray-400"
+                          className="flex-1 min-w-[120px] bg-transparent text-sm text-gray-900 dark:text-white border-none outline-none placeholder-gray-400"
                         />
                         {opt.isCorrect && (
                           <span className="text-xs text-green-600 dark:text-green-400 font-medium flex-shrink-0">✓ Correct</span>
@@ -603,7 +616,7 @@ const QuizManagement = () => {
                   </div>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  <label className="block text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                     Explanation (shown after attempt)
                   </label>
                   <textarea 
@@ -611,10 +624,10 @@ const QuizManagement = () => {
                     onChange={e => setQuestionForm(p => ({ ...p, explanation: e.target.value }))}
                     rows={2} 
                     placeholder="Why is this the correct answer?"
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 resize-none"
+                    className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 resize-none"
                   />
                 </div>
-                <div className="flex justify-end gap-3 pt-2">
+                <div className="flex flex-col xs:flex-row justify-end gap-2 pt-2">
                   <button 
                     type="button" 
                     onClick={() => setShowQuestionModal(false)}
@@ -625,7 +638,7 @@ const QuizManagement = () => {
                   <button 
                     type="submit" 
                     disabled={isSubmitting}
-                    className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg disabled:opacity-50 transition-colors flex items-center gap-2"
+                    className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg disabled:opacity-50 transition-colors flex items-center justify-center gap-2"
                   >
                     {isSubmitting ? (
                       <>

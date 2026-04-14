@@ -9,7 +9,7 @@ import LandingPage from './pages/LandingPage';
 import AdminDashboard from "./pages/AdminDashboard";
 import StudentDashboard from './pages/StudentDashboard';
 import TeacherDashboard from './pages/TeacherDashboard';
-import Lessons from './components/dashboard/StudentDashboard/Student Tabs/Lessons';
+import Lessons from './components/dashboard/StudentDashboard/Student Tabs/Lessonviewer';
 import ProtectedRoute from './components/ProtectedRoute';
 import Setup from './pages/Setup';
 

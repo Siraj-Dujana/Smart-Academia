@@ -1,145 +1,174 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+
+const API = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
 const Dashboard = () => {
-  // Mock data for courses
-  const courses = [
-    {
-      id: 1,
-      title: "Introduction to Python",
-      code: "CS-101",
-      students: 32,
-      description: "A foundational course on Python programming, covering syntax, data structures, and basic algorithms."
-    },
-    {
-      id: 2,
-      title: "Data Structures & Algorithms",
-      code: "CS-201",
-      students: 28,
-      description: "An in-depth look at fundamental data structures, algorithms, and complexity analysis."
-    },
-    {
-      id: 3,
-      title: "Machine Learning",
-      code: "CS-305",
-      students: 26,
-      description: "Exploring core concepts of machine learning, including supervised and unsupervised learning models."
-    }
-  ];
+  const navigate = useNavigate();
+  const token = localStorage.getItem("token");
+  const user = JSON.parse(localStorage.getItem("user") || "{}");
 
-  // Mock data for student progress
-  const studentProgress = [
-    {
-      id: 1,
-      name: "Mubeen Channa",
-      course: "Introduction to Python",
-      progress: 95,
-      // avatar: "https://lh3.googleusercontent.com/aida-public/AB6AXuCA7cmsTtpmxprpoNL3hk2D9zfyG7nrHk8B8jhENZ2PMysq09baQmTguIB7YD7drdghlaf1QUmQNN_i3lc7T2mjXKuHsAvSKeR9QTit5wIekTh6OEunaCETlBI_O1gVlhpX_e5KjbUZh34JOzL5mZwf3cw86gQus9cn5VCmd62FSr6N5L6cwGg-1z_H7ANOuSLIB3gALrUy__CgsRdM1eQJMICwXEYYAkV2eDWc39OymB4LGvhGyMHXpVdNc3I26cUG3tXICiG2IIKu"
-    },
-    {
-      id: 2,
-      name: "Manthar Ali",
-      course: "Data Structures & Algorithms",
-      progress: 82,
-      // avatar: "https://lh3.googleusercontent.com/aida-public/AB6AXuDR3UIICWRxpLXy2-ZT5DRGJgUPDD9B_OgP94OtA62iwt9wInk1CWtjneGF3WfNAlxi7PZP_fgkcnpjnqIhk-hKA7L1Hr89vPkL34QRw90UyiVJURBPO04Hgt4kpfcmfAIMTV5R0hASJLoXYNOtcqStVs6U-sbPCSMSy75h1Zv8ofrVUvANF53PXeiyHpsinX_6ApMlb1XRqUZn-0Kuqvp5vdNNDwi2d4ueRRhITL_rNZ0vG9H1AuDEF0JncW8r6KZnw3m8XRIyNq84"
-    },
-    {
-      id: 3,
-      name: "Abdul Qadeer",
-      course: "Machine Learning",
-      progress: 75,
-      // avatar: "https://lh3.googleusercontent.com/aida-public/AB6AXuCtnYbxeWCt8KBRSHWtWmtUbg56WSyYWYG2jdygTpmmIz-zsXb2yPR6sURUIPz7QIcDf7at6_zCrclzK6w3pYQckCr3KrGjScsivo0IDHR6TcB7-OkrDmypmCP1L0YK8kUUlAr2hWTgRILLbdyoh2NfW__EHIU48xnBGSSVAF4-uJqatQ2fSh9taxoWk6xkAwMBOtOUE10zANYB5CleGq64KrvWFjWtPN9UbA--qTIUe0rHdnavE85Rl6Edf43KFJDx_8jcpiOFS2Z2"
-    },
-    {
-      id: 4,
-      name: "Saifullah",
-      course: "Introduction to Python",
-      progress: 45,
-      // avatar: "https://lh3.googleusercontent.com/aida-public/AB6AXuAp85dXa58ls5nHbIXfSTaM_xH02YhIVdAjnnoY6IB9GooLVSJbia04iRnJmOo5OPOXwIIfJOgg5PJwoJFeUMHKs9J4rjASKd7-DgCV6FYvQRBOS7kEj6WbfDjw5yGz81Jhpwj7ydFnWlRlbQKH63qAdJ46NlXvVuBUE7DwqvqphU24_H8KwZQVcGrEWMb_h95o9pfG3lwfd5ZM_q72kLK5HNxXGulu78dZY4TDsQvsew2GaduceAfDri0tDa37dXxGBup4YDJTTTgH"
-    }
-  ];
+  const [courses, setCourses] = useState([]);
+  const [studentProgress, setStudentProgress] = useState([]);
+  const [stats, setStats] = useState({
+    totalCourses: 0,
+    totalQuizzes: 0,
+    totalStudents: 0,
+    avgProgress: 0,
+  });
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState("");
 
-  // Stats data
-  const stats = [
+  useEffect(() => {
+    fetchDashboardData();
+  }, []);
+
+  const fetchDashboardData = async () => {
+    setIsLoading(true);
+    try {
+      // Fetch teacher's courses
+      const coursesRes = await fetch(`${API}/api/courses/my-courses`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const coursesData = await coursesRes.json();
+      
+      if (coursesRes.ok) {
+        setCourses(coursesData.courses || []);
+        
+        // Calculate stats from courses
+        const totalCourses = coursesData.courses?.length || 0;
+        const totalStudents = coursesData.courses?.reduce((sum, c) => sum + (c.enrolledCount || 0), 0) || 0;
+        
+        // Fetch student progress data
+        let allProgress = [];
+        for (const course of coursesData.courses || []) {
+          const progressRes = await fetch(`${API}/api/courses/${course._id}/student-progress`, {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          const progressData = await progressRes.json();
+          if (progressRes.ok) {
+            allProgress = [...allProgress, ...(progressData.students || [])];
+          }
+        }
+        
+        setStudentProgress(allProgress.slice(0, 5));
+        
+        // Calculate average progress
+        const avgProgress = allProgress.length > 0
+          ? Math.round(allProgress.reduce((sum, s) => sum + (s.progress || 0), 0) / allProgress.length)
+          : 0;
+        
+        setStats({
+          totalCourses,
+          totalQuizzes: coursesData.courses?.reduce((sum, c) => sum + (c.totalQuizzes || 0), 0) || 0,
+          totalStudents,
+          avgProgress,
+        });
+      } else {
+        setError(coursesData.message);
+      }
+    } catch {
+      setError("Cannot connect to server");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const statsCards = [
     {
       icon: "school",
       title: "Courses",
-      value: "4",
+      value: stats.totalCourses,
       color: "bg-indigo-100 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-500",
-      trend: "+1 this semester",
-      trendColor: "text-green-500"
+      trend: "Active courses",
     },
     {
       icon: "quiz",
       title: "Quizzes Created",
-      value: "12",
+      value: stats.totalQuizzes,
       color: "bg-amber-100 dark:bg-amber-900/50 text-amber-600 dark:text-amber-500",
-      trend: "+3 this month",
-      trendColor: "text-green-500"
+      trend: "Total quizzes",
     },
     {
       icon: "groups",
       title: "Students",
-      value: "86",
+      value: stats.totalStudents,
       color: "bg-green-100 dark:bg-green-900/50 text-green-600 dark:text-green-500",
-      trend: "+5 this semester",
-      trendColor: "text-green-500"
+      trend: "Enrolled students",
     },
     {
       icon: "trending_up",
       title: "Average Progress",
-      value: "78%",
+      value: `${stats.avgProgress}%`,
       color: "bg-rose-100 dark:bg-rose-900/50 text-rose-600 dark:text-rose-500",
-      trend: "+2% this week",
-      trendColor: "text-green-500"
-    }
+      trend: "Across all courses",
+    },
   ];
 
-  // Event handlers
-  const handleViewLessons = (courseId) => {
-    console.log(`View lessons for course ${courseId}`);
+  const getProgressColor = (progress) => {
+    if (progress >= 80) return "bg-green-500";
+    if (progress >= 60) return "bg-blue-500";
+    if (progress >= 40) return "bg-yellow-500";
+    return "bg-red-500";
   };
 
-  const handleManageQuizzes = (courseId) => {
-    console.log(`Manage quizzes for course ${courseId}`);
-  };
+  const displayName = user.fullName || user.name || "Teacher";
 
-  const handleSendAnnouncement = (courseId) => {
-    console.log(`Send announcement for course ${courseId}`);
-  };
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-16 sm:py-24">
+        <div className="text-center">
+          <svg className="animate-spin h-8 w-8 sm:h-10 sm:w-10 text-blue-600 mx-auto mb-4" viewBox="0 0 24 24" fill="none">
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
+          </svg>
+          <p className="text-sm sm:text-base text-gray-500 dark:text-gray-400">Loading dashboard...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-5 sm:space-y-6 md:space-y-8">
       {/* Dashboard Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
         <div className="flex flex-col gap-1">
-          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white leading-tight">
+          <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 dark:text-white leading-tight">
             Teacher Dashboard
           </h1>
-          <p className="text-gray-600 dark:text-gray-400 text-base">
-            Welcome back, Dr. Vance! Here's your overview.
+          <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400">
+            Welcome back, {displayName}! Here's your overview.
           </p>
         </div>
       </div>
 
+      {/* Error Message */}
+      {error && (
+        <div className="p-3 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 flex items-center gap-2">
+          <span className="material-symbols-outlined text-red-600 text-sm">error</span>
+          <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
+        </div>
+      )}
+
       {/* Stats Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
-        {stats.map((stat, index) => (
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 md:gap-5">
+        {statsCards.map((stat, index) => (
           <div 
             key={index}
-            className="bg-white dark:bg-gray-800 rounded-xl p-4 sm:p-6 border border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-md transition-all duration-300 hover:scale-105 group"
+            className="bg-white dark:bg-gray-800 rounded-xl p-3 sm:p-4 md:p-5 border border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-md transition-all duration-300 hover:scale-105 group"
           >
-            <div className="flex items-start gap-4">
-              <div className={`flex items-center justify-center size-12 rounded-lg ${stat.color} group-hover:scale-110 transition-transform duration-200`}>
-                <span className="material-symbols-outlined text-2xl">{stat.icon}</span>
+            <div className="flex items-start gap-2 sm:gap-3 md:gap-4">
+              <div className={`flex items-center justify-center w-10 h-10 sm:w-11 sm:h-11 md:w-12 md:h-12 rounded-lg ${stat.color} group-hover:scale-110 transition-transform duration-200`}>
+                <span className="material-symbols-outlined text-xl sm:text-2xl">{stat.icon}</span>
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-gray-600 dark:text-gray-400 text-sm font-medium mb-1">
+                <p className="text-gray-600 dark:text-gray-400 text-xs sm:text-sm font-medium mb-0.5">
                   {stat.title}
                 </p>
-                <p className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white mb-1">
+                <p className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900 dark:text-white mb-0.5">
                   {stat.value}
                 </p>
-                <p className={`text-xs font-medium ${stat.trendColor}`}>
+                <p className="text-[10px] sm:text-xs font-medium text-gray-500">
                   {stat.trend}
                 </p>
               </div>
@@ -150,123 +179,138 @@ const Dashboard = () => {
 
       {/* My Courses Section */}
       <div>
-        <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-6">
+        <h2 className="text-base sm:text-lg md:text-xl font-bold text-gray-900 dark:text-white mb-4 sm:mb-6">
           My Courses
         </h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-          {courses.map((course) => (
-            <div key={course.id} className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-md transition-all duration-300 hover:scale-105 overflow-hidden group">
-              <div className="p-6">
-                <div className="flex items-start justify-between mb-4">
-                  <div className="flex-1">
-                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-1">
-                      {course.title}
-                    </h3>
-                    <p className="text-gray-600 dark:text-gray-400 text-sm">
-                      {course.code} • {course.students} Students
-                    </p>
+        {courses.length > 0 ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5 md:gap-6">
+            {courses.map((course) => (
+              <div key={course._id} className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-md transition-all duration-300 hover:scale-105 overflow-hidden group">
+                <div className="p-4 sm:p-5">
+                  <div className="flex items-start justify-between mb-3 sm:mb-4">
+                    <div className="flex-1 min-w-0">
+                      <h3 className="text-base sm:text-lg font-semibold text-gray-900 dark:text-white mb-0.5 truncate">
+                        {course.title}
+                      </h3>
+                      <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">
+                        {course.code} • {course.enrolledCount || 0} Students
+                      </p>
+                    </div>
+                    <div className="flex items-center justify-center w-10 h-10 sm:w-12 sm:h-12 rounded-lg bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 flex-shrink-0 ml-2">
+                      <span className="material-symbols-outlined text-lg sm:text-xl">menu_book</span>
+                    </div>
                   </div>
-                  <div className="flex items-center justify-center size-12 rounded-lg bg-indigo-100 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-500">
-                    <span className="material-symbols-outlined text-xl">menu_book</span>
-                  </div>
+                  
+                  <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 leading-relaxed mb-3 sm:mb-4 line-clamp-2">
+                    {course.description || "No description available"}
+                  </p>
                 </div>
                 
-                <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed mb-4">
-                  {course.description}
-                </p>
-              </div>
-              
-              <div className="border-t border-gray-200 dark:border-gray-700 px-6 py-4 bg-gray-50 dark:bg-gray-700/50">
-                <button 
-                  onClick={() => handleViewLessons(course.id)}
-                  className="w-full flex items-center justify-center gap-2 text-sm font-medium px-4 py-2.5 rounded-lg text-white bg-indigo-600 hover:bg-indigo-700 transition-colors duration-200 group"
-                >
-                  <span className="material-symbols-outlined text-base group-hover:scale-110 transition-transform duration-200">
-                    play_lesson
-                  </span> 
-                  View Lessons
-                </button>
-                <div className="flex items-center gap-2 mt-2">
+                <div className="border-t border-gray-200 dark:border-gray-700 px-4 sm:px-5 py-3 sm:py-4 bg-gray-50 dark:bg-gray-700/30">
                   <button 
-                    onClick={() => handleManageQuizzes(course.id)}
-                    className="flex-1 flex items-center justify-center gap-2 text-sm font-medium px-4 py-2 rounded-lg text-gray-600 dark:text-gray-400 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors duration-200"
+                    onClick={() => navigate(`/teacher/lessons/${course._id}`)}
+                    className="w-full flex items-center justify-center gap-1.5 sm:gap-2 text-xs sm:text-sm font-medium px-3 sm:px-4 py-2 sm:py-2.5 rounded-lg text-white bg-indigo-600 hover:bg-indigo-700 transition-colors duration-200 group-hover:scale-105"
                   >
-                    <span className="material-symbols-outlined text-base">quiz</span> 
-                    Quizzes
+                    <span className="material-symbols-outlined text-sm sm:text-base group-hover:scale-110 transition-transform duration-200">
+                      play_lesson
+                    </span> 
+                    View Lessons
                   </button>
-                  <button 
-                    onClick={() => handleSendAnnouncement(course.id)}
-                    className="flex-1 flex items-center justify-center gap-2 text-sm font-medium px-4 py-2 rounded-lg text-gray-600 dark:text-gray-400 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors duration-200"
-                  >
-                    <span className="material-symbols-outlined text-base">campaign</span> 
-                    Announce
-                  </button>
+                  <div className="flex items-center gap-2 mt-2">
+                    <button 
+                      onClick={() => navigate(`/teacher/quizzes?course=${course._id}`)}
+                      className="flex-1 flex items-center justify-center gap-1 text-xs sm:text-sm font-medium px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg text-gray-600 dark:text-gray-400 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors duration-200"
+                    >
+                      <span className="material-symbols-outlined text-sm">quiz</span> 
+                      Quizzes
+                    </button>
+                    <button 
+                      onClick={() => navigate(`/teacher/announcements?course=${course._id}`)}
+                      className="flex-1 flex items-center justify-center gap-1 text-xs sm:text-sm font-medium px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg text-gray-600 dark:text-gray-400 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors duration-200"
+                    >
+                      <span className="material-symbols-outlined text-sm">campaign</span> 
+                      Announce
+                    </button>
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        ) : (
+          <div className="text-center py-8 sm:py-12 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700">
+            <span className="material-symbols-outlined text-5xl sm:text-6xl text-gray-300 dark:text-gray-600">menu_book</span>
+            <h3 className="text-base sm:text-lg font-medium text-gray-900 dark:text-white mt-3 sm:mt-4 mb-2">No courses yet</h3>
+            <p className="text-sm text-gray-500 dark:text-gray-400">Create your first course to get started</p>
+            <button 
+              onClick={() => navigate("/teacher/courses")}
+              className="mt-4 inline-flex items-center gap-2 text-sm font-medium px-4 py-2 rounded-lg text-white bg-indigo-600 hover:bg-indigo-700 transition-colors"
+            >
+              <span className="material-symbols-outlined text-base">add</span>
+              Create Course
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Recent Student Progress Section */}
-      <div>
-        <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-6">
-          Recent Student Progress
-        </h2>
-        <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="bg-gray-50 dark:bg-gray-700/50 border-b border-gray-200 dark:border-gray-600">
-                <tr>
-                  <th className="px-6 py-4 font-semibold text-gray-600 dark:text-gray-400 uppercase text-xs tracking-wider" scope="col">
-                    Student Name
-                  </th>
-                  <th className="px-6 py-4 font-semibold text-gray-600 dark:text-gray-400 uppercase text-xs tracking-wider" scope="col">
-                    Course
-                  </th>
-                  <th className="px-6 py-4 font-semibold text-gray-600 dark:text-gray-400 uppercase text-xs tracking-wider" scope="col">
-                    Progress
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-                {studentProgress.map((student) => (
-                  <tr key={student.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors duration-150 group">
-                    <td className="px-6 py-4 font-medium text-gray-900 dark:text-white whitespace-nowrap">
-                      <div className="flex items-center gap-3">
-                        <img 
-                          className="h-9 w-9 rounded-full object-cover ring-2 ring-gray-200 dark:ring-gray-600 group-hover:ring-indigo-200 dark:group-hover:ring-indigo-400 transition-all duration-200"
-                          src={student.avatar} 
-                          alt={`Profile of ${student.name}`}
-                        />
-                        {student.name}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 text-gray-600 dark:text-gray-400">
-                      {student.course}
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-3">
-                        <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2.5">
-                          <div 
-                            className={`h-2.5 rounded-full ${
-                              student.progress >= 70 ? 'bg-indigo-600' : 'bg-amber-500'
-                            }`} 
-                            style={{ width: `${student.progress}%` }}
-                          ></div>
-                        </div>
-                        <span className="font-medium text-gray-900 dark:text-white text-sm">
-                          {student.progress}%
-                        </span>
-                      </div>
-                    </td>
+      {studentProgress.length > 0 && (
+        <div>
+          <h2 className="text-base sm:text-lg md:text-xl font-bold text-gray-900 dark:text-white mb-4 sm:mb-6">
+            Recent Student Progress
+          </h2>
+          <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="bg-gray-50 dark:bg-gray-700/50 border-b border-gray-200 dark:border-gray-600">
+                  <tr>
+                    <th className="px-4 sm:px-6 py-3 sm:py-4 font-semibold text-gray-600 dark:text-gray-400 uppercase text-xs tracking-wider text-left">
+                      Student Name
+                    </th>
+                    <th className="px-4 sm:px-6 py-3 sm:py-4 font-semibold text-gray-600 dark:text-gray-400 uppercase text-xs tracking-wider text-left">
+                      Course
+                    </th>
+                    <th className="px-4 sm:px-6 py-3 sm:py-4 font-semibold text-gray-600 dark:text-gray-400 uppercase text-xs tracking-wider text-left">
+                      Progress
+                    </th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                  {studentProgress.slice(0, 5).map((student, idx) => (
+                    <tr key={idx} className="hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors duration-150 group">
+                      <td className="px-4 sm:px-6 py-3 sm:py-4">
+                        <div className="flex items-center gap-2 sm:gap-3">
+                          <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center text-indigo-700 dark:text-indigo-300 font-bold text-xs sm:text-sm">
+                            {student.name?.charAt(0).toUpperCase() || "S"}
+                          </div>
+                          <span className="font-medium text-gray-900 dark:text-white text-sm">
+                            {student.name}
+                          </span>
+                        </div>
+                       </td>
+                      <td className="px-4 sm:px-6 py-3 sm:py-4 text-gray-600 dark:text-gray-400 text-sm">
+                        {student.courseTitle}
+                       </td>
+                      <td className="px-4 sm:px-6 py-3 sm:py-4">
+                        <div className="flex flex-col xs:flex-row items-start xs:items-center gap-2">
+                          <div className="w-full xs:w-32 sm:w-40 bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+                            <div 
+                              className={`h-2 rounded-full ${getProgressColor(student.progress || 0)}`} 
+                              style={{ width: `${student.progress || 0}%` }}
+                            />
+                          </div>
+                          <span className="font-medium text-gray-900 dark:text-white text-xs sm:text-sm">
+                            {student.progress || 0}%
+                          </span>
+                        </div>
+                       </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
-      </div>
+      )}
     </div>
   );
 };

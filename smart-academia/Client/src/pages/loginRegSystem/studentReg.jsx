@@ -5,7 +5,6 @@ const StudentRegistration = () => {
   const navigate = useNavigate();
   const API = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
-  // step 1 = fill form, step 2 = verify OTP, step 3 = done
   const [step, setStep] = useState(1);
 
   const [formData, setFormData] = useState({
@@ -118,7 +117,6 @@ const StudentRegistration = () => {
     return newErrors;
   };
 
-  // Step 1: Validate form then send OTP
   const handleSendOTP = async (e) => {
     e.preventDefault();
     setApiError("");
@@ -147,7 +145,6 @@ const StudentRegistration = () => {
     }
   };
 
-  // OTP input handlers
   const handleOTPInput = (index, value) => {
     if (!/^\d*$/.test(value)) return;
     const newOtp = [...otp];
@@ -165,7 +162,6 @@ const StudentRegistration = () => {
     if (pasted.length === 6) { setOtp(pasted.split("")); otpRefs.current[5]?.focus(); }
   };
 
-  // Step 2: Verify OTP then register
   const handleVerifyAndRegister = async (e) => {
     e.preventDefault();
     setApiError("");
@@ -174,7 +170,6 @@ const StudentRegistration = () => {
 
     setIsLoading(true);
     try {
-      // First verify the OTP
       const verifyRes = await fetch(`${API}/api/otp/verify-reg-otp`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -183,7 +178,6 @@ const StudentRegistration = () => {
       const verifyData = await verifyRes.json();
       if (!verifyRes.ok) return setApiError(verifyData.message);
 
-      // Then complete registration
       const regRes = await fetch(`${API}/api/auth/register/student`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -241,12 +235,12 @@ const StudentRegistration = () => {
 
     return (
       <label className="flex flex-col">
-        <p className="pb-2 text-sm font-medium text-gray-700 dark:text-gray-300">{config.label}</p>
+        <p className="pb-2 text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300">{config.label}</p>
         <div className={`relative ${shake[fieldName] ? 'animate-shake' : ''}`}>
           <div className="relative flex w-full items-center">
-            <span className="material-symbols-outlined pointer-events-none absolute left-3 text-gray-400 text-lg">{config.icon}</span>
+            <span className="material-symbols-outlined pointer-events-none absolute left-3 text-gray-400 text-base sm:text-lg">{config.icon}</span>
             <input
-              className={`w-full px-3 py-3 pl-10 border rounded-lg text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 ${
+              className={`w-full px-3 py-2 sm:py-3 pl-9 sm:pl-10 border rounded-lg text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 text-sm sm:text-base ${
                 errors[fieldName] ? "border-red-500 bg-white dark:bg-gray-800"
                 : success[fieldName] ? "border-green-500 bg-white dark:bg-gray-800"
                 : "border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800"
@@ -261,13 +255,13 @@ const StudentRegistration = () => {
             {isPasswordField && (
               <button type="button" className="absolute right-3 text-gray-400 hover:text-gray-600"
                 onClick={() => fieldName === "password" ? setShowPassword(!showPassword) : setShowConfirmPassword(!showConfirmPassword)}>
-                <span className="material-symbols-outlined text-lg">{showText ? "visibility_off" : "visibility"}</span>
+                <span className="material-symbols-outlined text-base sm:text-lg">{showText ? "visibility_off" : "visibility"}</span>
               </button>
             )}
           </div>
         </div>
-        {errors[fieldName] && <p className="mt-1 text-sm text-red-600">{errors[fieldName]}</p>}
-        {success[fieldName] && !errors[fieldName] && <p className="mt-1 text-sm text-green-600">{success[fieldName]}</p>}
+        {errors[fieldName] && <p className="mt-1 text-xs sm:text-sm text-red-600">{errors[fieldName]}</p>}
+        {success[fieldName] && !errors[fieldName] && <p className="mt-1 text-xs sm:text-sm text-green-600">{success[fieldName]}</p>}
       </label>
     );
   };
@@ -287,70 +281,101 @@ const StudentRegistration = () => {
 
       <div className="min-h-screen flex flex-col lg:flex-row">
 
-        {/* Desktop Brand */}
-        <div className="hidden lg:flex flex-col items-center bg-gray-50 dark:bg-gray-800 w-1/2 p-8 lg:p-12 text-center">
-          <div className="flex flex-col items-center gap-6 max-w-md mt-25">
-            <div className={`mb-2 flex h-20 w-20 items-center justify-center rounded-full bg-blue-500 text-white transition-all duration-700 transform ${animateSchool ? 'opacity-100 scale-100' : 'opacity-0 scale-50'}`}>
-              <span className="material-symbols-outlined" style={{ fontSize: "3rem" }}>school</span>
+        {/* Desktop Brand Section */}
+        <div className="hidden lg:flex flex-col items-center justify-center bg-gray-50 dark:bg-gray-800 w-1/2 p-8 lg:p-12 text-center">
+          <div className="flex flex-col items-center gap-6 max-w-md">
+            <div className={`mb-2 flex h-16 w-16 lg:h-20 lg:w-20 items-center justify-center rounded-full bg-blue-500 text-white transition-all duration-700 transform ${animateSchool ? 'opacity-100 scale-100' : 'opacity-0 scale-50'}`}>
+              <span className="material-symbols-outlined text-3xl lg:text-4xl">school</span>
             </div>
-            <h1 className={`text-3xl lg:text-4xl font-bold transition-all duration-700 transform ${animateTitle ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>
+            <h1 className={`text-2xl lg:text-3xl xl:text-4xl font-bold transition-all duration-700 transform ${animateTitle ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>
               Student Registration
             </h1>
-            <p className={`text-xl text-gray-600 dark:text-gray-300 transition-all duration-700 ${animateTagline ? 'opacity-100' : 'opacity-0'}`}>
+            <p className={`text-base lg:text-lg text-gray-600 dark:text-gray-300 transition-all duration-700 ${animateTagline ? 'opacity-100' : 'opacity-0'}`}>
               Create your account for Smart Academia
             </p>
 
             {/* Step indicators */}
-            <div className="flex items-center gap-3 mt-4">
+            <div className="flex items-center gap-2 sm:gap-3 mt-4">
               {[
                 { num: 1, label: "Fill Form" },
                 { num: 2, label: "Verify Email" },
                 { num: 3, label: "Done" },
               ].map((s, i) => (
-                <div key={s.num} className="flex items-center gap-3">
+                <div key={s.num} className="flex items-center gap-2 sm:gap-3">
                   <div className="flex flex-col items-center gap-1">
-                    <div className={`w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold transition-all duration-300 ${
+                    <div className={`w-8 h-8 sm:w-9 sm:h-9 rounded-full flex items-center justify-center text-xs sm:text-sm font-bold transition-all duration-300 ${
                       step === s.num ? "bg-blue-600 text-white scale-110" :
                       step > s.num ? "bg-green-500 text-white" :
                       "bg-gray-200 dark:bg-gray-600 text-gray-500"
                     }`}>
                       {step > s.num ? "✓" : s.num}
                     </div>
-                    <span className={`text-xs ${step >= s.num ? "text-blue-600 font-medium" : "text-gray-400"}`}>{s.label}</span>
+                    <span className={`text-[10px] sm:text-xs ${step >= s.num ? "text-blue-600 font-medium" : "text-gray-400"}`}>{s.label}</span>
                   </div>
-                  {i < 2 && <div className={`w-8 h-0.5 mb-4 ${step > s.num ? "bg-green-500" : "bg-gray-200 dark:bg-gray-600"}`} />}
+                  {i < 2 && <div className={`w-6 sm:w-8 h-0.5 mb-5 ${step > s.num ? "bg-green-500" : "bg-gray-200 dark:bg-gray-600"}`} />}
                 </div>
               ))}
             </div>
 
-            <div className="flex flex-wrap justify-center gap-3 mt-4">
+            <div className="flex flex-wrap justify-center gap-2 sm:gap-3 mt-4">
               {features.map(f => (
-                <span key={f} className="px-3 py-2 bg-white dark:bg-gray-700 rounded-lg text-xs font-medium text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-600 shadow-sm"
+                <span key={f} className="px-3 py-1.5 sm:py-2 bg-white dark:bg-gray-700 rounded-lg text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-600 shadow-sm"
                   style={{ opacity: animateTagline ? 1 : 0, transition: 'all 0.5s' }}>{f}</span>
               ))}
             </div>
           </div>
         </div>
 
-        {/* Form */}
+        {/* Mobile Header */}
+        <div className="lg:hidden bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-6 px-4 text-center">
+          <div className="flex justify-center mb-3">
+            <div className="w-14 h-14 bg-white/20 rounded-full flex items-center justify-center">
+              <span className="material-symbols-outlined text-3xl">school</span>
+            </div>
+          </div>
+          <h1 className="text-xl font-bold">Student Registration</h1>
+          <p className="text-sm text-blue-100 mt-1">Create your student account</p>
+          
+          {/* Mobile Step Indicators */}
+          <div className="flex justify-center items-center gap-2 mt-4">
+            {[
+              { num: 1, label: "Form" },
+              { num: 2, label: "Verify" },
+              { num: 3, label: "Done" },
+            ].map((s, i) => (
+              <div key={s.num} className="flex items-center gap-2">
+                <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold ${
+                  step === s.num ? "bg-white text-blue-600" :
+                  step > s.num ? "bg-green-400 text-white" :
+                  "bg-white/30 text-white"
+                }`}>
+                  {step > s.num ? "✓" : s.num}
+                </div>
+                {i < 2 && <div className={`w-4 h-0.5 ${step > s.num ? "bg-green-400" : "bg-white/30"}`} />}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Form Section */}
         <div className="flex-1 flex flex-col items-center justify-center p-4 sm:p-6 lg:p-8">
           <div className="w-full max-w-2xl">
-            <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4 sm:p-6 lg:p-8 shadow-sm">
+            <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-5 sm:p-6 lg:p-8 shadow-sm">
 
               {apiError && (
                 <div className="mb-4 p-3 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700 flex items-center gap-2">
-                  <span className="material-symbols-outlined text-red-600 text-lg">error</span>
-                  <p className="text-sm text-red-600 dark:text-red-400">{apiError}</p>
+                  <span className="material-symbols-outlined text-red-600 text-base sm:text-lg">error</span>
+                  <p className="text-xs sm:text-sm text-red-600 dark:text-red-400 flex-1">{apiError}</p>
                 </div>
               )}
               {apiSuccess && (
                 <div className="mb-4 p-3 rounded-lg bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-700 flex items-center gap-2">
-                  <span className="material-symbols-outlined text-green-600 text-lg">check_circle</span>
-                  <p className="text-sm text-green-600 dark:text-green-400">{apiSuccess}</p>
+                  <span className="material-symbols-outlined text-green-600 text-base sm:text-lg">check_circle</span>
+                  <p className="text-xs sm:text-sm text-green-600 dark:text-green-400 flex-1">{apiSuccess}</p>
                 </div>
               )}
 
-              {/* ===== STEP 1: Registration Form ===== */}
+              {/* STEP 1: Registration Form */}
               {step === 1 && (
                 <form onSubmit={handleSendOTP} className="space-y-4 sm:space-y-6">
                   <div className="grid grid-cols-1 gap-4 sm:gap-6 sm:grid-cols-2">
@@ -364,31 +389,31 @@ const StudentRegistration = () => {
                   </div>
                   <div className="grid grid-cols-1 gap-4 sm:gap-6 sm:grid-cols-2">
                     <label className="flex flex-col">
-                      <p className="pb-2 text-sm font-medium text-gray-700 dark:text-gray-300">Department</p>
+                      <p className="pb-2 text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300">Department</p>
                       <div className="relative flex w-full items-center">
-                        <span className="material-symbols-outlined pointer-events-none absolute left-3 text-gray-400 text-lg">corporate_fare</span>
-                        <select className="w-full px-3 py-3 pl-10 pr-10 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none"
+                        <span className="material-symbols-outlined pointer-events-none absolute left-3 text-gray-400 text-base sm:text-lg">corporate_fare</span>
+                        <select className="w-full px-3 py-2 sm:py-3 pl-9 sm:pl-10 pr-9 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none text-sm sm:text-base"
                           name="department" value={formData.department} onChange={handleChange} disabled={isLoading}>
                           {departments.map(d => <option key={d} value={d}>{d}</option>)}
                         </select>
-                        <span className="material-symbols-outlined pointer-events-none absolute right-3 text-gray-400 text-lg">expand_more</span>
+                        <span className="material-symbols-outlined pointer-events-none absolute right-3 text-gray-400 text-base sm:text-lg">expand_more</span>
                       </div>
                     </label>
                     <label className="flex flex-col">
-                      <p className="pb-2 text-sm font-medium text-gray-700 dark:text-gray-300">Semester</p>
+                      <p className="pb-2 text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300">Semester</p>
                       <div className="relative flex w-full items-center">
-                        <span className="material-symbols-outlined pointer-events-none absolute left-3 text-gray-400 text-lg">calendar_today</span>
-                        <select className="w-full px-3 py-3 pl-10 pr-10 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none"
+                        <span className="material-symbols-outlined pointer-events-none absolute left-3 text-gray-400 text-base sm:text-lg">calendar_today</span>
+                        <select className="w-full px-3 py-2 sm:py-3 pl-9 sm:pl-10 pr-9 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none text-sm sm:text-base"
                           name="semester" value={formData.semester} onChange={handleChange} disabled={isLoading}>
                           {semesters.map(s => <option key={s} value={s}>{s}</option>)}
                         </select>
-                        <span className="material-symbols-outlined pointer-events-none absolute right-3 text-gray-400 text-lg">expand_more</span>
+                        <span className="material-symbols-outlined pointer-events-none absolute right-3 text-gray-400 text-base sm:text-lg">expand_more</span>
                       </div>
                     </label>
                   </div>
                   <div className="flex flex-col gap-3">
                     <button type="submit" disabled={isLoading}
-                      className="w-full flex justify-center items-center gap-2 py-3 px-4 rounded-lg text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
+                      className="w-full flex justify-center items-center gap-2 py-2.5 sm:py-3 px-4 rounded-lg text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
                       {isLoading ? (
                         <><svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/></svg> Sending OTP...</>
                       ) : (
@@ -396,31 +421,31 @@ const StudentRegistration = () => {
                       )}
                     </button>
                     <button type="button" onClick={() => navigate('/register')} disabled={isLoading}
-                      className="w-full flex justify-center py-3 px-4 border border-gray-300 dark:border-gray-600 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 transition-colors">
+                      className="w-full flex justify-center py-2.5 sm:py-3 px-4 border border-gray-300 dark:border-gray-600 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 transition-colors">
                       Back to Role Selection
                     </button>
                   </div>
                 </form>
               )}
 
-              {/* ===== STEP 2: OTP Verification ===== */}
+              {/* STEP 2: OTP Verification */}
               {step === 2 && (
                 <form onSubmit={handleVerifyAndRegister} className="space-y-6">
                   <div className="text-center">
-                    <div className="flex items-center justify-center w-16 h-16 bg-blue-100 dark:bg-blue-900/30 rounded-full mx-auto mb-4">
-                      <span className="material-symbols-outlined text-blue-600 dark:text-blue-400 text-3xl">mark_email_unread</span>
+                    <div className="flex items-center justify-center w-14 h-14 sm:w-16 sm:h-16 bg-blue-100 dark:bg-blue-900/30 rounded-full mx-auto mb-4">
+                      <span className="material-symbols-outlined text-blue-600 dark:text-blue-400 text-2xl sm:text-3xl">mark_email_unread</span>
                     </div>
-                    <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-1">Check Your Email</h2>
-                    <p className="text-sm text-gray-600 dark:text-gray-400">
-                      We sent a 6-digit code to <strong>{formData.email}</strong>
+                    <h2 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-white mb-1">Check Your Email</h2>
+                    <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">
+                      We sent a 6-digit code to <strong className="break-all">{formData.email}</strong>
                     </p>
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-4 text-center">
+                    <label className="block text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 mb-4 text-center">
                       Enter the 6-digit OTP
                     </label>
-                    <div className="flex gap-3 justify-center" onPaste={handleOTPPaste}>
+                    <div className="flex gap-2 sm:gap-3 justify-center flex-wrap" onPaste={handleOTPPaste}>
                       {otp.map((digit, index) => (
                         <input
                           key={index}
@@ -431,25 +456,25 @@ const StudentRegistration = () => {
                           value={digit}
                           onChange={e => handleOTPInput(index, e.target.value)}
                           onKeyDown={e => handleOTPKeyDown(index, e)}
-                          className={`w-12 h-14 text-center text-xl font-bold border-2 rounded-xl bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none transition-all duration-200 ${
+                          className={`w-10 h-12 sm:w-12 sm:h-14 text-center text-lg sm:text-xl font-bold border-2 rounded-xl bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none transition-all duration-200 ${
                             digit ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20" : "border-gray-300 dark:border-gray-600"
                           } focus:border-blue-500 focus:ring-2 focus:ring-blue-200`}
                           disabled={isLoading}
                         />
                       ))}
                     </div>
-                    <p className="text-center text-xs text-gray-500 mt-2">You can paste the OTP directly</p>
+                    <p className="text-center text-[11px] sm:text-xs text-gray-500 mt-2">You can paste the OTP directly</p>
                   </div>
 
                   <button type="submit" disabled={isLoading || otp.join("").length !== 6}
-                    className="w-full flex justify-center items-center gap-2 py-3 px-4 rounded-lg text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
+                    className="w-full flex justify-center items-center gap-2 py-2.5 sm:py-3 px-4 rounded-lg text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
                     {isLoading ? (
                       <><svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/></svg> Verifying & Creating Account...</>
                     ) : "Verify & Create Account"}
                   </button>
 
                   <div className="text-center space-y-2">
-                    <p className="text-sm text-gray-600 dark:text-gray-400">
+                    <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">
                       Didn't receive the code?{" "}
                       <button type="button" onClick={handleResendOTP} disabled={countdown > 0 || isLoading}
                         className={`font-medium transition-colors ${countdown > 0 ? "text-gray-400 cursor-not-allowed" : "text-blue-600 hover:text-blue-500"}`}>
@@ -457,7 +482,7 @@ const StudentRegistration = () => {
                       </button>
                     </p>
                     <button type="button" onClick={() => { setStep(1); setApiError(""); setApiSuccess(""); setOtp(["","","","","",""]); }}
-                      className="text-sm text-gray-500 hover:text-gray-700 transition-colors">
+                      className="text-xs sm:text-sm text-gray-500 hover:text-gray-700 transition-colors">
                       ← Edit registration details
                     </button>
                   </div>
@@ -465,7 +490,7 @@ const StudentRegistration = () => {
               )}
 
               <div className="mt-6 text-center">
-                <p className="text-sm text-gray-600 dark:text-gray-400">
+                <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">
                   Already have an account?{" "}
                   <button onClick={() => navigate('/login')} className="font-medium text-blue-600 hover:text-blue-500">
                     Login here

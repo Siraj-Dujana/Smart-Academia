@@ -1,44 +1,92 @@
-work done:
-I have done login ,register(otp) and landing page
-forget password(otp)
+We are currently working on ONE module:
+👉 Lab Management Module
+
+## 🔧 LAB MODULE ENHANCEMENTS
+
+### 1. Teacher Lab Creation
+- Manual lab creation:
+  - title
+  - description
+  - outputExample
+
+- AI Auto Generate Lab:
+  - Input: topic
+  - Use Gemini API:
+    model: gemini-2.5-flash-lite from @google/genai
+  - Output:
+    - title
+    - description
+    - outputExample
+  - Add difficulty:
+    - easy
+    - medium
+    - hard
+
+---
+
+### 2. Student Submission System
+- Upload PDF (code + screenshots)
+- Use Multer + Cloudinary
+- Store:
+  - studentId
+  - labId
+  - fileUrl (secure_url)
+
+---
+
+### 3. Manual Evaluation System
+- Teacher can:
+  - view submissions
+  - assign marks
+  - add feedback
+
+---
 
 
-work remanining
-I have to add the loading effect on landing page
-I have to add loading effects on certain areas where it would be suitable dude
-login is ready but what about logout?
+## 🧠 AI FEATURES 
 
+### AI Lab Assistant
+- Explain lab in simple steps
 
-I will work on the admin dashboard.(still under working)
-note: you have to improve the tabs of admin dashboard(teacher,student,courses)
-note: improve the Add new teacher and add new student
+### AI Evaluation Assistant
+- Analyze submitted PDF text
+- Return:
+{
+  score,
+  mistakes,
+  feedback,
+  suggestions
+}
 
+---
 
+## ⚙️ AI OUTPUT FORMAT (STRICT JSON)
 
+Lab Generation:
+{
+  title,
+  description,
+  outputExample,
+  difficulty
+}
 
+Lab Explanation:
+{
+  steps,
+  concepts,
+  tips
+}
 
-I have to tell the calude ai tommorow okay:
-how to acces admin now
-use env variables insead hard codes okay dude
-Critical — must fix now
-Quiz submit bug — answers sent as { questionId: index } but backend expects Map
-This will cause wrong grading — all answers will score 0
-Logout button does nothing — just console.log. Token stays in localStorage forever
-Anyone can stay logged in indefinitely, no way to switch accounts
-Admin dashboard has no real backend — ManageStudents/Teachers shows hardcoded data
-Admin can't actually delete or manage real users from MongoDB
-Important — fix before demo
-No token expiry handling — if JWT expires (7 days) user gets blank errors, not redirected to login
-Need a global API handler that catches 401 and redirects to login
-Student dashboard hardcoded name — "Welcome back, Abdul Qadeer Odhano!" not real user name
-Should read from localStorage user object
-Lesson viewer (Lesson.jsx) still uses hardcoded mock data — not connected to real backend
-When student clicks a lesson it shows fake content, not real lessons from DB
-Teacher dashboard name hardcoded as "Dr. Vance" — should show logged-in teacher name
-All dashboards should read user info from localStorage
-Minor — fix when you have time
-No loading skeleton — just spinner
-No 404 page designed yet
-App.css still has default Vite styles
-No input sanitization on backend
-Copy failed — try from claude.ai in browser
+Evaluation:
+{
+  score,
+  mistakes,
+  feedback,
+  suggestions
+}
+
+I don't want to have the pistion api in my project dude 
+remove it fully
+
+Lab PDF submission via Cloudinary is not achieved yet dude
+Lab system — AI generation (Gemini) not achieved yet dude
