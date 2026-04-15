@@ -202,4 +202,102 @@ Rules:
   }
 };
 
-module.exports = { chat, generateQuizQuestions };
+// =============================================
+// POST /api/ai/teacher-chat — Teacher AI Assistant
+// =============================================
+const teacherChat = async (req, res) => {
+  try {
+    const { message, history = [], context = "general", courseContext } = req.body;
+
+    if (!message?.trim()) {
+      return res.status(400).json({ message: "Message is required" });
+    }
+
+    // Get course details if courseContext provided
+    let courseInfo = "";
+    if (courseContext) {
+      const course = await Course.findById(courseContext);
+      if (course && course.teacher.toString() === req.user._id.toString()) {
+        courseInfo = `
+The teacher is currently working on the course: "${course.title}" (${course.code})
+Department: ${course.department}
+Credits: ${course.credits}
+Semester: ${course.semester}
+Enrolled Students: ${course.enrolledCount || 0}
+Tailor your responses to be relevant to this course context.`;
+      }
+    }
+
+    // Build context-specific system prompts
+    const contextPrompts = {
+      general: "You are a helpful AI teaching assistant for university educators. Provide practical, professional advice for teaching at the university level.",
+      
+      lesson_planning: "You are an expert in curriculum design and lesson planning. Help teachers create engaging lesson plans with clear learning objectives, activities, and assessments. Suggest innovative teaching methods and provide structured lesson outlines.",
+      
+      assessment: "You are an assessment design specialist. Help teachers create fair, comprehensive assessments including quizzes, exams, rubrics, and grading strategies. Provide advice on formative vs summative assessment and how to measure student learning effectively.",
+      
+      student_support: "You are a student support specialist. Provide strategies for helping struggling students, fostering inclusive classrooms, addressing diverse learning needs, and maintaining student engagement. Offer advice on office hours, mentoring, and academic counseling.",
+      
+      content_generation: "You are a content creation expert. Help generate educational content including lecture slides, examples, case studies, practice problems, discussion prompts, and teaching materials. Be creative and pedagogically sound.",
+    };
+
+    const systemPrompt = `${contextPrompts[context] || contextPrompts.general}
+
+You are assisting ${req.user.fullName}, a university teacher in the ${req.user.department || "their department"}.
+
+${courseInfo}
+
+Guidelines:
+- Be helpful, practical, and professional
+- Provide specific, actionable advice
+- Use examples relevant to higher education
+- Keep responses concise but thorough
+- Be encouraging and supportive
+- If generating content, ensure it's appropriate for university level
+- Use bullet points and structured formats when helpful
+
+Respond in a friendly, collaborative tone as a peer teaching assistant.`;
+
+    // Build conversation history for Gemini
+    const geminiHistory = (history || [])
+      .slice(-10)
+      .map(msg => ({
+        role: msg.role === "assistant" ? "model" : "user",
+        parts: [{ text: msg.content }],
+      }));
+
+    // Create chat session
+    const geminiChat = ai.chats.create({
+      model: "gemini-2.5-flash-lite",
+      config: {
+        systemInstruction: systemPrompt,
+        maxOutputTokens: 1536,
+        temperature: 0.7,
+      },
+      history: geminiHistory,
+    });
+
+    // Send message and get response
+    const response = await geminiChat.sendMessage({
+      message: message.trim(),
+    });
+
+    const reply = response.text;
+
+    res.status(200).json({ reply });
+  } catch (error) {
+    console.error("Teacher chat error:", error);
+
+    if (error.message?.includes("API_KEY")) {
+      return res.status(500).json({ message: "AI service configuration error. Contact admin." });
+    }
+    if (error.message?.includes("quota") || error.message?.includes("rate")) {
+      return res.status(429).json({ message: "AI service is busy. Please try again in a moment." });
+    }
+
+    res.status(500).json({ message: "AI service error. Please try again." });
+  }
+};
+
+// Update the export at the bottom:
+module.exports = { chat, generateQuizQuestions, teacherChat };

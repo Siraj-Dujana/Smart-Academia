@@ -54,7 +54,8 @@ const AITutor = () => {
 
   const fetchCourses = async () => {
     try {
-      const res = await fetch(`${API}/api/courses/teacher`, {
+      // FIXED: Changed from /api/courses/teacher to /api/courses/my-courses
+      const res = await fetch(`${API}/api/courses/my-courses`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       const data = await res.json();

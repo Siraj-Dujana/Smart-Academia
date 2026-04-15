@@ -95,4 +95,32 @@ dude I have to follow the things:
 
 
 
+Looking at your codebase, I can see several issues. Let me analyze them systematically.Here's my analysis of all the issues and my recommendations:
+
+**Issues found:**
+
+1. `QuizManagement` and `LabManagement` tabs are redundant — labs and quizzes are already managed inside `LessonEditor`. These tabs should be removed from the sidebar.
+
+2. `QuizManagement.jsx` uses a different API structure (`/api/quizzes/course/:id` + manage endpoint) that conflicts with the lesson-linked quiz system in `quizController.js`.
+
+3. `LabManagement.jsx` uses `/api/labs/course/:id` and `/api/labs/:id` routes that don't exist — the actual routes are nested under `/api/courses/:courseId/lessons/:lessonId/lab`.
+
+4. The `server.js` is missing routes for `/api/labs` and `/api/students`.
+
+5. `QuizManagement.jsx` calls `/api/quizzes/${quiz._id}/manage` which doesn't exist.
+
+6. `AITutor.jsx` (teacher) calls `/api/ai/teacher-chat` which isn't registered in `aiRoutes.js`.
+
+7. `Announcements.jsx` calls `/api/announcements/...` routes that aren't in `server.js`.
+
+8. `StudentProgress.jsx` calls `/api/courses/${courseId}/students/progress` and `/api/students/${id}/progress/${courseId}` — these routes don't exist.
+
+9. `Dashboard.jsx` (teacher) calls `/api/courses/:id/student-progress` — doesn't exist.
+
+10. `Labs.jsx` (student) calls `/api/labs/student` — doesn't exist.
+
+The cleanest fix: remove `QuizManagement` and `LabManagement` from the teacher sidebar entirely, and fix the broken API calls. 
+Let me write the fixes:Let me provide all the fixes as code files:
+
+
 

@@ -2,9 +2,9 @@ import React, { useState, useEffect } from "react";
 import Dashboard        from "../components/dashboard/TeacherDashboard/Teacher Tabs/Dashboard";
 import CourseManagement from "../components/dashboard/TeacherDashboard/Teacher Tabs/CourseManagement";
 import LessonManagement from "../components/dashboard/TeacherDashboard/Teacher Tabs/LessonManagement";
-import QuizManagement   from "../components/dashboard/TeacherDashboard/Teacher Tabs/QuizManagement";
-import LabManagement    from "../components/dashboard/TeacherDashboard/Teacher Tabs/LabManagement";
-import LabSubmissions   from "../components/dashboard/TeacherDashboard/Teacher Tabs/LabSubmissions"; // NEW
+// REMOVED: import QuizManagement from ...
+// REMOVED: import LabManagement from ...
+import LabSubmissions   from "../components/dashboard/TeacherDashboard/Teacher Tabs/LabSubmissions";
 import StudentProgress  from "../components/dashboard/TeacherDashboard/Teacher Tabs/StudentProgress";
 import Announcements    from "../components/dashboard/TeacherDashboard/Teacher Tabs/Announcements";
 import AITutor          from "../components/dashboard/TeacherDashboard/Teacher Tabs/AITutor";
@@ -26,9 +26,9 @@ const TeacherDashboard = () => {
     { icon: "dashboard",    label: "Dashboard",         key: "dashboard"    },
     { icon: "book",         label: "Course Management", key: "courses"      },
     { icon: "menu_book",    label: "Lesson Management", key: "lessons"      },
-    { icon: "quiz",         label: "Quiz Management",   key: "quizzes"      },
-    { icon: "science",      label: "Lab Management",    key: "labs"         },
-    { icon: "grading",      label: "Grade Labs",        key: "lab-submissions" }, // NEW - Changed from "Lab Management" to "Grade Labs"
+    // REMOVED: { icon: "quiz", label: "Quiz Management", key: "quizzes" },
+    // REMOVED: { icon: "science", label: "Lab Management", key: "labs" },
+    { icon: "grading",      label: "Grade Labs",        key: "lab-submissions" },
     { icon: "bar_chart",    label: "Student Progress",  key: "progress"     },
     { icon: "campaign",     label: "Announcements",     key: "announcements"},
     { icon: "smart_toy",    label: "AI Tutor",          key: "ai-tutor"     },
@@ -50,15 +50,17 @@ const TeacherDashboard = () => {
       case "dashboard":     return <Dashboard />;
       case "courses":       return <CourseManagement />;
       case "lessons":       return <LessonManagement />;
-      case "quizzes":       return <QuizManagement />;
-      case "labs":          return <LabManagement />;
-      case "lab-submissions": return <LabSubmissions />; // NEW
+      // REMOVED: case "quizzes": return <QuizManagement />;
+      // REMOVED: case "labs": return <LabManagement />;
+      case "lab-submissions": return <LabSubmissions />;
       case "progress":      return <StudentProgress />;
       case "announcements": return <Announcements />;
       case "ai-tutor":      return <AITutor />;
       default:              return <Dashboard />;
     }
   };
+
+  // ... rest of the component remains exactly the same
 
   const displayName = user.fullName || "Teacher";
   const userInitial = displayName.charAt(0).toUpperCase();
