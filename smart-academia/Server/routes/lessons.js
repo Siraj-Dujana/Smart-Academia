@@ -26,6 +26,7 @@ const {
   aiEvaluateSubmission,
   submitLab,
   getMySubmission,
+  getLabByLesson,       // ✅ NEW
 } = require("../controllers/labController");
 
 const { protect, authorize } = require("../middleware/authMiddleware");
@@ -39,7 +40,7 @@ const pdfStorage = multer.diskStorage({
 
 const pdfUpload = multer({
   storage: pdfStorage,
-  limits:  { fileSize: 20 * 1024 * 1024 }, // 20 MB max
+  limits:  { fileSize: 20 * 1024 * 1024 },
   fileFilter: (req, file, cb) => {
     if (file.mimetype === "application/pdf") {
       cb(null, true);
@@ -49,7 +50,6 @@ const pdfUpload = multer({
   },
 });
 
-// Multer error handler — must be 4-argument middleware
 const handlePdfUploadError = (err, req, res, next) => {
   if (err instanceof multer.MulterError) {
     if (err.code === "LIMIT_FILE_SIZE")
@@ -82,6 +82,10 @@ router.get(   "/:id/content", protect, authorize("student"), getLessonContent);
 // LAB routes — TEACHER
 // ════════════════════════════════════════════════════════════
 
+// ✅ GET lab for a lesson (used by teacher editor & student lab view)
+router.get("/:lessonId/lab",
+  protect, getLabByLesson);
+
 // Create lab manually
 router.post("/:lessonId/lab",
   protect, authorize("teacher"), createLab);
@@ -90,7 +94,7 @@ router.post("/:lessonId/lab",
 router.post("/:lessonId/lab/ai-generate",
   protect, authorize("teacher"), aiGenerateLab);
 
-// AI explain lab (Lab Assistant)
+// AI explain lab
 router.post("/:lessonId/lab/:labId/explain",
   protect, authorize("teacher"), aiExplainLab);
 
@@ -119,7 +123,6 @@ router.post("/:lessonId/lab/:labId/submissions/:submissionId/ai-evaluate",
 // ════════════════════════════════════════════════════════════
 
 // Submit lab (text answer + optional PDF)
-// pdfUpload.single("pdf") processes the multipart/form-data
 router.post("/:lessonId/lab/:labId/submit",
   protect, authorize("student"),
   pdfUpload.single("pdf"), handlePdfUploadError,

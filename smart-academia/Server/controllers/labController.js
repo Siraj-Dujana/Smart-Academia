@@ -8,11 +8,28 @@ const { checkAndUnlockNext } = require("./lessonController");
 const { GoogleGenAI } = require("@google/genai");
 
 // ─────────────────────────────────────────────────────────────
+// SHARED: Get lab for a lesson (teacher editor + student view)
+// GET /api/courses/:courseId/lessons/:lessonId/lab
+// ─────────────────────────────────────────────────────────────
+const getLabByLesson = async (req, res) => {
+  try {
+    const { lessonId } = req.params;
+    const lab = await Lab.findOne({ lesson: lessonId });
+
+    if (!lab) {
+      return res.status(200).json({ lab: null });
+    }
+
+    res.status(200).json({ lab });
+  } catch (err) {
+    console.error("getLabByLesson error:", err.message);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+// ─────────────────────────────────────────────────────────────
 // TEACHER: Create Lab manually
 // POST /api/courses/:courseId/lessons/:lessonId/lab
-// Body: { title, description, outputExample, difficulty, labType,
-//         instructions, starterCode, language, testCases,
-//         totalMarks, dueDate, isPublished }
 // ─────────────────────────────────────────────────────────────
 const createLab = async (req, res) => {
   try {
@@ -32,7 +49,6 @@ const createLab = async (req, res) => {
     if (lesson.course.teacher.toString() !== req.user._id.toString())
       return res.status(403).json({ message: "Not your lesson" });
 
-    // One lab per lesson — replace if exists
     await Lab.deleteOne({ lesson: lessonId });
 
     const lab = await Lab.create({
@@ -62,10 +78,8 @@ const createLab = async (req, res) => {
 };
 
 // ─────────────────────────────────────────────────────────────
-// TEACHER: AI Generate Lab (FIXED - handles array instructions)
+// TEACHER: AI Generate Lab
 // POST /api/courses/:courseId/lessons/:lessonId/lab/ai-generate
-// Body: { topic, difficulty, labType }
-// Returns: { title, description, outputExample, difficulty }
 // ─────────────────────────────────────────────────────────────
 const aiGenerateLab = async (req, res) => {
   try {
@@ -126,14 +140,12 @@ Return ONLY a valid JSON object. No markdown, no explanation, no code blocks. Ju
     try {
       generated = JSON.parse(text);
     } catch {
-      console.error("AI JSON parse failed. Raw text:", text.substring(0, 300));
       return res.status(500).json({ message: "AI returned invalid format. Try again." });
     }
 
     if (!generated.title?.trim() || !generated.description?.trim())
       return res.status(500).json({ message: "AI response incomplete. Try again." });
 
-    // ✅ FIX: Convert instructions to string if it's an array
     let instructions = generated.instructions || "";
     if (Array.isArray(instructions)) {
       instructions = instructions.join("\n");
@@ -142,7 +154,6 @@ Return ONLY a valid JSON object. No markdown, no explanation, no code blocks. Ju
       instructions = String(instructions);
     }
 
-    // Save — replace any existing lab for this lesson
     await Lab.deleteOne({ lesson: lessonId });
 
     const lab = await Lab.create({
@@ -163,10 +174,7 @@ Return ONLY a valid JSON object. No markdown, no explanation, no code blocks. Ju
       aiGenerated:   true,
     });
 
-    res.status(201).json({
-      message: `Lab generated: "${lab.title}"`,
-      lab,
-    });
+    res.status(201).json({ message: `Lab generated: "${lab.title}"`, lab });
   } catch (err) {
     console.error("aiGenerateLab error:", err.message);
     res.status(500).json({ message: "AI generation failed: " + err.message });
@@ -174,9 +182,7 @@ Return ONLY a valid JSON object. No markdown, no explanation, no code blocks. Ju
 };
 
 // ─────────────────────────────────────────────────────────────
-// TEACHER: AI Explain Lab (Lab Assistant)
-// POST /api/courses/:courseId/lessons/:lessonId/lab/:labId/explain
-// Returns: { steps, concepts, tips }
+// TEACHER: AI Explain Lab
 // ─────────────────────────────────────────────────────────────
 const aiExplainLab = async (req, res) => {
   try {
@@ -240,7 +246,6 @@ Return ONLY valid JSON. No markdown, no explanation outside the JSON.
 
 // ─────────────────────────────────────────────────────────────
 // TEACHER: Update Lab
-// PUT /api/courses/:courseId/lessons/:lessonId/lab/:labId
 // ─────────────────────────────────────────────────────────────
 const updateLab = async (req, res) => {
   try {
@@ -268,7 +273,6 @@ const updateLab = async (req, res) => {
 
 // ─────────────────────────────────────────────────────────────
 // TEACHER: Delete Lab
-// DELETE /api/courses/:courseId/lessons/:lessonId/lab/:labId
 // ─────────────────────────────────────────────────────────────
 const deleteLab = async (req, res) => {
   try {
@@ -279,7 +283,6 @@ const deleteLab = async (req, res) => {
     if (lab.lesson.course.teacher.toString() !== req.user._id.toString())
       return res.status(403).json({ message: "Not your lab" });
 
-    // Delete all submissions for this lab
     await LabSubmission.deleteMany({ lab: lab._id });
     await lab.deleteOne();
 
@@ -292,7 +295,6 @@ const deleteLab = async (req, res) => {
 
 // ─────────────────────────────────────────────────────────────
 // TEACHER: Get all submissions for a lab
-// GET /api/courses/:courseId/lessons/:lessonId/lab/:labId/submissions
 // ─────────────────────────────────────────────────────────────
 const getLabSubmissions = async (req, res) => {
   try {
@@ -309,8 +311,6 @@ const getLabSubmissions = async (req, res) => {
 
 // ─────────────────────────────────────────────────────────────
 // TEACHER: Grade a submission
-// PUT /api/courses/:courseId/lessons/:lessonId/lab/:labId/submissions/:submissionId/grade
-// Body: { marks, feedback }
 // ─────────────────────────────────────────────────────────────
 const gradeSubmission = async (req, res) => {
   try {
@@ -348,8 +348,6 @@ const gradeSubmission = async (req, res) => {
 
 // ─────────────────────────────────────────────────────────────
 // TEACHER: AI Evaluate a submission
-// POST /api/courses/:courseId/lessons/:lessonId/lab/:labId/submissions/:submissionId/ai-evaluate
-// Returns: { score, mistakes, feedback, suggestions }
 // ─────────────────────────────────────────────────────────────
 const aiEvaluateSubmission = async (req, res) => {
   try {
@@ -368,7 +366,6 @@ const aiEvaluateSubmission = async (req, res) => {
       return res.status(400).json({ message: "GEMINI_API_KEY not set in .env" });
 
     const lab = submission.lab;
-
     const submittedContent = submission.answer || "(No text answer — student uploaded a PDF)";
 
     const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
@@ -424,64 +421,37 @@ Evaluate the student's submission strictly and fairly. Return ONLY valid JSON. N
 };
 
 // ─────────────────────────────────────────────────────────────
-// STUDENT: Submit lab — text answer + optional PDF upload
-// POST /api/courses/:courseId/lessons/:lessonId/lab/:labId/submit
-// Content-Type: multipart/form-data
-// Fields: answer (text, optional), pdf (file, optional)
-// ─────────────────────────────────────────────────────────────
-// ─────────────────────────────────────────────────────────────
-// STUDENT: Submit lab — text answer + optional PDF upload
-// POST /api/courses/:courseId/lessons/:lessonId/lab/:labId/submit
-// Content-Type: multipart/form-data
-// Fields: answer (text, optional), file (file, optional)
+// STUDENT: Submit lab
 // ─────────────────────────────────────────────────────────────
 const submitLab = async (req, res) => {
   try {
     const { courseId, lessonId, labId } = req.params;
-    
-    console.log("=== SUBMIT LAB ===");
-    console.log("Course ID:", courseId);
-    console.log("Lesson ID:", lessonId);
-    console.log("Lab ID:", labId);
-    console.log("Has file:", !!req.file);
-    console.log("File field name:", req.file?.fieldname);
-    console.log("Answer:", req.body.answer);
-    
+
     const lab = await Lab.findById(labId);
-    if (!lab) {
-      console.log("Lab not found");
+    if (!lab)
       return res.status(404).json({ message: "Lab not found" });
-    }
-    if (!lab.isPublished) {
-      console.log("Lab not published");
+    if (!lab.isPublished)
       return res.status(400).json({ message: "Lab is not available" });
-    }
 
     const answer = req.body.answer?.trim() || "";
     let pdfUrl = null;
     let pdfFileName = null;
     let pdfPublicId = null;
 
-    // ✅ Check for file in req.file (multer puts it here)
     if (req.file) {
-      pdfUrl = req.file.path || req.file.secure_url;
+      pdfUrl      = req.file.path || req.file.secure_url;
       pdfFileName = req.file.originalname;
       pdfPublicId = req.file.filename || req.file.public_id;
-      console.log("PDF uploaded:", pdfUrl);
     }
 
-    // Must have at least answer text or a PDF
-    if (!answer && !pdfUrl) {
-      console.log("No answer and no PDF");
+    if (!answer && !pdfUrl)
       return res.status(400).json({ message: "Please write an answer or upload a PDF" });
-    }
 
-    // If student is resubmitting and had an old PDF, delete it from Cloudinary
+    // Delete old PDF from Cloudinary if resubmitting
     const existing = await LabSubmission.findOne({ lab: labId, student: req.user._id });
     if (existing?.pdfPublicId && pdfUrl) {
       try {
         await cloudinary.uploader.destroy(existing.pdfPublicId, { resource_type: "raw" });
-        console.log("Old PDF deleted");
       } catch (err) {
         console.log("Failed to delete old PDF:", err.message);
       }
@@ -496,33 +466,31 @@ const submitLab = async (req, res) => {
           pdfFileName,
           pdfPublicId,
           submittedAt: new Date(),
-          marks: null,
-          feedback: null,
-          status: "submitted",
-          gradedAt: null,
-          gradedBy: null,
+          marks:       null,
+          feedback:    null,
+          status:      "submitted",
+          gradedAt:    null,
+          gradedBy:    null,
         },
         $setOnInsert: {
-          lab: labId,
-          lesson: lessonId,
-          course: courseId,
+          lab:     labId,
+          lesson:  lessonId,
+          course:  courseId,
           student: req.user._id,
         },
       },
       { upsert: true, new: true }
     );
 
-    console.log("Submission saved:", submission._id);
-
-    // Mark lab as completed and fire lesson unlock check
+    // Mark lab as completed in lesson progress
     await LessonProgress.findOneAndUpdate(
       { student: req.user._id, lesson: lessonId },
       {
         $set: { labCompleted: true },
         $setOnInsert: {
           student: req.user._id,
-          lesson: lessonId,
-          course: courseId,
+          lesson:  lessonId,
+          course:  courseId,
         },
       },
       { upsert: true }
@@ -530,15 +498,15 @@ const submitLab = async (req, res) => {
 
     await checkAndUnlockNext(req.user._id, lessonId, courseId);
 
-    res.status(200).json({ 
-      message: "Lab submitted successfully", 
+    res.status(200).json({
+      message: "Lab submitted successfully",
       submission: {
-        _id: submission._id,
-        answer: submission.answer,
-        pdfUrl: submission.pdfUrl,
-        status: submission.status,
-        submittedAt: submission.submittedAt
-      }
+        _id:         submission._id,
+        answer:      submission.answer,
+        pdfUrl:      submission.pdfUrl,
+        status:      submission.status,
+        submittedAt: submission.submittedAt,
+      },
     });
   } catch (err) {
     console.error("submitLab error:", err.message);
@@ -548,7 +516,6 @@ const submitLab = async (req, res) => {
 
 // ─────────────────────────────────────────────────────────────
 // STUDENT: Get my submission for a lab
-// GET /api/courses/:courseId/lessons/:lessonId/lab/:labId/my-submission
 // ─────────────────────────────────────────────────────────────
 const getMySubmission = async (req, res) => {
   try {
@@ -564,6 +531,7 @@ const getMySubmission = async (req, res) => {
 };
 
 module.exports = {
+  getLabByLesson,
   createLab,
   aiGenerateLab,
   aiExplainLab,

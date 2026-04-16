@@ -44,11 +44,12 @@ const Labs = () => {
   const fetchLabsForCourse = async (courseId) => {
     setIsLoading(true);
     try {
+      // Step 1: get lessons for this course
       const lessonsRes = await fetch(`${API}/api/courses/${courseId}/lessons`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       const lessonsData = await lessonsRes.json();
-      
+
       if (!lessonsRes.ok) {
         setError(lessonsData.message);
         setIsLoading(false);
@@ -56,19 +57,36 @@ const Labs = () => {
       }
 
       const lessons = lessonsData.lessons || [];
-      
+
+      // Step 2: for each lesson, fetch its lab via the GET /lab endpoint ✅ FIXED
       const labsPromises = lessons.map(async (lesson) => {
         try {
-          const labRes = await fetch(`${API}/api/courses/${courseId}/lessons/${lesson._id}/lab`, {
-            headers: { Authorization: `Bearer ${token}` },
-          });
+          const labRes = await fetch(
+            `${API}/api/courses/${courseId}/lessons/${lesson._id}/lab`,
+            { headers: { Authorization: `Bearer ${token}` } }
+          );
           const labData = await labRes.json();
+
           if (labRes.ok && labData.lab) {
+            // Step 3: fetch student's own submission status
+            let submissionStatus = null;
+            try {
+              const subRes = await fetch(
+                `${API}/api/courses/${courseId}/lessons/${lesson._id}/lab/${labData.lab._id}/my-submission`,
+                { headers: { Authorization: `Bearer ${token}` } }
+              );
+              const subData = await subRes.json();
+              if (subRes.ok && subData.submission) {
+                submissionStatus = subData.submission.status;
+              }
+            } catch { /* ignore */ }
+
             return {
               ...labData.lab,
               lessonTitle: lesson.title,
-              lessonId: lesson._id,
-              courseId: courseId,
+              lessonId:    lesson._id,
+              courseId:    courseId,
+              status:      submissionStatus,
             };
           }
           return null;
@@ -78,9 +96,7 @@ const Labs = () => {
       });
 
       const labsResults = await Promise.all(labsPromises);
-      const validLabs = labsResults.filter(lab => lab !== null);
-      
-      setLabs(validLabs);
+      setLabs(labsResults.filter(Boolean));
     } catch {
       setError("Cannot connect to server");
     } finally {
@@ -96,23 +112,18 @@ const Labs = () => {
   const getStatusColor = (status, dueDate) => {
     const now = new Date();
     const due = dueDate ? new Date(dueDate) : null;
-    
-    if (status === "submitted" || status === "graded") {
+    if (status === "submitted" || status === "graded")
       return "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300";
-    }
-    if (due && due < now) {
+    if (due && due < now)
       return "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300";
-    }
-    if (status === "started") {
+    if (status === "started")
       return "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300";
-    }
     return "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300";
   };
 
   const getStatusIcon = (status, dueDate) => {
     const now = new Date();
     const due = dueDate ? new Date(dueDate) : null;
-    
     if (status === "submitted" || status === "graded") return "check_circle";
     if (due && due < now) return "warning";
     if (status === "started") return "pending";
@@ -122,7 +133,6 @@ const Labs = () => {
   const getStatusText = (status, dueDate) => {
     const now = new Date();
     const due = dueDate ? new Date(dueDate) : null;
-    
     if (status === "submitted") return "Submitted";
     if (status === "graded") return "Graded";
     if (due && due < now) return "Overdue";
@@ -179,6 +189,7 @@ const Labs = () => {
         </div>
       )}
 
+      {/* Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         {[
           { icon: "science", label: "Total Labs", value: labs.length, color: "bg-blue-100 dark:bg-blue-900/30 text-blue-600" },
@@ -233,9 +244,8 @@ const Labs = () => {
 
               <div className="p-4 sm:p-5">
                 <p className="text-gray-600 dark:text-gray-400 text-xs sm:text-sm line-clamp-2 mb-3">
-                  {lab.description || "Complete the programming tasks and submit your code for evaluation."}
+                  {lab.description || "Complete the lab tasks and submit your work for evaluation."}
                 </p>
-
                 <div className="flex flex-wrap gap-3 text-xs text-gray-500">
                   <div className="flex items-center gap-1">
                     <span className="material-symbols-outlined text-sm">code</span>
@@ -251,7 +261,7 @@ const Labs = () => {
               <div className="border-t border-gray-100 dark:border-gray-700 px-4 sm:px-5 py-3">
                 <button className="w-full flex items-center justify-center gap-2 text-xs sm:text-sm font-medium px-3 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-all hover:scale-105">
                   <span className="material-symbols-outlined text-sm">play_arrow</span>
-                  Start Lab
+                  {lab.status === "submitted" || lab.status === "graded" ? "View Lab" : "Start Lab"}
                 </button>
               </div>
             </div>
@@ -259,12 +269,8 @@ const Labs = () => {
         </div>
       ) : (
         <div className="text-center py-12 sm:py-16 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700">
-          <span className="material-symbols-outlined text-5xl sm:text-6xl text-gray-300 dark:text-gray-600 mb-4">
-            science
-          </span>
-          <h3 className="text-base sm:text-lg font-medium text-gray-900 dark:text-white mb-2">
-            No Labs Available
-          </h3>
+          <span className="material-symbols-outlined text-5xl sm:text-6xl text-gray-300 dark:text-gray-600 mb-4">science</span>
+          <h3 className="text-base sm:text-lg font-medium text-gray-900 dark:text-white mb-2">No Labs Available</h3>
           <p className="text-sm text-gray-500 dark:text-gray-400">
             {courses.length === 0 ? "Enroll in a course to access labs" : "No labs have been created for your courses yet"}
           </p>
@@ -283,10 +289,10 @@ const Labs = () => {
         <div className="flex items-start gap-3">
           <span className="material-symbols-outlined text-blue-600 text-lg">info</span>
           <div className="flex-1">
-            <h4 className="text-sm font-semibold text-blue-800 dark:text-blue-300 mb-1">About Programming Labs</h4>
+            <h4 className="text-sm font-semibold text-blue-800 dark:text-blue-300 mb-1">About Labs</h4>
             <p className="text-xs sm:text-sm text-blue-700 dark:text-blue-400">
-              Labs are practical coding assignments that help you apply concepts learned in lectures. 
-              Submit your code for evaluation and receive feedback from your instructor.
+              Labs are practical assignments that help you apply concepts from your lessons.
+              Submit your work to receive feedback and grades from your instructor.
             </p>
           </div>
         </div>
