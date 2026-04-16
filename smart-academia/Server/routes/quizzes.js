@@ -5,23 +5,34 @@ const {
   addQuestion, getQuestions, deleteQuestion,
   aiGenerateQuestions,
   getMyAttempts, submitQuiz,
+  getStudentQuizzesByCourse,
+  startQuizAttempt,
+  getMyResults,
 } = require("../controllers/quizController");
 const { protect, authorize } = require("../middleware/authMiddleware");
 
-// Teacher
-router.post("/",                                  protect, authorize("teacher"), createQuiz);
-router.get("/",                                   protect, authorize("teacher"), getQuizzes);
-router.put("/:quizId",                            protect, authorize("teacher"), updateQuiz);
-router.delete("/:quizId",                         protect, authorize("teacher"), deleteQuiz);
-router.post("/:quizId/questions",                 protect, authorize("teacher"), addQuestion);
-router.delete("/:quizId/questions/:questionId",   protect, authorize("teacher"), deleteQuestion);
-router.post("/:quizId/ai-generate",               protect, authorize("teacher"), aiGenerateQuestions);
+// ── TEACHER ─────────────────────────────────────────────────
+router.post("/",                                protect, authorize("teacher"), createQuiz);
+router.get("/",                                 protect, authorize("teacher"), getQuizzes);
+router.put("/:quizId",                          protect, authorize("teacher"), updateQuiz);
+router.delete("/:quizId",                       protect, authorize("teacher"), deleteQuiz);
+router.post("/:quizId/questions",               protect, authorize("teacher"), addQuestion);
+router.delete("/:quizId/questions/:questionId", protect, authorize("teacher"), deleteQuestion);
+router.post("/:quizId/ai-generate",             protect, authorize("teacher"), aiGenerateQuestions);
 
-// Shared (both can get questions)
-router.get("/:quizId/questions",                  protect, getQuestions);
+// ── SHARED (both roles can get questions) ───────────────────
+router.get("/:quizId/questions",                protect, getQuestions);
 
-// Student
-router.get("/:quizId/my-attempts",                protect, authorize("student"), getMyAttempts);
-router.post("/:quizId/submit",                    protect, authorize("student"), submitQuiz);
+// ── STUDENT ──────────────────────────────────────────────────
+// Get all quizzes for a course (student view with attempt data)
+router.get("/student/course/:courseId",         protect, authorize("student"), getStudentQuizzesByCourse);
+// Start a new attempt
+router.post("/:quizId/attempt",                 protect, authorize("student"), startQuizAttempt);
+// Submit answers (uses attemptId in body)
+router.post("/submit",                          protect, authorize("student"), submitQuiz);
+// Get my past attempts for a quiz
+router.get("/:quizId/my-attempts",              protect, authorize("student"), getMyAttempts);
+// Get best result details for a quiz
+router.get("/:quizId/my-results",               protect, authorize("student"), getMyResults);
 
 module.exports = router;

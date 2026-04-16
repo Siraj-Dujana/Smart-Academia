@@ -9,14 +9,16 @@ app.use(cors({ origin: ["http://localhost:5173", "http://localhost:3000"] }));
 app.use(express.json());
 
 // Routes
-app.use("/api/auth",        require("./routes/auth"));
-app.use("/api/otp",         require("./routes/otp"));
-app.use("/api/quizzes",     require("./routes/quizzes"));
-app.use("/api/admin",       require("./routes/admin"));
-app.use("/api/setup",       require("./setup/setupRoute"));
-app.use("/api/ai",          require("./ai/aiRoutes"));
-app.use("/api/assignments", require("./routes/assignments"));
-app.use("/api/courses",     require("./routes/courses"));
+app.use("/api/auth",          require("./routes/auth"));
+app.use("/api/otp",           require("./routes/otp"));
+app.use("/api/quizzes",       require("./routes/quizzes"));
+app.use("/api/admin",         require("./routes/admin"));
+app.use("/api/setup",         require("./setup/setupRoute"));
+app.use("/api/ai",            require("./ai/aiRoutes"));
+app.use("/api/assignments",   require("./routes/assignments"));
+app.use("/api/courses",       require("./routes/courses"));
+app.use("/api/announcements", require("./routes/announcements")); // ✅ ADDED
+app.use("/api/student",       require("./routes/student"));       // ✅ ADDED
 app.use("/api/courses/:courseId/lessons", require("./routes/lessons"));
 
 app.get("/", (req, res) => res.json({ message: "SmartAcademia API running" }));
