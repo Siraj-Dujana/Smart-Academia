@@ -20,6 +20,9 @@ const { protect, authorize } = require("../middleware/authMiddleware");
 // ===== PUBLIC =====
 router.get("/published", getAllPublishedCourses);
 
+//new route added
+router.get("/teacher", protect, authorize("teacher"), getTeacherCourses);
+
 // ===== STUDENT =====
 router.get("/enrolled",      protect, authorize("student"), getEnrolledCourses);
 router.post("/:id/enroll",   protect, authorize("student"), enrollCourse);

@@ -1,49 +1,8 @@
-We are currently working on ONE module:
-👉 Lab Management Module
-
-## 🔧 LAB MODULE ENHANCEMENTS
-
-### 1. Teacher Lab Creation
-- Manual lab creation:
-  - title
-  - description
-  - outputExample
-
-- AI Auto Generate Lab:
-  - Input: topic
-  - Use Gemini API:
-    model: gemini-2.5-flash-lite from @google/genai
-  - Output:
-    - title
-    - description
-    - outputExample
-  - Add difficulty:
-    - easy
-    - medium
-    - hard
-
----
-
-### 2. Student Submission System
-- Upload PDF (code + screenshots)
-- Use Multer + Cloudinary
-- Store:
-  - studentId
-  - labId
-  - fileUrl (secure_url)
-
----
-
-### 3. Manual Evaluation System
-- Teacher can:
-  - view submissions
-  - assign marks
-  - add feedback
-
----
 
 
-## 🧠 AI FEATURES 
+
+there are two tabs in teacher which are hard coded system: student progress and dashboard
+3. ## 🧠 AI FEATURES 
 
 ### AI Lab Assistant
 - Explain lab in simple steps
@@ -85,42 +44,89 @@ Evaluation:
   suggestions
 }
 
+4.:5000/api/quizzes/69e21f595a5a4f6275793a3c/submit:1 Failed to load resource: the server responded with a status of 404 (Not Found) :5000/api/quizzes/69e21f595a5a4f6275793a3c/submit:1 Failed to load resource: the server responded with a status of 404 (Not Found) :5000/api/quizzes/69e21f595a5a4f6275793a3c/submit:1 Failed to load resource: the server responded with a status of 404 (Not Found)
 
+there is a problem sindide lesson quiz talking and the quiz management
 
-dude I have to follow the things:
-1. update the UIS as well
-2. Lab PDF submission via Cloudinary is not achieved yet dude
-3. Lab system — AI generation (Gemini) not achieved yet dude
-4. I don't want judge0 api as well dude
+> server@1.0.0 dev
+> nodemon server.js
 
+[nodemon] 3.1.14
+[nodemon] to restart at any time, enter `rs`
+[nodemon] watching path(s): *.*
+[nodemon] watching extensions: js,mjs,cjs,json
+[nodemon] starting `node server.js`
+[dotenv@17.3.1] injecting env (11) from .env -- tip: 🔐 prevent committing .env to code: https://dotenvx.com/precommit
+MongoDB connected
+Server running on port 5000
+PS E:\FYP\Smart-Academia\smart-academia\Server> npm run dev
 
+> server@1.0.0 dev
+> nodemon server.js
 
-Looking at your codebase, I can see several issues. Let me analyze them systematically.Here's my analysis of all the issues and my recommendations:
-
-**Issues found:**
-
-1. `QuizManagement` and `LabManagement` tabs are redundant — labs and quizzes are already managed inside `LessonEditor`. These tabs should be removed from the sidebar.
-
-2. `QuizManagement.jsx` uses a different API structure (`/api/quizzes/course/:id` + manage endpoint) that conflicts with the lesson-linked quiz system in `quizController.js`.
-
-3. `LabManagement.jsx` uses `/api/labs/course/:id` and `/api/labs/:id` routes that don't exist — the actual routes are nested under `/api/courses/:courseId/lessons/:lessonId/lab`.
-
-4. The `server.js` is missing routes for `/api/labs` and `/api/students`.
-
-5. `QuizManagement.jsx` calls `/api/quizzes/${quiz._id}/manage` which doesn't exist.
-
-6. `AITutor.jsx` (teacher) calls `/api/ai/teacher-chat` which isn't registered in `aiRoutes.js`.
-
-7. `Announcements.jsx` calls `/api/announcements/...` routes that aren't in `server.js`.
-
-8. `StudentProgress.jsx` calls `/api/courses/${courseId}/students/progress` and `/api/students/${id}/progress/${courseId}` — these routes don't exist.
-
-9. `Dashboard.jsx` (teacher) calls `/api/courses/:id/student-progress` — doesn't exist.
-
-10. `Labs.jsx` (student) calls `/api/labs/student` — doesn't exist.
-
-The cleanest fix: remove `QuizManagement` and `LabManagement` from the teacher sidebar entirely, and fix the broken API calls. 
-Let me write the fixes:Let me provide all the fixes as code files:
-
-
-
+[nodemon] 3.1.14
+[nodemon] to restart at any time, enter `rs`
+[nodemon] watching path(s): *.*
+[nodemon] watching extensions: js,mjs,cjs,json
+[nodemon] starting `node server.js`
+[dotenv@17.3.1] injecting env (11) from .env -- tip: 🔐 encrypt with Dotenvx: https://dotenvx.com
+MongoDB connected
+Server running on port 5000
+Get course by id error: CastError: Cast to ObjectId failed for value "teacher" (type string) at path "_id" for model "Course"
+    at SchemaObjectId.cast (E:\FYP\Smart-Academia\smart-academia\Server\node_modules\mongoose\lib\schema\objectId.js:253:11)
+    at SchemaType.applySetters (E:\FYP\Smart-Academia\smart-academia\Server\node_modules\mongoose\lib\schemaType.js:1280:12)
+    at SchemaType.castForQuery (E:\FYP\Smart-Academia\smart-academia\Server\node_modules\mongoose\lib\schemaType.js:1706:17)
+    at cast (E:\FYP\Smart-Academia\smart-academia\Server\node_modules\mongoose\lib\cast.js:390:32)
+    at Query.cast (E:\FYP\Smart-Academia\smart-academia\Server\node_modules\mongoose\lib\query.js:5016:12)
+    at Query._castConditions (E:\FYP\Smart-Academia\smart-academia\Server\node_modules\mongoose\lib\query.js:2380:10)
+    at model.Query._findOne (E:\FYP\Smart-Academia\smart-academia\Server\node_modules\mongoose\lib\query.js:2708:8)
+    at model.Query.exec (E:\FYP\Smart-Academia\smart-academia\Server\node_modules\mongoose\lib\query.js:4627:80)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at async getCourseById (E:\FYP\Smart-Academia\smart-academia\Server\controllers\courseController.js:258:20) {
+  stringValue: '"teacher"',
+  messageFormat: undefined,
+  kind: 'ObjectId',
+  value: 'teacher',
+  path: '_id',
+  reason: BSONError: input must be a 24 character hex string, 12 byte Uint8Array, or an integer
+      at new ObjectId (E:\FYP\Smart-Academia\smart-academia\Server\node_modules\bson\lib\bson.cjs:2565:23)
+      at castObjectId (E:\FYP\Smart-Academia\smart-academia\Server\node_modules\mongoose\lib\cast\objectid.js:25:12)
+      at SchemaObjectId.cast (E:\FYP\Smart-Academia\smart-academia\Server\node_modules\mongoose\lib\schema\objectId.js:251:12)
+      at SchemaType.applySetters (E:\FYP\Smart-Academia\smart-academia\Server\node_modules\mongoose\lib\schemaType.js:1280:12)
+      at SchemaType.castForQuery (E:\FYP\Smart-Academia\smart-academia\Server\node_modules\mongoose\lib\schemaType.js:1706:17)
+      at cast (E:\FYP\Smart-Academia\smart-academia\Server\node_modules\mongoose\lib\cast.js:390:32)
+      at Query.cast (E:\FYP\Smart-Academia\smart-academia\Server\node_modules\mongoose\lib\query.js:5016:12)
+      at Query._castConditions (E:\FYP\Smart-Academia\smart-academia\Server\node_modules\mongoose\lib\query.js:2380:10)
+      at model.Query._findOne (E:\FYP\Smart-Academia\smart-academia\Server\node_modules\mongoose\lib\query.js:2708:8)
+      at model.Query.exec (E:\FYP\Smart-Academia\smart-academia\Server\node_modules\mongoose\lib\query.js:4627:80),
+  valueType: 'string'
+}
+Get course by id error: CastError: Cast to ObjectId failed for value "teacher" (type string) at path "_id" for model "Course"
+    at SchemaObjectId.cast (E:\FYP\Smart-Academia\smart-academia\Server\node_modules\mongoose\lib\schema\objectId.js:253:11)
+    at SchemaType.applySetters (E:\FYP\Smart-Academia\smart-academia\Server\node_modules\mongoose\lib\schemaType.js:1280:12)
+    at SchemaType.castForQuery (E:\FYP\Smart-Academia\smart-academia\Server\node_modules\mongoose\lib\schemaType.js:1706:17)
+    at cast (E:\FYP\Smart-Academia\smart-academia\Server\node_modules\mongoose\lib\cast.js:390:32)
+    at Query.cast (E:\FYP\Smart-Academia\smart-academia\Server\node_modules\mongoose\lib\query.js:5016:12)
+    at Query._castConditions (E:\FYP\Smart-Academia\smart-academia\Server\node_modules\mongoose\lib\query.js:2380:10)
+    at model.Query._findOne (E:\FYP\Smart-Academia\smart-academia\Server\node_modules\mongoose\lib\query.js:2708:8)
+    at model.Query.exec (E:\FYP\Smart-Academia\smart-academia\Server\node_modules\mongoose\lib\query.js:4627:80)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at async getCourseById (E:\FYP\Smart-Academia\smart-academia\Server\controllers\courseController.js:258:20) {
+  stringValue: '"teacher"',
+  messageFormat: undefined,
+  kind: 'ObjectId',
+  value: 'teacher',
+  path: '_id',
+  reason: BSONError: input must be a 24 character hex string, 12 byte Uint8Array, or an integer
+      at new ObjectId (E:\FYP\Smart-Academia\smart-academia\Server\node_modules\bson\lib\bson.cjs:2565:23)
+      at castObjectId (E:\FYP\Smart-Academia\smart-academia\Server\node_modules\mongoose\lib\cast\objectid.js:25:12)
+      at SchemaObjectId.cast (E:\FYP\Smart-Academia\smart-academia\Server\node_modules\mongoose\lib\schema\objectId.js:251:12)
+      at SchemaType.applySetters (E:\FYP\Smart-Academia\smart-academia\Server\node_modules\mongoose\lib\schemaType.js:1280:12)
+      at SchemaType.castForQuery (E:\FYP\Smart-Academia\smart-academia\Server\node_modules\mongoose\lib\schemaType.js:1706:17)
+      at cast (E:\FYP\Smart-Academia\smart-academia\Server\node_modules\mongoose\lib\cast.js:390:32)
+      at Query.cast (E:\FYP\Smart-Academia\smart-academia\Server\node_modules\mongoose\lib\query.js:5016:12)
+      at Query._castConditions (E:\FYP\Smart-Academia\smart-academia\Server\node_modules\mongoose\lib\query.js:2380:10)
+      at model.Query._findOne (E:\FYP\Smart-Academia\smart-academia\Server\node_modules\mongoose\lib\query.js:2708:8)
+      at model.Query.exec (E:\FYP\Smart-Academia\smart-academia\Server\node_modules\mongoose\lib\query.js:4627:80),
+  valueType: 'string'
+}

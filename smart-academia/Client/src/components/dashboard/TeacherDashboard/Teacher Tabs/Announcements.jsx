@@ -38,6 +38,10 @@ const Announcements = () => {
       const res = await fetch(`${API}/api/courses/teacher`, {
         headers: { Authorization: `Bearer ${token}` },
       });
+      
+        //   const res= await  fetch(`${API}/api/courses/teacher`, {
+  // headers: { Authorization: `Bearer ${token}` }
+// })
       const data = await res.json();
       if (res.ok) {
         setCourses(data.courses || []);

@@ -6,31 +6,24 @@ const API = import.meta.env.VITE_API_URL || "http://localhost:5000";
 const StudentProgress = () => {
   const navigate = useNavigate();
   const token = localStorage.getItem("token");
-  const user = JSON.parse(localStorage.getItem("user") || "{}");
 
   const [courses, setCourses] = useState([]);
   const [selectedCourse, setSelectedCourse] = useState("");
-  const [students, setStudents] = useState([]);
+  const [courseStats, setCourseStats] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
-  const [selectedStudent, setSelectedStudent] = useState(null);
-  const [showStudentModal, setShowStudentModal] = useState(false);
-  const [studentDetails, setStudentDetails] = useState(null);
-  const [sortBy, setSortBy] = useState("name");
-  const [sortOrder, setSortOrder] = useState("asc");
 
   useEffect(() => {
     fetchCourses();
   }, []);
 
   useEffect(() => {
-    if (selectedCourse) {
-      fetchStudentProgress();
-    }
+    if (selectedCourse) fetchCourseStats(selectedCourse);
   }, [selectedCourse]);
 
   const fetchCourses = async () => {
+    setIsLoading(true);
     try {
       const res = await fetch(`${API}/api/courses/my-courses`, {
         headers: { Authorization: `Bearer ${token}` },
@@ -48,128 +41,52 @@ const StudentProgress = () => {
     }
   };
 
-  const fetchStudentProgress = async () => {
+  const fetchCourseStats = async (courseId) => {
     setIsLoading(true);
-    setError("");
-    
     try {
-      // Get course details which includes enrolledCount
-      const courseRes = await fetch(`${API}/api/courses/${selectedCourse}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const courseData = await courseRes.json();
-      
-      if (!courseRes.ok) {
-        setError(courseData.message || "Failed to fetch course");
-        setStudents([]);
-        setIsLoading(false);
-        return;
+      // Use course data directly — we have enrolledCount and lesson info
+      const course = courses.find((c) => c._id === courseId);
+      if (course) {
+        setCourseStats({
+          title: course.title,
+          code: course.code,
+          enrolledCount: course.enrolledCount || 0,
+          totalLessons: course.totalLessons || 0,
+          totalQuizzes: course.totalQuizzes || 0,
+          totalLabs: course.totalLabs || 0,
+          isPublished: course.isPublished,
+          department: course.department,
+          credits: course.credits,
+          semester: course.semester,
+        });
       }
-
-      // Since we don't have a direct endpoint for enrolled students,
-      // we need to check if the backend returns enrolledStudents array
-      // For now, we'll show placeholder data or empty state
-      
-      // You can add an admin endpoint later to get enrolled students
-      // For now, show a message that this feature is coming soon
-      setStudents([]);
-      
-    } catch (err) {
-      console.error("Fetch error:", err);
-      setError("Cannot connect to server");
-      setStudents([]);
+    } catch {
+      setError("Failed to load course stats");
     } finally {
       setIsLoading(false);
     }
   };
 
-  const fetchStudentDetails = async (studentId) => {
-    // Since we don't have enrolled students data yet,
-    // we can't fetch details. This will be implemented when
-    // the backend endpoint for enrolled students is added.
-    const student = students.find(s => s._id === studentId);
-    setStudentDetails({
-      name: student?.name || "Student",
-      studentId: student?.studentId || "N/A",
-      progress: student?.progress || 0,
-      completedLessons: 0,
-      totalLessons: 0,
-      avgQuizScore: 0,
-      submittedLabs: 0,
-      totalLabs: 0,
-      lessons: [],
-      quizzes: [],
-      labs: [],
-    });
-    setShowStudentModal(true);
-  };
+  const selectedCourseObj = courses.find((c) => c._id === selectedCourse);
 
-  // ... rest of the helper functions stay exactly the same ...
-  const getProgressColor = (progress) => {
-    if (progress >= 80) return "bg-green-500";
-    if (progress >= 60) return "bg-blue-500";
-    if (progress >= 40) return "bg-yellow-500";
-    return "bg-red-500";
-  };
-
-  const getStatusBadge = (status) => {
-    switch (status) {
-      case "active":
-      case "completed":
-        return "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300";
-      case "inactive":
-        return "bg-gray-100 text-gray-700 dark:bg-gray-700/50 dark:text-gray-400";
-      default:
-        return "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300";
-    }
-  };
-
-  const filteredStudents = students.filter(student =>
-    student.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    student.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    student.studentId?.toLowerCase().includes(searchTerm.toLowerCase())
+  // Aggregate stats across all courses
+  const totalEnrolled = courses.reduce(
+    (sum, c) => sum + (c.enrolledCount || 0),
+    0
   );
+  const totalLessons = courses.reduce(
+    (sum, c) => sum + (c.totalLessons || 0),
+    0
+  );
+  const publishedCourses = courses.filter((c) => c.isPublished).length;
+  const avgEnrollment =
+    courses.length > 0 ? Math.round(totalEnrolled / courses.length) : 0;
 
-  const sortedStudents = [...filteredStudents].sort((a, b) => {
-    let aVal = a[sortBy];
-    let bVal = b[sortBy];
-    if (sortBy === "progress") {
-      aVal = a.progress || 0;
-      bVal = b.progress || 0;
-    }
-    if (sortBy === "name") {
-      aVal = a.name || "";
-      bVal = b.name || "";
-    }
-    if (aVal < bVal) return sortOrder === "asc" ? -1 : 1;
-    if (aVal > bVal) return sortOrder === "asc" ? 1 : -1;
-    return 0;
-  });
-
-  const stats = {
-    totalStudents: students.length,
-    avgProgress: students.length > 0
-      ? Math.round(students.reduce((sum, s) => sum + (s.progress || 0), 0) / students.length)
-      : 0,
-    completedCourses: students.filter(s => s.progress === 100).length,
-    activeStudents: students.length,
-  };
-
-  const handleSort = (field) => {
-    if (sortBy === field) {
-      setSortOrder(sortOrder === "asc" ? "desc" : "asc");
-    } else {
-      setSortBy(field);
-      setSortOrder("asc");
-    }
-  };
-
-  const SortIcon = ({ field }) => {
-    if (sortBy !== field) return <span className="material-symbols-outlined text-sm">unfold_more</span>;
-    return sortOrder === "asc" 
-      ? <span className="material-symbols-outlined text-sm">expand_less</span>
-      : <span className="material-symbols-outlined text-sm">expand_more</span>;
-  };
+  const filteredCourses = courses.filter(
+    (c) =>
+      c.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      c.code?.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   return (
     <div className="space-y-5 sm:space-y-6">
@@ -180,226 +97,335 @@ const StudentProgress = () => {
             Student Progress
           </h1>
           <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400 mt-1">
-            Track and analyze student performance across your courses
+            Track enrollment and content across your courses
           </p>
         </div>
       </div>
 
-      {/* Error Message */}
+      {/* Error */}
       {error && (
         <div className="p-3 rounded-xl bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700 flex items-center gap-2 text-red-600 dark:text-red-400 text-sm">
           <span className="material-symbols-outlined text-base">error</span>
           <span className="flex-1">{error}</span>
-          <button onClick={() => setError("")} className="text-red-400 hover:text-red-600">
+          <button
+            onClick={() => setError("")}
+            className="text-red-400 hover:text-red-600"
+          >
             <span className="material-symbols-outlined text-sm">close</span>
           </button>
         </div>
       )}
 
-      {/* Course Selector */}
-      {courses.length > 0 && (
-        <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm p-4">
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-            Select Course
-          </label>
-          <select
-            value={selectedCourse}
-            onChange={(e) => setSelectedCourse(e.target.value)}
-            className="w-full sm:w-96 px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
-          >
-            {courses.map(course => (
-              <option key={course._id} value={course._id}>{course.title} ({course.code})</option>
-            ))}
-          </select>
-        </div>
-      )}
-
-      {/* Stats Cards */}
+      {/* Summary Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         {[
-          { icon: "groups", label: "Total Students", value: stats.totalStudents, color: "bg-blue-100 dark:bg-blue-900/30 text-blue-600" },
-          { icon: "trending_up", label: "Avg Progress", value: `${stats.avgProgress}%`, color: "bg-green-100 dark:bg-green-900/30 text-green-600" },
-          { icon: "check_circle", label: "Completed", value: stats.completedCourses, color: "bg-purple-100 dark:bg-purple-900/30 text-purple-600" },
-          { icon: "person", label: "Active Students", value: stats.activeStudents, color: "bg-amber-100 dark:bg-amber-900/30 text-amber-600" },
+          {
+            icon: "groups",
+            label: "Total Enrolled",
+            value: totalEnrolled,
+            color: "bg-blue-100 dark:bg-blue-900/30 text-blue-600",
+          },
+          {
+            icon: "school",
+            label: "Total Courses",
+            value: courses.length,
+            color: "bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600",
+          },
+          {
+            icon: "visibility",
+            label: "Published",
+            value: publishedCourses,
+            color: "bg-green-100 dark:bg-green-900/30 text-green-600",
+          },
+          {
+            icon: "trending_up",
+            label: "Avg Enrollment",
+            value: avgEnrollment,
+            color: "bg-amber-100 dark:bg-amber-900/30 text-amber-600",
+          },
         ].map((stat, idx) => (
-          <div key={idx} className="bg-white dark:bg-gray-800 rounded-xl p-3 sm:p-4 border border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-md transition-all duration-300 hover:scale-105 group">
+          <div
+            key={idx}
+            className="bg-white dark:bg-gray-800 rounded-xl p-3 sm:p-4 border border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-md transition-all duration-300 hover:scale-105 group"
+          >
             <div className="flex items-center gap-3 sm:gap-4">
-              <div className={`flex items-center justify-center w-10 h-10 sm:w-12 sm:h-12 rounded-lg ${stat.color} group-hover:scale-110 transition-transform duration-200`}>
-                <span className="material-symbols-outlined text-xl sm:text-2xl">{stat.icon}</span>
+              <div
+                className={`flex items-center justify-center w-10 h-10 sm:w-12 sm:h-12 rounded-lg ${stat.color} group-hover:scale-110 transition-transform duration-200`}
+              >
+                <span className="material-symbols-outlined text-xl sm:text-2xl">
+                  {stat.icon}
+                </span>
               </div>
               <div>
-                <p className="text-gray-500 dark:text-gray-400 text-xs sm:text-sm">{stat.label}</p>
-                <p className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">{stat.value}</p>
+                <p className="text-gray-500 dark:text-gray-400 text-xs sm:text-sm">
+                  {stat.label}
+                </p>
+                <p className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">
+                  {isLoading ? "..." : stat.value}
+                </p>
               </div>
             </div>
           </div>
         ))}
       </div>
 
-      {/* Search and Filters */}
+      {/* Search */}
       <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm p-4">
-        <div className="flex flex-col sm:flex-row gap-3">
-          <div className="flex-1 relative">
-            <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-base sm:text-lg">search</span>
-            <input
-              type="text"
-              placeholder="Search by name, email, or student ID..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-9 sm:pl-10 pr-4 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
+        <div className="relative">
+          <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-base sm:text-lg">
+            search
+          </span>
+          <input
+            type="text"
+            placeholder="Search courses by title or code..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full pl-9 sm:pl-10 pr-4 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 focus:ring-2 focus:ring-blue-500"
+          />
         </div>
       </div>
 
-      {/* Students Table */}
-      {isLoading ? (
+      {/* Courses Table */}
+      {isLoading && courses.length === 0 ? (
         <div className="flex items-center justify-center py-16">
-          <svg className="animate-spin h-8 w-8 text-blue-600" viewBox="0 0 24 24" fill="none">
-            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
-            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
+          <svg
+            className="animate-spin h-8 w-8 text-blue-600"
+            viewBox="0 0 24 24"
+            fill="none"
+          >
+            <circle
+              className="opacity-25"
+              cx="12"
+              cy="12"
+              r="10"
+              stroke="currentColor"
+              strokeWidth="4"
+            />
+            <path
+              className="opacity-75"
+              fill="currentColor"
+              d="M4 12a8 8 0 018-8v8z"
+            />
           </svg>
         </div>
-      ) : students.length === 0 ? (
+      ) : courses.length === 0 ? (
         <div className="text-center py-12 sm:py-16 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700">
-          <span className="material-symbols-outlined text-5xl sm:text-6xl text-gray-300 dark:text-gray-600">groups</span>
+          <span className="material-symbols-outlined text-5xl sm:text-6xl text-gray-300 dark:text-gray-600">
+            groups
+          </span>
           <h3 className="text-base sm:text-lg font-medium text-gray-900 dark:text-white mt-3 sm:mt-4 mb-2">
-            {courses.length === 0 ? "No courses found" : "Student enrollment tracking coming soon"}
+            No courses yet
           </h3>
-          <p className="text-sm text-gray-500 dark:text-gray-400 max-w-md mx-auto">
-            {courses.length === 0 
-              ? "Create a course to start tracking student progress" 
-              : "The student progress tracking feature is being developed. Check back soon!"}
+          <p className="text-sm text-gray-500 dark:text-gray-400">
+            Create a course to start tracking student enrollment
           </p>
+          <button
+            onClick={() => navigate("/teacher/dashboard?tab=courses")}
+            className="mt-4 inline-flex items-center gap-2 text-sm font-medium px-4 py-2 rounded-lg text-white bg-blue-600 hover:bg-blue-700 transition-colors"
+          >
+            <span className="material-symbols-outlined text-base">add</span>
+            Create Course
+          </button>
         </div>
       ) : (
         <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden">
-          {/* Table content - same as before */}
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead className="bg-gray-50 dark:bg-gray-700/50 border-b border-gray-200 dark:border-gray-600">
                 <tr>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:text-gray-900" onClick={() => handleSort("name")}>
-                    <div className="flex items-center gap-1">
-                      Student
-                      <SortIcon field="name" />
-                    </div>
+                  <th className="px-3 sm:px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider">
+                    Course
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider hidden sm:table-cell">
-                    Student ID
+                  <th className="px-3 sm:px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider hidden sm:table-cell">
+                    Department
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider hidden md:table-cell">
-                    Email
+                  <th className="px-3 sm:px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider">
+                    Students
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:text-gray-900" onClick={() => handleSort("progress")}>
-                    <div className="flex items-center gap-1">
-                      Progress
-                      <SortIcon field="progress" />
-                    </div>
+                  <th className="px-3 sm:px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider hidden md:table-cell">
+                    Content
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider hidden lg:table-cell">
+                  <th className="px-3 sm:px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider hidden lg:table-cell">
                     Status
                   </th>
-                  <th className="px-4 py-3 text-center text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider">
+                  <th className="px-3 sm:px-4 py-3 text-center text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider">
                     Actions
                   </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-                {sortedStudents.map((student) => (
-                  <tr key={student._id} className="hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors duration-150 group">
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-2 sm:gap-3">
-                        <div className="w-8 h-8 rounded-full bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center text-indigo-700 dark:text-indigo-300 font-bold text-xs sm:text-sm flex-shrink-0">
-                          {student.name?.charAt(0).toUpperCase() || "S"}
+                {filteredCourses.map((course) => {
+                  const maxEnrolled = Math.max(
+                    1,
+                    ...courses.map((c) => c.enrolledCount || 0)
+                  );
+                  const barWidth = Math.round(
+                    ((course.enrolledCount || 0) / maxEnrolled) * 100
+                  );
+                  return (
+                    <tr
+                      key={course._id}
+                      className="hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors duration-150 group"
+                    >
+                      {/* Course name */}
+                      <td className="px-3 sm:px-4 py-3">
+                        <div>
+                          <p className="font-medium text-gray-900 dark:text-white text-sm">
+                            {course.title}
+                          </p>
+                          <p className="text-xs text-gray-500 font-mono">
+                            {course.code}
+                          </p>
                         </div>
-                        <span className="font-medium text-gray-900 dark:text-white text-sm">
-                          {student.name}
-                        </span>
-                      </div>
-                    </td>
-                    <td className="px-4 py-3 text-gray-600 dark:text-gray-400 text-sm hidden sm:table-cell">
-                      {student.studentId || "N/A"}
-                    </td>
-                    <td className="px-4 py-3 text-gray-600 dark:text-gray-400 text-sm hidden md:table-cell truncate max-w-[200px]">
-                      {student.email}
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex flex-col xs:flex-row items-start xs:items-center gap-2">
-                        <div className="w-full xs:w-24 sm:w-32 bg-gray-200 dark:bg-gray-700 rounded-full h-2">
-                          <div
-                            className={`h-2 rounded-full ${getProgressColor(student.progress || 0)}`}
-                            style={{ width: `${student.progress || 0}%` }}
-                          />
+                      </td>
+
+                      {/* Department */}
+                      <td className="px-3 sm:px-4 py-3 text-gray-600 dark:text-gray-400 text-sm hidden sm:table-cell">
+                        {course.department || "N/A"}
+                      </td>
+
+                      {/* Enrolled count + bar */}
+                      <td className="px-3 sm:px-4 py-3">
+                        <div className="flex flex-col gap-1">
+                          <span className="font-semibold text-gray-900 dark:text-white text-sm">
+                            {course.enrolledCount || 0}
+                          </span>
+                          <div className="w-20 h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden hidden sm:block">
+                            <div
+                              className="h-full bg-blue-500 rounded-full"
+                              style={{ width: `${barWidth}%` }}
+                            />
+                          </div>
                         </div>
-                        <span className="font-medium text-gray-900 dark:text-white text-xs sm:text-sm">
-                          {student.progress || 0}%
-                        </span>
-                      </div>
-                    </td>
-                    <td className="px-4 py-3 hidden lg:table-cell">
-                      <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${getStatusBadge(student.status)}`}>
-                        {student.status || "active"}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex justify-center">
-                        <button
-                          onClick={() => fetchStudentDetails(student._id)}
-                          className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium text-indigo-600 bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-900/20 dark:text-indigo-400 dark:hover:bg-indigo-900/30 transition-colors"
+                      </td>
+
+                      {/* Content stats */}
+                      <td className="px-3 sm:px-4 py-3 hidden md:table-cell">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          {(course.totalLessons || 0) > 0 && (
+                            <span className="flex items-center gap-0.5 text-xs text-gray-500">
+                              <span className="material-symbols-outlined text-xs text-blue-500">
+                                menu_book
+                              </span>
+                              {course.totalLessons}
+                            </span>
+                          )}
+                          {(course.totalQuizzes || 0) > 0 && (
+                            <span className="flex items-center gap-0.5 text-xs text-gray-500">
+                              <span className="material-symbols-outlined text-xs text-amber-500">
+                                quiz
+                              </span>
+                              {course.totalQuizzes}
+                            </span>
+                          )}
+                          {(course.totalLabs || 0) > 0 && (
+                            <span className="flex items-center gap-0.5 text-xs text-gray-500">
+                              <span className="material-symbols-outlined text-xs text-purple-500">
+                                science
+                              </span>
+                              {course.totalLabs}
+                            </span>
+                          )}
+                          {!course.totalLessons &&
+                            !course.totalQuizzes &&
+                            !course.totalLabs && (
+                              <span className="text-xs text-gray-400">
+                                No content yet
+                              </span>
+                            )}
+                        </div>
+                      </td>
+
+                      {/* Status */}
+                      <td className="px-3 sm:px-4 py-3 hidden lg:table-cell">
+                        <span
+                          className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+                            course.isPublished
+                              ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300"
+                              : "bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400"
+                          }`}
                         >
-                          <span className="material-symbols-outlined text-sm">visibility</span>
-                          Details
-                        </button>
-                      </div>
+                          {course.isPublished ? "Published" : "Draft"}
+                        </span>
+                      </td>
+
+                      {/* Actions */}
+                      <td className="px-3 sm:px-4 py-3">
+                        <div className="flex justify-center gap-1">
+                          <button
+                            onClick={() =>
+                              navigate("/teacher/dashboard?tab=lessons")
+                            }
+                            className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-lg transition-all hover:scale-110"
+                            title="Manage lessons"
+                          >
+                            <span className="material-symbols-outlined text-sm">
+                              menu_book
+                            </span>
+                          </button>
+                          <button
+                            onClick={() =>
+                              navigate(
+                                "/teacher/dashboard?tab=lab-submissions"
+                              )
+                            }
+                            className="p-1.5 text-gray-400 hover:text-purple-600 hover:bg-purple-50 dark:hover:bg-purple-900/30 rounded-lg transition-all hover:scale-110"
+                            title="View lab submissions"
+                          >
+                            <span className="material-symbols-outlined text-sm">
+                              grading
+                            </span>
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+
+                {filteredCourses.length === 0 && (
+                  <tr>
+                    <td colSpan={6} className="px-4 py-12 text-center">
+                      <span className="material-symbols-outlined text-5xl text-gray-300 dark:text-gray-600">
+                        search_off
+                      </span>
+                      <p className="text-gray-500 dark:text-gray-400 mt-2 text-sm">
+                        No courses match your search
+                      </p>
                     </td>
                   </tr>
-                ))}
+                )}
               </tbody>
             </table>
           </div>
         </div>
       )}
 
-      {/* Student Details Modal - same as before */}
-      {showStudentModal && studentDetails && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-3 sm:p-4 z-50" onClick={() => setShowStudentModal(false)}>
-          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-2xl w-full max-h-[95vh] sm:max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
-            <div className="sticky top-0 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 p-4 sm:p-5">
-              <div className="flex justify-between items-center">
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-full bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center text-indigo-700 dark:text-indigo-300 font-bold text-lg">
-                    {studentDetails.name?.charAt(0).toUpperCase() || "S"}
-                  </div>
-                  <div>
-                    <h2 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-white">{studentDetails.name}</h2>
-                    <p className="text-sm text-gray-500">Student ID: {studentDetails.studentId || "N/A"}</p>
-                  </div>
-                </div>
-                <button onClick={() => setShowStudentModal(false)} className="text-gray-400 hover:text-gray-600">
-                  <span className="material-symbols-outlined">close</span>
-                </button>
-              </div>
-            </div>
-
-            <div className="p-4 sm:p-5 space-y-5">
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                {[
-                  { label: "Overall Progress", value: `${studentDetails.progress || 0}%`, color: "text-green-600" },
-                  { label: "Completed Lessons", value: `${studentDetails.completedLessons || 0}/${studentDetails.totalLessons || 0}`, color: "text-blue-600" },
-                  { label: "Quiz Avg Score", value: `${studentDetails.avgQuizScore || 0}%`, color: "text-purple-600" },
-                  { label: "Labs Submitted", value: `${studentDetails.submittedLabs || 0}/${studentDetails.totalLabs || 0}`, color: "text-amber-600" },
-                ].map((stat, idx) => (
-                  <div key={idx} className="bg-gray-50 dark:bg-gray-700/50 rounded-xl p-3 text-center">
-                    <p className="text-xs text-gray-500">{stat.label}</p>
-                    <p className={`text-lg font-bold ${stat.color}`}>{stat.value}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
+      {/* Info banner */}
+      <div className="bg-blue-50 dark:bg-blue-900/20 rounded-xl border border-blue-200 dark:border-blue-800 p-4 sm:p-5">
+        <div className="flex items-start gap-3">
+          <span className="material-symbols-outlined text-blue-600 text-lg">
+            info
+          </span>
+          <div className="flex-1">
+            <h4 className="text-sm font-semibold text-blue-800 dark:text-blue-300 mb-1">
+              About student tracking
+            </h4>
+            <p className="text-xs sm:text-sm text-blue-700 dark:text-blue-400">
+              This tab shows enrollment counts per course. To view and grade
+              individual lab submissions, go to{" "}
+              <button
+                onClick={() =>
+                  navigate("/teacher/dashboard?tab=lab-submissions")
+                }
+                className="underline font-medium"
+              >
+                Grade Labs
+              </button>
+              .
+            </p>
           </div>
         </div>
-      )}
+      </div>
     </div>
   );
 };
