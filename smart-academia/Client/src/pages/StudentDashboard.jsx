@@ -6,10 +6,11 @@ import Labs from "../components/dashboard/StudentDashboard/Student Tabs/Labs";
 import ProgressReport from "../components/dashboard/StudentDashboard/Student Tabs/ProgressReport";
 import AITutor from "../components/dashboard/StudentDashboard/Student Tabs/AITutor";
 import FloatingButtons from '../components/sections/LandingPage/FloatingButtons';
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 
 const StudentDashboard = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [activeMenu, setActiveMenu] = useState('dashboard');
   const [user, setUser] = useState({ name: "", role: "", avatar: "", fullName: "", studentId: "" });
@@ -18,6 +19,15 @@ const StudentDashboard = () => {
     const userData = JSON.parse(localStorage.getItem("user") || "{}");
     setUser(userData);
   }, []);
+
+  // ✅ FIXED: Read ?tab= from URL query params and switch to that tab
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const tab = params.get("tab");
+    if (tab) {
+      setActiveMenu(tab);
+    }
+  }, [location.search]);
 
   // Menu items
   const menuItems = [
@@ -32,6 +42,8 @@ const StudentDashboard = () => {
   const handleMenuClick = (menuKey) => {
     setActiveMenu(menuKey);
     setSidebarOpen(false);
+    // Update URL without full navigation so back button works
+    navigate(`/student/dashboard?tab=${menuKey}`, { replace: true });
   };
 
   const handleLogout = () => {
@@ -75,7 +87,7 @@ const StudentDashboard = () => {
       <div className="relative flex min-h-screen w-full">
         {/* Mobile Overlay */}
         {sidebarOpen && (
-          <div 
+          <div
             className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden"
             onClick={() => setSidebarOpen(false)}
           />
@@ -89,7 +101,7 @@ const StudentDashboard = () => {
           <div className="flex items-center gap-2 sm:gap-3 px-4 sm:px-6 py-4 border-b border-gray-200 dark:border-gray-700 shrink-0">
             <span className="material-symbols-outlined text-blue-600 text-2xl sm:text-3xl animate-pulse">school</span>
             <h1 className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white">SmartAcademia</h1>
-            <button 
+            <button
               onClick={() => setSidebarOpen(false)}
               className="lg:hidden ml-auto text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
             >
@@ -127,7 +139,7 @@ const StudentDashboard = () => {
           {/* User Profile */}
           <div className="border-t border-gray-200 dark:border-gray-700 p-3 sm:p-4 shrink-0">
             <div className="flex items-center gap-3 group cursor-pointer p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-200">
-              <div 
+              <div
                 className="bg-center bg-no-repeat aspect-square bg-cover rounded-full w-10 h-10 ring-2 ring-gray-200 dark:ring-gray-600 group-hover:ring-indigo-200 dark:group-hover:ring-indigo-400 transition-all duration-200"
                 style={{ backgroundImage: `url("${userAvatar}")` }}
               />
@@ -152,7 +164,7 @@ const StudentDashboard = () => {
           <header className="flex items-center justify-between border-b border-gray-200 dark:border-gray-700 px-4 sm:px-6 lg:px-8 py-3 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm sticky top-0 z-30">
             {/* Left Section */}
             <div className="flex items-center gap-3 sm:gap-4">
-              <button 
+              <button
                 onClick={() => setSidebarOpen(true)}
                 className="lg:hidden p-2 rounded-lg text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 transition-all duration-200"
               >
@@ -163,28 +175,28 @@ const StudentDashboard = () => {
                 <h1 className="text-base sm:text-lg font-semibold text-gray-900 dark:text-white">SmartAcademia</h1>
               </div>
             </div>
-            
+
             {/* Right Section */}
             <div className="flex items-center gap-2 sm:gap-4">
               {/* Notifications */}
-              <button 
+              <button
                 onClick={handleNotifications}
                 className="relative p-2 rounded-lg text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 transition-all duration-200 hover:scale-105"
               >
                 <span className="material-symbols-outlined text-xl sm:text-2xl">notifications</span>
                 <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-red-500 rounded-full animate-pulse"></span>
               </button>
-              
+
               {/* Logout */}
-              <button 
+              <button
                 onClick={handleLogout}
                 className="p-2 rounded-lg text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 transition-all duration-200 hover:scale-105"
               >
                 <span className="material-symbols-outlined text-xl sm:text-2xl">logout</span>
               </button>
-              
+
               {/* Avatar */}
-              <div 
+              <div
                 className="bg-center bg-no-repeat aspect-square bg-cover rounded-full w-8 h-8 sm:w-10 sm:h-10 ring-2 ring-gray-200 dark:ring-gray-600 hover:ring-indigo-300 dark:hover:ring-indigo-400 transition-all duration-200 cursor-pointer hover:scale-105"
                 style={{ backgroundImage: `url("${userAvatar}")` }}
               />
@@ -204,7 +216,7 @@ const StudentDashboard = () => {
       <FloatingButtons
         showScrollTop={false}
         onScrollToTop={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-        onChatClick={() => navigate('/chat')}
+        onChatClick={() => handleMenuClick('ai-tutor')}
         chatTooltip="AI Tutor Assistant"
         scrollTooltip="Scroll to Top"
         chatIcon="smart_toy"
@@ -217,18 +229,10 @@ const StudentDashboard = () => {
 
       <style jsx>{`
         @keyframes fadeIn {
-          from {
-            opacity: 0;
-            transform: translateY(10px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
+          from { opacity: 0; transform: translateY(10px); }
+          to { opacity: 1; transform: translateY(0); }
         }
-        .animate-fadeIn {
-          animation: fadeIn 0.3s ease-out;
-        }
+        .animate-fadeIn { animation: fadeIn 0.3s ease-out; }
       `}</style>
     </div>
   );

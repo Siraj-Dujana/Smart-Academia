@@ -2,17 +2,16 @@ import React, { useState, useEffect } from "react";
 import Dashboard        from "../components/dashboard/TeacherDashboard/Teacher Tabs/Dashboard";
 import CourseManagement from "../components/dashboard/TeacherDashboard/Teacher Tabs/CourseManagement";
 import LessonManagement from "../components/dashboard/TeacherDashboard/Teacher Tabs/LessonManagement";
-// REMOVED: import QuizManagement from ...
-// REMOVED: import LabManagement from ...
 import LabSubmissions   from "../components/dashboard/TeacherDashboard/Teacher Tabs/LabSubmissions";
 import StudentProgress  from "../components/dashboard/TeacherDashboard/Teacher Tabs/StudentProgress";
 import Announcements    from "../components/dashboard/TeacherDashboard/Teacher Tabs/Announcements";
 import AITutor          from "../components/dashboard/TeacherDashboard/Teacher Tabs/AITutor";
 import FloatingButtons  from "../components/sections/LandingPage/FloatingButtons";
-import { useNavigate }  from "react-router-dom";
+import { useNavigate, useLocation }  from "react-router-dom";
 
 const TeacherDashboard = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [activeMenu,  setActiveMenu]  = useState("dashboard");
   const [user, setUser] = useState({ fullName: "", specialization: "", avatar: "" });
@@ -22,21 +21,30 @@ const TeacherDashboard = () => {
     setUser(userData);
   }, []);
 
+  // ✅ FIXED: Read ?tab= from URL query params and switch to that tab
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const tab = params.get("tab");
+    if (tab) {
+      setActiveMenu(tab);
+    }
+  }, [location.search]);
+
   const menuItems = [
-    { icon: "dashboard",    label: "Dashboard",         key: "dashboard"    },
-    { icon: "book",         label: "Course Management", key: "courses"      },
-    { icon: "menu_book",    label: "Lesson Management", key: "lessons"      },
-    // REMOVED: { icon: "quiz", label: "Quiz Management", key: "quizzes" },
-    // REMOVED: { icon: "science", label: "Lab Management", key: "labs" },
+    { icon: "dashboard",    label: "Dashboard",         key: "dashboard"       },
+    { icon: "book",         label: "Course Management", key: "courses"         },
+    { icon: "menu_book",    label: "Lesson Management", key: "lessons"         },
     { icon: "grading",      label: "Grade Labs",        key: "lab-submissions" },
-    { icon: "bar_chart",    label: "Student Progress",  key: "progress"     },
-    { icon: "campaign",     label: "Announcements",     key: "announcements"},
-    { icon: "smart_toy",    label: "AI Tutor",          key: "ai-tutor"     },
+    { icon: "bar_chart",    label: "Student Progress",  key: "progress"        },
+    { icon: "campaign",     label: "Announcements",     key: "announcements"   },
+    { icon: "smart_toy",    label: "AI Tutor",          key: "ai-tutor"        },
   ];
 
   const handleMenuClick = (key) => {
     setActiveMenu(key);
     setSidebarOpen(false);
+    // Update URL without full navigation so back button works
+    navigate(`/teacher/dashboard?tab=${key}`, { replace: true });
   };
 
   const handleLogout = () => {
@@ -47,20 +55,16 @@ const TeacherDashboard = () => {
 
   const renderActiveTab = () => {
     switch (activeMenu) {
-      case "dashboard":     return <Dashboard />;
-      case "courses":       return <CourseManagement />;
-      case "lessons":       return <LessonManagement />;
-      // REMOVED: case "quizzes": return <QuizManagement />;
-      // REMOVED: case "labs": return <LabManagement />;
+      case "dashboard":       return <Dashboard />;
+      case "courses":         return <CourseManagement />;
+      case "lessons":         return <LessonManagement />;
       case "lab-submissions": return <LabSubmissions />;
-      case "progress":      return <StudentProgress />;
-      case "announcements": return <Announcements />;
-      case "ai-tutor":      return <AITutor />;
-      default:              return <Dashboard />;
+      case "progress":        return <StudentProgress />;
+      case "announcements":   return <Announcements />;
+      case "ai-tutor":        return <AITutor />;
+      default:                return <Dashboard />;
     }
   };
-
-  // ... rest of the component remains exactly the same
 
   const displayName = user.fullName || "Teacher";
   const userInitial = displayName.charAt(0).toUpperCase();
@@ -72,7 +76,7 @@ const TeacherDashboard = () => {
 
         {/* Mobile overlay */}
         {sidebarOpen && (
-          <div 
+          <div
             className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden"
             onClick={() => setSidebarOpen(false)}
           />
@@ -87,7 +91,7 @@ const TeacherDashboard = () => {
           <div className="flex items-center gap-2 sm:gap-3 px-4 sm:px-6 py-4 border-b border-gray-200 dark:border-gray-700 shrink-0">
             <span className="material-symbols-outlined text-blue-600 text-2xl sm:text-3xl animate-pulse">school</span>
             <h1 className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white">SmartAcademia</h1>
-            <button 
+            <button
               onClick={() => setSidebarOpen(false)}
               className="lg:hidden ml-auto text-gray-500 hover:text-gray-700 dark:text-gray-400"
             >
@@ -99,8 +103,8 @@ const TeacherDashboard = () => {
           <div className="flex-1 overflow-y-auto py-3 sm:py-4">
             <div className="flex flex-col gap-0.5 px-2 sm:px-3">
               {menuItems.map((item) => (
-                <button 
-                  key={item.key} 
+                <button
+                  key={item.key}
                   onClick={() => handleMenuClick(item.key)}
                   className={`flex items-center gap-2 sm:gap-3 px-2 sm:px-3 py-2.5 sm:py-3 rounded-lg transition-all duration-200 group ${
                     activeMenu === item.key
@@ -145,7 +149,7 @@ const TeacherDashboard = () => {
           <header className="flex items-center justify-between border-b border-gray-200 dark:border-gray-700 px-4 sm:px-6 lg:px-8 py-3 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm sticky top-0 z-30">
             {/* Left Section */}
             <div className="flex items-center gap-3 sm:gap-4">
-              <button 
+              <button
                 onClick={() => setSidebarOpen(true)}
                 className="lg:hidden p-2 rounded-lg text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
               >
@@ -159,13 +163,11 @@ const TeacherDashboard = () => {
 
             {/* Right Section */}
             <div className="flex items-center gap-2 sm:gap-3">
-              <button 
-                className="relative p-2 rounded-lg text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 transition-all hover:scale-105"
-              >
+              <button className="relative p-2 rounded-lg text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 transition-all hover:scale-105">
                 <span className="material-symbols-outlined text-xl sm:text-2xl">notifications</span>
                 <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-red-500 rounded-full animate-pulse"/>
               </button>
-              <button 
+              <button
                 onClick={handleLogout}
                 className="p-2 rounded-lg text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 transition-all hover:scale-105"
               >
@@ -189,7 +191,7 @@ const TeacherDashboard = () => {
       <FloatingButtons
         showScrollTop={false}
         onScrollToTop={() => window.scrollTo({ top: 0, behavior: "smooth" })}
-        onChatClick={() => navigate("/chat")}
+        onChatClick={() => handleMenuClick("ai-tutor")}
         chatTooltip="AI Tutor Assistant"
         chatIcon="smart_toy"
         chatPosition="bottom-4 right-4 sm:bottom-6 sm:right-6 md:bottom-8 md:right-8"
@@ -198,18 +200,10 @@ const TeacherDashboard = () => {
 
       <style jsx>{`
         @keyframes fadeIn {
-          from {
-            opacity: 0;
-            transform: translateY(10px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
+          from { opacity: 0; transform: translateY(10px); }
+          to { opacity: 1; transform: translateY(0); }
         }
-        .animate-fadeIn {
-          animation: fadeIn 0.3s ease-out;
-        }
+        .animate-fadeIn { animation: fadeIn 0.3s ease-out; }
       `}</style>
     </div>
   );

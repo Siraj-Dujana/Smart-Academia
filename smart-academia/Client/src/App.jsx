@@ -30,6 +30,24 @@ const HomeRoute = () => {
   return <LandingPage />;
 };
 
+// =============================================
+// /chat — redirect to the right dashboard AI tab
+// based on user role
+// =============================================
+const ChatRoute = () => {
+  const token = localStorage.getItem("token");
+  const user = JSON.parse(localStorage.getItem("user") || "null");
+
+  if (!token || !user) return <Navigate to="/login" replace />;
+
+  if (user.role === "student")
+    return <Navigate to="/student/dashboard?tab=ai-tutor" replace />;
+  if (user.role === "teacher")
+    return <Navigate to="/teacher/dashboard?tab=ai-tutor" replace />;
+
+  return <Navigate to="/login" replace />;
+};
+
 function App() {
   return (
     <Router>
@@ -47,6 +65,9 @@ function App() {
           <Route path="/register/teacher" element={<TeacherRegistration />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/setup" element={<Setup />} />
+
+          {/* ===== /chat — redirect to AI tutor tab ===== */}
+          <Route path="/chat" element={<ChatRoute />} />
 
           {/* ===== PROTECTED STUDENT ROUTES ===== */}
           <Route path="/student/dashboard" element={
