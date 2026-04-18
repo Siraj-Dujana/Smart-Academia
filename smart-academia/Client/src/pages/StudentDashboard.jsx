@@ -5,6 +5,7 @@ import Quizzes from "../components/dashboard/StudentDashboard/Student Tabs/Quizz
 import Labs from "../components/dashboard/StudentDashboard/Student Tabs/Labs";
 import ProgressReport from "../components/dashboard/StudentDashboard/Student Tabs/ProgressReport";
 import AITutor from "../components/dashboard/StudentDashboard/Student Tabs/AITutor";
+import AIAssistant from "../components/dashboard/StudentDashboard/Student Tabs/AIAssistant"; // new import
 import FloatingButtons from '../components/sections/LandingPage/FloatingButtons';
 import { useNavigate, useLocation } from "react-router-dom";
 
@@ -20,7 +21,7 @@ const StudentDashboard = () => {
     setUser(userData);
   }, []);
 
-  // ✅ FIXED: Read ?tab= from URL query params and switch to that tab
+  // Read ?tab= from URL query params and switch to that tab
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     const tab = params.get("tab");
@@ -29,20 +30,20 @@ const StudentDashboard = () => {
     }
   }, [location.search]);
 
-  // Menu items
+  // Menu items - added "AI Assistant" below "AI Tutor"
   const menuItems = [
     { icon: "dashboard", label: "Dashboard", key: 'dashboard' },
     { icon: "import_contacts", label: "Courses", key: 'courses' },
     { icon: "quiz", label: "Quizzes", key: 'quizzes' },
     { icon: "science", label: "Labs", key: 'labs' },
     { icon: "bar_chart_4_bars", label: "Progress", key: 'progress' },
-    { icon: "smart_toy", label: "AI Tutor", key: 'ai-tutor' }
+    { icon: "smart_toy", label: "AI Tutor", key: 'ai-tutor' },
+    { icon: "assistant", label: "AI Assistant", key: 'ai-assistant' } // new tab
   ];
 
   const handleMenuClick = (menuKey) => {
     setActiveMenu(menuKey);
     setSidebarOpen(false);
-    // Update URL without full navigation so back button works
     navigate(`/student/dashboard?tab=${menuKey}`, { replace: true });
   };
 
@@ -71,6 +72,8 @@ const StudentDashboard = () => {
         return <ProgressReport />;
       case 'ai-tutor':
         return <AITutor />;
+      case 'ai-assistant':
+        return <AIAssistant />; // new case
       default:
         return <Dashboard />;
     }
@@ -94,7 +97,7 @@ const StudentDashboard = () => {
         )}
 
         {/* Sidebar */}
-        <aside className={`flex flex-col w-64 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 fixed lg:static inset-y-0 left-0 z-50 transform transition-transform duration-300 ease-in-out h-screen overflow-y-auto ${
+        <aside className={`flex flex-col w-64 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 fixed  inset-y-0 left-0 z-50 transform transition-transform duration-300 ease-in-out h-screen overflow-y-auto ${
           sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
         }`}>
           {/* Logo */}
@@ -159,7 +162,7 @@ const StudentDashboard = () => {
         </aside>
 
         {/* Main Content */}
-        <div className="flex-1 flex flex-col lg:ml-0 min-w-0">
+        <div className="flex-1 flex flex-col lg:ml-64 min-w-0">
           {/* Header */}
           <header className="flex items-center justify-between border-b border-gray-200 dark:border-gray-700 px-4 sm:px-6 lg:px-8 py-3 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm sticky top-0 z-30">
             {/* Left Section */}

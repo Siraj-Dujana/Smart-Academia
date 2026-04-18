@@ -17,9 +17,15 @@ app.use("/api/setup",         require("./setup/setupRoute"));
 app.use("/api/ai",            require("./ai/aiRoutes"));
 app.use("/api/assignments",   require("./routes/assignments"));
 app.use("/api/courses",       require("./routes/courses"));
-app.use("/api/announcements", require("./routes/announcements")); // ✅ ADDED
-app.use("/api/student",       require("./routes/student"));       // ✅ ADDED
+app.use("/api/announcements", require("./routes/announcements"));
+app.use("/api/student",       require("./routes/student"));
 app.use("/api/courses/:courseId/lessons", require("./routes/lessons"));
+
+// AI Assistant Routes
+app.use("/api/assistant", require("./routes/aiRoutes"));           // ✅ Single mount
+app.use("/api/assistant/documents", require("./routes/documentRoutes"));
+app.use("/api/assistant/flashcards", require("./routes/flashcardRoutes"));
+app.use("/api/assistant/quizzes", require("./routes/quizRoutes"));
 
 app.get("/", (req, res) => res.json({ message: "SmartAcademia API running" }));
 

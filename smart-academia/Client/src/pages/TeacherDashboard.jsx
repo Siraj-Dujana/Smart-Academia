@@ -83,7 +83,7 @@ const TeacherDashboard = () => {
         )}
 
         {/* Sidebar */}
-        <aside className={`flex flex-col w-64 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 fixed lg:static inset-y-0 left-0 z-50 transform transition-transform duration-300 ease-in-out h-screen overflow-y-auto ${
+        <aside className={`flex flex-col w-64 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 fixed  inset-y-0 left-0 z-50 transform transition-transform duration-300 ease-in-out h-screen overflow-y-auto ${
           sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
         }`}>
 
@@ -143,7 +143,7 @@ const TeacherDashboard = () => {
         </aside>
 
         {/* Main content */}
-        <div className="flex-1 flex flex-col min-w-0">
+        <div className="flex-1 flex flex-col lg:ml-64 min-w-0">
 
           {/* Header */}
           <header className="flex items-center justify-between border-b border-gray-200 dark:border-gray-700 px-4 sm:px-6 lg:px-8 py-3 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm sticky top-0 z-30">
