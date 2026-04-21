@@ -1,31 +1,54 @@
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import React, { useState, useEffect } from "react";
 import ManageTeachers from "../components/dashboard/AdminDashboard/Admin tabs/ManageTeachers";
 import ManageStudents from "../components/dashboard/AdminDashboard/Admin tabs/ManageStudents";
 import ManageCourses from "../components/dashboard/AdminDashboard/Admin tabs/ManageCourses";
+import ProfileManagement from '../components/dashboard/AdminDashboard/Admin tabs/Profilemanagement';
 
 const AdminDashboard = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [activeMenu, setActiveMenu] = useState('teachers');
-  const [user, setUser] = useState({ name: "", role: "", avatar: "", fullName: "" });
+  const [user, setUser] = useState({ fullName: "", role: "", avatar: "" });
 
-  useEffect(() => {
-    // Get user data from localStorage
+  // ✅ Create a reusable function to load user
+  const loadUserFromStorage = () => {
     const userData = JSON.parse(localStorage.getItem("user") || "{}");
     setUser(userData);
+  };
+
+  useEffect(() => {
+    loadUserFromStorage();
   }, []);
+
+  // ✅ Listen for profile updates
+  useEffect(() => {
+    window.addEventListener("profileUpdated", loadUserFromStorage);
+    return () => window.removeEventListener("profileUpdated", loadUserFromStorage);
+  }, []);
+
+  // ✅ Read ?tab= from URL query params
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const tab = params.get("tab");
+    if (tab) {
+      setActiveMenu(tab);
+    }
+  }, [location.search]);
 
   // Menu items
   const menuItems = [
     { icon: "supervisor_account", label: "Manage Teachers", key: 'teachers' },
     { icon: "groups", label: "Manage Students", key: 'students' },
     { icon: "menu_book", label: "Manage Courses", key: 'courses' },
+    { icon: "person", label: "My Profile", key: 'profile' }
   ];
 
   const handleMenuClick = (menuKey) => {
     setActiveMenu(menuKey);
     setSidebarOpen(false);
+    navigate(`/admin/dashboard?tab=${menuKey}`, { replace: true });
   };
 
   const handleLogout = () => {
@@ -47,15 +70,17 @@ const AdminDashboard = () => {
         return <ManageStudents />;
       case 'courses':
         return <ManageCourses />;
+      case 'profile':
+        return <ProfileManagement />;
       default:
         return <ManageTeachers />;
     }
   };
 
-  // Get display name
+  // ✅ Use dynamic values
   const displayName = user.fullName || user.name || "Admin User";
   const userRole = user.role || "Administrator";
-  const userAvatar = user.avatar || "https://ui-avatars.com/api/?name=" + encodeURIComponent(displayName) + "&background=4f46e5&color=fff";
+  const userAvatar = user.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(displayName)}&background=4f46e5&color=fff`;
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 font-sans text-gray-900 dark:text-white transition-colors duration-300">
@@ -69,7 +94,7 @@ const AdminDashboard = () => {
         )}
 
         {/* Sidebar */}
-        <aside className={`flex flex-col w-64 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 fixed lg:static inset-y-0 left-0 z-50 transform transition-transform duration-300 ease-in-out h-screen overflow-y-auto ${
+        <aside className={`flex flex-col w-64 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 fixed  inset-y-0 left-0 z-50 transform transition-transform duration-300 ease-in-out h-screen overflow-y-auto ${
           sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
         }`}>
           {/* Logo */}
@@ -111,9 +136,12 @@ const AdminDashboard = () => {
             </div>
           </div>
 
-          {/* User Profile */}
+          {/* ✅ User Profile - Clickable */}
           <div className="border-t border-gray-200 dark:border-gray-700 p-4 shrink-0">
-            <div className="flex items-center gap-3 group cursor-pointer p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-200">
+            <div 
+              className="flex items-center gap-3 group cursor-pointer p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-200"
+              onClick={() => handleMenuClick('profile')}
+            >
               <div 
                 className="bg-center bg-no-repeat aspect-square bg-cover rounded-full w-10 h-10 ring-2 ring-gray-200 dark:ring-gray-600 group-hover:ring-indigo-200 dark:group-hover:ring-indigo-400 transition-all duration-200"
                 style={{ backgroundImage: `url("${userAvatar}")` }}
@@ -122,7 +150,7 @@ const AdminDashboard = () => {
                 <h1 className="text-sm font-medium text-gray-900 dark:text-white truncate">
                   {displayName}
                 </h1>
-                <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                <p className="text-xs text-gray-500 dark:text-gray-400 truncate capitalize">
                   {userRole}
                 </p>
               </div>
@@ -134,7 +162,7 @@ const AdminDashboard = () => {
         </aside>
 
         {/* Main Content */}
-        <div className="flex-1 flex flex-col lg:ml-0 min-w-0">
+        <div className="flex-1 flex flex-col lg:ml-64 min-w-0">
           {/* Header */}
           <header className="flex items-center justify-between border-b border-gray-200 dark:border-gray-700 px-4 sm:px-6 lg:px-8 py-3 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm sticky top-0 z-30">
             {/* Left Section */}
@@ -170,10 +198,11 @@ const AdminDashboard = () => {
                 <span className="material-symbols-outlined text-xl sm:text-2xl">logout</span>
               </button>
               
-              {/* Avatar */}
+              {/* ✅ Header Avatar - Clickable */}
               <div 
                 className="bg-center bg-no-repeat aspect-square bg-cover rounded-full w-8 h-8 sm:w-10 sm:h-10 ring-2 ring-gray-200 dark:ring-gray-600 hover:ring-indigo-300 dark:hover:ring-indigo-400 transition-all duration-200 cursor-pointer hover:scale-105"
                 style={{ backgroundImage: `url("${userAvatar}")` }}
+                onClick={() => handleMenuClick('profile')}
               />
             </div>
           </header>
@@ -188,7 +217,7 @@ const AdminDashboard = () => {
       </div>
 
       {/* Add animation styles */}
-      <style jsx>{`
+      <style>{`
         @keyframes fadeIn {
           from {
             opacity: 0;

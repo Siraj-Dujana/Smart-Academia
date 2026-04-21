@@ -7,6 +7,7 @@ import StudentProgress  from "../components/dashboard/TeacherDashboard/Teacher T
 import Announcements    from "../components/dashboard/TeacherDashboard/Teacher Tabs/Announcements";
 import AITutor          from "../components/dashboard/TeacherDashboard/Teacher Tabs/AITutor";
 import FloatingButtons  from "../components/sections/LandingPage/FloatingButtons";
+import ProfileManagement from '../components/dashboard/TeacherDashboard/Teacher Tabs/Profilemanagement';
 import { useNavigate, useLocation }  from "react-router-dom";
 
 const TeacherDashboard = () => {
@@ -14,14 +15,25 @@ const TeacherDashboard = () => {
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [activeMenu,  setActiveMenu]  = useState("dashboard");
-  const [user, setUser] = useState({ fullName: "", specialization: "", avatar: "" });
+  const [user, setUser] = useState({ fullName: "", specialization: "", avatar: "", employeeId: "" });
 
-  useEffect(() => {
+  // ✅ Create a reusable function to load user
+  const loadUserFromStorage = () => {
     const userData = JSON.parse(localStorage.getItem("user") || "{}");
     setUser(userData);
+  };
+
+  useEffect(() => {
+    loadUserFromStorage();
   }, []);
 
-  // ✅ FIXED: Read ?tab= from URL query params and switch to that tab
+  // ✅ Listen for profile updates
+  useEffect(() => {
+    window.addEventListener("profileUpdated", loadUserFromStorage);
+    return () => window.removeEventListener("profileUpdated", loadUserFromStorage);
+  }, []);
+
+  // Read ?tab= from URL query params and switch to that tab
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     const tab = params.get("tab");
@@ -38,12 +50,12 @@ const TeacherDashboard = () => {
     { icon: "bar_chart",    label: "Student Progress",  key: "progress"        },
     { icon: "campaign",     label: "Announcements",     key: "announcements"   },
     { icon: "smart_toy",    label: "AI Tutor",          key: "ai-tutor"        },
+    { icon: 'person',       label: 'My Profile',        key: 'profile'         }
   ];
 
   const handleMenuClick = (key) => {
     setActiveMenu(key);
     setSidebarOpen(false);
-    // Update URL without full navigation so back button works
     navigate(`/teacher/dashboard?tab=${key}`, { replace: true });
   };
 
@@ -62,13 +74,17 @@ const TeacherDashboard = () => {
       case "progress":        return <StudentProgress />;
       case "announcements":   return <Announcements />;
       case "ai-tutor":        return <AITutor />;
+      case "profile":         return <ProfileManagement />;
       default:                return <Dashboard />;
     }
   };
 
+  // ✅ Use dynamic values
   const displayName = user.fullName || "Teacher";
   const userInitial = displayName.charAt(0).toUpperCase();
   const userSpecialization = user.specialization || "Educator";
+  const teacherId = user.employeeId || user.id?.slice(-6) || "";
+  const userAvatar = user.avatar || null;
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 font-sans text-gray-900 dark:text-white transition-colors duration-300">
@@ -124,18 +140,28 @@ const TeacherDashboard = () => {
             </div>
           </div>
 
-          {/* User profile */}
+          {/* ✅ User profile - Dynamic with avatar & clickable */}
           <div className="border-t border-gray-200 dark:border-gray-700 p-3 sm:p-4 shrink-0">
-            <div className="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors cursor-pointer">
-              <div className="flex items-center justify-center w-10 h-10 rounded-full bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 font-bold text-sm flex-shrink-0">
-                {userInitial}
-              </div>
+            <div 
+              className="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors cursor-pointer"
+              onClick={() => handleMenuClick('profile')}
+            >
+              {userAvatar ? (
+                <div
+                  className="bg-center bg-no-repeat aspect-square bg-cover rounded-full w-10 h-10 ring-2 ring-gray-200 dark:ring-gray-600 flex-shrink-0"
+                  style={{ backgroundImage: `url("${userAvatar}")` }}
+                />
+              ) : (
+                <div className="flex items-center justify-center w-10 h-10 rounded-full bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 font-bold text-sm flex-shrink-0">
+                  {userInitial}
+                </div>
+              )}
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
                   {displayName}
                 </p>
                 <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
-                  {userSpecialization}
+                  {userSpecialization}{teacherId ? ` • ID: ${teacherId}` : ""}
                 </p>
               </div>
             </div>
@@ -143,7 +169,7 @@ const TeacherDashboard = () => {
         </aside>
 
         {/* Main content */}
-        <div className="flex-1 flex flex-col lg:ml-64 min-w-0">
+        <div className="flex-1 flex flex-col lg:ml-0 min-w-0">
 
           {/* Header */}
           <header className="flex items-center justify-between border-b border-gray-200 dark:border-gray-700 px-4 sm:px-6 lg:px-8 py-3 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm sticky top-0 z-30">
@@ -173,8 +199,22 @@ const TeacherDashboard = () => {
               >
                 <span className="material-symbols-outlined text-xl sm:text-2xl">logout</span>
               </button>
-              <div className="flex items-center justify-center w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 font-bold text-xs sm:text-sm ring-2 ring-gray-200 dark:ring-gray-600">
-                {userInitial}
+              
+              {/* ✅ Header Avatar - Dynamic & Clickable */}
+              <div
+                onClick={() => handleMenuClick('profile')}
+                className="cursor-pointer"
+              >
+                {userAvatar ? (
+                  <div
+                    className="bg-center bg-no-repeat aspect-square bg-cover rounded-full w-8 h-8 sm:w-9 sm:h-9 ring-2 ring-gray-200 dark:ring-gray-600 hover:ring-indigo-300 dark:hover:ring-indigo-400 transition-all hover:scale-105"
+                    style={{ backgroundImage: `url("${userAvatar}")` }}
+                  />
+                ) : (
+                  <div className="flex items-center justify-center w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 font-bold text-xs sm:text-sm ring-2 ring-gray-200 dark:ring-gray-600 hover:ring-indigo-300 dark:hover:ring-indigo-400 transition-all hover:scale-105">
+                    {userInitial}
+                  </div>
+                )}
               </div>
             </div>
           </header>
@@ -198,7 +238,7 @@ const TeacherDashboard = () => {
         chatColor="from-indigo-600 to-indigo-700"
       />
 
-      <style jsx>{`
+      <style>{`
         @keyframes fadeIn {
           from { opacity: 0; transform: translateY(10px); }
           to { opacity: 1; transform: translateY(0); }

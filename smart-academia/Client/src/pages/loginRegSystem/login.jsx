@@ -94,7 +94,7 @@ const Login = () => {
       } else if (data.user.role === "teacher") {
         navigate("/teacher/dashboard");
       } else if (data.user.role === "admin") {
-        navigate("/AdminDashboard");
+        navigate("/admin/dashboard");
       }
     } catch (error) {
       setApiError("Cannot connect to server. Make sure backend is running on port 5000.");

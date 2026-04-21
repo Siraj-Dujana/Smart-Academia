@@ -3,6 +3,15 @@ const bcrypt = require("bcryptjs");
 
 const UserSchema = new mongoose.Schema(
   {
+    // Avatar / profile photo (add after "qualification" field)
+    avatar: {
+      type: String,
+      default: null,
+    },
+    avatarPublicId: {
+      type: String,
+      default: null,
+    },
     fullName: {
       type: String,
       required: [true, "Full name is required"],
@@ -49,7 +58,7 @@ const UserSchema = new mongoose.Schema(
     otpResendCount: { type: Number, default: 0 },
     otpResendResetTime: { type: Date, default: null },
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 // Mongoose 9.x: async pre hooks must NOT use next()

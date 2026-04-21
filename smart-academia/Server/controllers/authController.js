@@ -64,6 +64,7 @@ const registerStudent = async (req, res) => {
         studentId: tempUser.studentId,
         department: tempUser.department,
         semester: tempUser.semester,
+        avatar: tempUser.avatar || null,
       },
     });
   } catch (error) {
@@ -138,6 +139,7 @@ const registerTeacher = async (req, res) => {
         employeeId: tempUser.employeeId,
         specialization: tempUser.specialization,
         qualification: tempUser.qualification,
+        avatar: tempUser.avatar || null,
       },
     });
   } catch (error) {
@@ -183,6 +185,7 @@ const login = async (req, res) => {
       return res.status(401).json({ message: "Invalid email or password" });
     }
 
+    // ✅ Return ALL user fields
     res.status(200).json({
       message: "Login successful",
       token: generateToken(user._id, user.role),
@@ -191,6 +194,13 @@ const login = async (req, res) => {
         fullName: user.fullName,
         email: user.email,
         role: user.role,
+        studentId: user.studentId,           // ✅ This is what you need!
+        employeeId: user.employeeId,
+        avatar: user.avatar,
+        department: user.department,
+        semester: user.semester,
+        specialization: user.specialization,
+        qualification: user.qualification,
       },
     });
   } catch (error) {
@@ -203,8 +213,25 @@ const login = async (req, res) => {
 const getMe = async (req, res) => {
   try {
     const user = await User.findById(req.user.id).select("-password");
-    res.status(200).json({ user });
+    res.status(200).json({ 
+      user: {
+        id: user._id,
+        fullName: user.fullName,
+        email: user.email,
+        role: user.role,
+        studentId: user.studentId || null,
+        employeeId: user.employeeId || null,
+        avatar: user.avatar || null,
+        department: user.department || null,
+        semester: user.semester || null,
+        specialization: user.specialization || null,
+        qualification: user.qualification || null,
+        isEmailVerified: user.isEmailVerified,
+        createdAt: user.createdAt,
+      }
+    });
   } catch (error) {
+    console.error("GetMe error:", error);
     res.status(500).json({ message: "Server error" });
   }
 };

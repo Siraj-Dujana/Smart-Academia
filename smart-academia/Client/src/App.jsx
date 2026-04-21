@@ -24,7 +24,8 @@ const HomeRoute = () => {
   if (token && user) {
     if (user.role === "student") return <Navigate to="/student/dashboard" replace />;
     if (user.role === "teacher") return <Navigate to="/teacher/dashboard" replace />;
-    if (user.role === "admin") return <Navigate to="/AdminDashboard" replace />;
+    if (user.role === "admin") return <Navigate to="/admin/dashboard" replace />;
+    
   }
 
   return <LandingPage />;
@@ -89,11 +90,11 @@ function App() {
           } />
 
           {/* ===== PROTECTED ADMIN ROUTES ===== */}
-          <Route path="/AdminDashboard" element={
-            <ProtectedRoute role="admin">
-              <AdminDashboard />
-            </ProtectedRoute>
-          } />
+          <Route path="/admin/dashboard" element={
+  <ProtectedRoute role="admin">
+    <AdminDashboard />
+  </ProtectedRoute>
+} />
 
           {/* ===== 404 ===== */}
           <Route path="*" element={

@@ -5,8 +5,9 @@ import Quizzes from "../components/dashboard/StudentDashboard/Student Tabs/Quizz
 import Labs from "../components/dashboard/StudentDashboard/Student Tabs/Labs";
 import ProgressReport from "../components/dashboard/StudentDashboard/Student Tabs/ProgressReport";
 import AITutor from "../components/dashboard/StudentDashboard/Student Tabs/AITutor";
-import AIAssistant from "../components/dashboard/StudentDashboard/Student Tabs/AIAssistant"; // new import
+import AIAssistant from "../components/dashboard/StudentDashboard/Student Tabs/AIAssistant";
 import FloatingButtons from '../components/sections/LandingPage/FloatingButtons';
+import ProfileManagement from '../components/dashboard/StudentDashboard/Student Tabs/Profilemanagement';
 import { useNavigate, useLocation } from "react-router-dom";
 
 const StudentDashboard = () => {
@@ -16,9 +17,20 @@ const StudentDashboard = () => {
   const [activeMenu, setActiveMenu] = useState('dashboard');
   const [user, setUser] = useState({ name: "", role: "", avatar: "", fullName: "", studentId: "" });
 
-  useEffect(() => {
+  // Create a reusable function to load user
+  const loadUserFromStorage = () => {
     const userData = JSON.parse(localStorage.getItem("user") || "{}");
     setUser(userData);
+  };
+
+  useEffect(() => {
+    loadUserFromStorage();
+  }, []);
+
+  // Listen for profile updates
+  useEffect(() => {
+    window.addEventListener("profileUpdated", loadUserFromStorage);
+    return () => window.removeEventListener("profileUpdated", loadUserFromStorage);
   }, []);
 
   // Read ?tab= from URL query params and switch to that tab
@@ -30,7 +42,7 @@ const StudentDashboard = () => {
     }
   }, [location.search]);
 
-  // Menu items - added "AI Assistant" below "AI Tutor"
+  // Menu items
   const menuItems = [
     { icon: "dashboard", label: "Dashboard", key: 'dashboard' },
     { icon: "import_contacts", label: "Courses", key: 'courses' },
@@ -38,7 +50,8 @@ const StudentDashboard = () => {
     { icon: "science", label: "Labs", key: 'labs' },
     { icon: "bar_chart_4_bars", label: "Progress", key: 'progress' },
     { icon: "smart_toy", label: "AI Tutor", key: 'ai-tutor' },
-    { icon: "assistant", label: "AI Assistant", key: 'ai-assistant' } // new tab
+    { icon: "assistant", label: "AI Assistant", key: 'ai-assistant' },
+    { icon: 'person', label: 'My Profile', key: 'profile' }
   ];
 
   const handleMenuClick = (menuKey) => {
@@ -73,16 +86,20 @@ const StudentDashboard = () => {
       case 'ai-tutor':
         return <AITutor />;
       case 'ai-assistant':
-        return <AIAssistant />; // new case
+        return <AIAssistant />;
+      case 'profile':
+        return <ProfileManagement />;
       default:
         return <Dashboard />;
     }
   };
 
-  // Get display name
+  // Use dynamic values
   const displayName = user.fullName || user.name || "Student";
   const userRole = user.role || "Student";
-  const studentId = user.studentId || "N/A";
+  // const studentId = user.studentId || "N/A";
+  // const studentId = user.studentId || user.employeeId || user.id?.slice(-6) || "N/A";
+  const studentId = user.studentId || user.employeeId || "N/A";
   const userAvatar = user.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(displayName)}&background=6366f1&color=fff`;
 
   return (
@@ -141,7 +158,10 @@ const StudentDashboard = () => {
 
           {/* User Profile */}
           <div className="border-t border-gray-200 dark:border-gray-700 p-3 sm:p-4 shrink-0">
-            <div className="flex items-center gap-3 group cursor-pointer p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-200">
+            <div 
+              className="flex items-center gap-3 group cursor-pointer p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-200"
+              onClick={() => handleMenuClick('profile')}
+            >
               <div
                 className="bg-center bg-no-repeat aspect-square bg-cover rounded-full w-10 h-10 ring-2 ring-gray-200 dark:ring-gray-600 group-hover:ring-indigo-200 dark:group-hover:ring-indigo-400 transition-all duration-200"
                 style={{ backgroundImage: `url("${userAvatar}")` }}
@@ -202,6 +222,7 @@ const StudentDashboard = () => {
               <div
                 className="bg-center bg-no-repeat aspect-square bg-cover rounded-full w-8 h-8 sm:w-10 sm:h-10 ring-2 ring-gray-200 dark:ring-gray-600 hover:ring-indigo-300 dark:hover:ring-indigo-400 transition-all duration-200 cursor-pointer hover:scale-105"
                 style={{ backgroundImage: `url("${userAvatar}")` }}
+                onClick={() => handleMenuClick('profile')}
               />
             </div>
           </header>
@@ -230,7 +251,7 @@ const StudentDashboard = () => {
         scrollColor="from-indigo-600 to-indigo-700"
       />
 
-      <style jsx>{`
+      <style>{`
         @keyframes fadeIn {
           from { opacity: 0; transform: translateY(10px); }
           to { opacity: 1; transform: translateY(0); }

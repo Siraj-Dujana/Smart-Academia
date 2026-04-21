@@ -27,6 +27,9 @@ app.use("/api/assistant/documents", require("./routes/documentRoutes"));
 app.use("/api/assistant/flashcards", require("./routes/flashcardRoutes"));
 app.use("/api/assistant/quizzes", require("./routes/quizRoutes"));
 
+// Profile
+app.use("/api/profile", require("./routes/profile"));
+
 app.get("/", (req, res) => res.json({ message: "SmartAcademia API running" }));
 
 mongoose.connect(process.env.MONGO_URI)
