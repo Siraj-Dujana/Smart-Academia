@@ -222,6 +222,7 @@ const AITutor = () => {
   const messagesEndRef = useRef(null);
   const textareaRef = useRef(null);
   const editTextareaRef = useRef(null);
+  const chatContainerRef = useRef(null);
 
   useEffect(() => {
     if (messages.length > 0) {
@@ -284,7 +285,7 @@ const AITutor = () => {
         .filter(m => m.role !== "system")
         .map(m => ({ role: m.role, content: m.content }));
 
-      const res = await fetch(`${API}/api/ai/chat`, {
+      const res = await fetch(`${API}/api/ai/student-chat`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -308,7 +309,6 @@ const AITutor = () => {
         role: "assistant",
         content: data.reply,
         timestamp: new Date(),
-        tokens: data.usage,
         id: Date.now() + 1
       };
       setMessages(prev => [...prev, aiMessage]);
@@ -357,7 +357,7 @@ const AITutor = () => {
         
         history.push({ role: "user", content: editText });
         
-        const res = await fetch(`${API}/api/ai/chat`, {
+        const res = await fetch(`${API}/api/ai/student-chat`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -381,7 +381,6 @@ const AITutor = () => {
           role: "assistant",
           content: data.reply,
           timestamp: new Date(),
-          tokens: data.usage,
           id: Date.now(),
           isRegenerated: true
         };
@@ -419,6 +418,7 @@ const AITutor = () => {
       }]);
       setShowSuggestions(true);
       setError("");
+      localStorage.removeItem('ai_tutor_chat_history');
     }
   };
 
@@ -434,7 +434,7 @@ const AITutor = () => {
   };
 
   return (
-    <div className="flex flex-col h-[calc(100vh-100px)] sm:h-[calc(100vh-120px)] max-h-[800px]">
+    <div className="flex flex-col h-full min-h-[calc(100vh-180px)]">
 
       {/* Header - Responsive */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4 flex-shrink-0">
@@ -461,17 +461,21 @@ const AITutor = () => {
         </div>
       </div>
 
-      {/* Chat container */}
-      <div className="flex-1 bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm flex flex-col overflow-hidden">
+      {/* Chat container - LARGER */}
+      <div 
+        ref={chatContainerRef}
+        className="flex-1 bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm flex flex-col overflow-hidden"
+        style={{ minHeight: "500px" }}
+      >
 
-        {/* Messages */}
-        <div className="flex-1 overflow-y-auto p-3 sm:p-4 md:p-6 space-y-3 sm:space-y-4">
+        {/* Messages - LARGER */}
+        <div className="flex-1 overflow-y-auto p-4 sm:p-5 md:p-6 space-y-4">
 
           {messages.map((msg, index) => (
-            <div key={index} className={`group flex items-start gap-2 sm:gap-3 ${msg.role === "user" ? "flex-row-reverse" : ""}`}>
+            <div key={index} className={`group flex items-start gap-3 ${msg.role === "user" ? "flex-row-reverse" : ""}`}>
 
               {/* Avatar */}
-              <div className={`flex-shrink-0 w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center text-xs font-bold ${
+              <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ${
                 msg.role === "user"
                   ? "bg-blue-600 text-white"
                   : "bg-gradient-to-br from-purple-500 to-blue-600 text-white"
@@ -483,7 +487,7 @@ const AITutor = () => {
               </div>
 
               {/* Message bubble */}
-              <div className={`max-w-[85%] sm:max-w-[80%] ${msg.role === "user" ? "items-end" : "items-start"} flex flex-col gap-1`}>
+              <div className={`max-w-[80%] ${msg.role === "user" ? "items-end" : "items-start"} flex flex-col gap-1`}>
                 
                 {/* Edit mode */}
                 {editingId === index ? (
@@ -496,26 +500,26 @@ const AITutor = () => {
                         e.target.style.height = 'auto';
                         e.target.style.height = Math.min(e.target.scrollHeight, 200) + 'px';
                       }}
-                      className="w-full px-3 sm:px-4 py-2 sm:py-3 rounded-2xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none text-sm"
+                      className="w-full px-4 py-3 rounded-2xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none text-sm"
                       rows={3}
                     />
                     <div className="flex gap-2 mt-2">
                       <button
                         onClick={() => saveEdit(index)}
-                        className="px-2 sm:px-3 py-1 text-xs sm:text-sm bg-green-500 text-white rounded-lg hover:bg-green-600 transition"
+                        className="px-3 py-1 text-xs sm:text-sm bg-green-500 text-white rounded-lg hover:bg-green-600 transition"
                       >
-                        Save
+                        Save & Regenerate
                       </button>
                       <button
                         onClick={cancelEdit}
-                        className="px-2 sm:px-3 py-1 text-xs sm:text-sm bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition"
+                        className="px-3 py-1 text-xs sm:text-sm bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition"
                       >
                         Cancel
                       </button>
                     </div>
                   </div>
                 ) : (
-                  <div className={`px-3 sm:px-4 py-2 sm:py-3 rounded-2xl ${
+                  <div className={`px-4 py-3 rounded-2xl ${
                     msg.role === "user"
                       ? "bg-blue-600 text-white rounded-tr-sm"
                       : "bg-gray-50 dark:bg-gray-700/50 text-gray-900 dark:text-white border border-gray-200 dark:border-gray-600 rounded-tl-sm"
@@ -525,12 +529,12 @@ const AITutor = () => {
                       : formatMessage(msg.content)
                     }
                     {msg.edited && (
-                      <span className="text-[10px] sm:text-xs opacity-70 mt-1 block">
+                      <span className="text-[10px] opacity-70 mt-1 block">
                         (edited)
                       </span>
                     )}
                     {msg.isRegenerated && (
-                      <span className="text-[10px] sm:text-xs opacity-70 mt-1 block">
+                      <span className="text-[10px] opacity-70 mt-1 block">
                         (regenerated)
                       </span>
                     )}
@@ -539,19 +543,19 @@ const AITutor = () => {
                 
                 {/* Timestamp and edit/delete buttons */}
                 <div className="flex items-center gap-2 px-1">
-                  <span className="text-[10px] sm:text-xs text-gray-400">{formatTime(msg.timestamp)}</span>
+                  <span className="text-[10px] text-gray-400">{formatTime(msg.timestamp)}</span>
                   {!editingId && msg.role === "user" && (
                     <div className="opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
                       <button
                         onClick={() => startEdit(index)}
-                        className="text-[10px] sm:text-xs text-gray-400 hover:text-blue-500"
+                        className="text-[10px] text-gray-400 hover:text-blue-500"
                         title="Edit message"
                       >
                         ✏️
                       </button>
                       <button
                         onClick={() => deleteMessage(index)}
-                        className="text-[10px] sm:text-xs text-gray-400 hover:text-red-500"
+                        className="text-[10px] text-gray-400 hover:text-red-500"
                         title="Delete message"
                       >
                         🗑️
@@ -565,15 +569,15 @@ const AITutor = () => {
 
           {/* Loading indicator */}
           {isLoading && (
-            <div className="flex items-start gap-2 sm:gap-3">
-              <div className="flex-shrink-0 w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-gradient-to-br from-purple-500 to-blue-600 flex items-center justify-center">
+            <div className="flex items-start gap-3">
+              <div className="flex-shrink-0 w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 to-blue-600 flex items-center justify-center">
                 <span className="material-symbols-outlined text-white text-sm">smart_toy</span>
               </div>
-              <div className="bg-gray-50 dark:bg-gray-700/50 border border-gray-200 dark:border-gray-600 px-3 sm:px-4 py-2 sm:py-3 rounded-2xl rounded-tl-sm">
-                <div className="flex items-center gap-1">
-                  <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '0s' }}/>
-                  <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '0.15s' }}/>
-                  <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '0.3s' }}/>
+              <div className="bg-gray-50 dark:bg-gray-700/50 border border-gray-200 dark:border-gray-600 px-4 py-3 rounded-2xl rounded-tl-sm">
+                <div className="flex items-center gap-1.5">
+                  <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '0s' }}/>
+                  <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '0.15s' }}/>
+                  <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '0.3s' }}/>
                 </div>
               </div>
             </div>
@@ -581,12 +585,12 @@ const AITutor = () => {
 
           {/* Suggestions */}
           {showSuggestions && messages.length <= 1 && (
-            <div className="mt-4">
-              <p className="text-[11px] sm:text-xs text-gray-500 dark:text-gray-400 mb-3 text-center">Try asking...</p>
+            <div className="mt-6">
+              <p className="text-xs text-gray-500 dark:text-gray-400 mb-3 text-center">Try asking...</p>
               <div className="grid grid-cols-1 gap-2">
                 {SUGGESTIONS.map((suggestion, i) => (
                   <button key={i} onClick={() => handleSend(suggestion)}
-                    className="text-left text-xs sm:text-sm px-3 sm:px-4 py-2 sm:py-3 rounded-xl border border-gray-200 dark:border-gray-600 hover:border-blue-400 dark:hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 text-gray-700 dark:text-gray-300 transition-all duration-200 group">
+                    className="text-left text-sm px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-600 hover:border-blue-400 dark:hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 text-gray-700 dark:text-gray-300 transition-all duration-200 group">
                     <span className="material-symbols-outlined text-blue-500 text-sm mr-2 group-hover:text-blue-600 align-middle">lightbulb</span>
                     {suggestion}
                   </button>
@@ -600,18 +604,18 @@ const AITutor = () => {
 
         {/* Error banner */}
         {error && (
-          <div className="mx-3 sm:mx-4 mb-2 p-2 sm:p-3 rounded-xl bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700 flex items-center gap-2">
+          <div className="mx-4 mb-3 p-3 rounded-xl bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700 flex items-center gap-2">
             <span className="material-symbols-outlined text-red-600 text-sm">error</span>
-            <p className="text-xs sm:text-sm text-red-600 dark:text-red-400 flex-1">{error}</p>
+            <p className="text-sm text-red-600 dark:text-red-400 flex-1">{error}</p>
             <button onClick={() => setError("")} className="text-red-400 hover:text-red-600">
               <span className="material-symbols-outlined text-sm">close</span>
             </button>
           </div>
         )}
 
-        {/* Input area */}
-        <div className="border-t border-gray-200 dark:border-gray-700 p-3 sm:p-4">
-          <div className="flex items-end gap-2 sm:gap-3">
+        {/* Input area - LARGER */}
+        <div className="border-t border-gray-200 dark:border-gray-700 p-4">
+          <div className="flex items-end gap-3">
             <div className="flex-1 relative">
               <textarea
                 ref={textareaRef}
@@ -619,30 +623,30 @@ const AITutor = () => {
                 onChange={e => {
                   setInput(e.target.value);
                   e.target.style.height = "auto";
-                  e.target.style.height = Math.min(e.target.scrollHeight, 100) + "px";
+                  e.target.style.height = Math.min(e.target.scrollHeight, 120) + "px";
                 }}
                 onKeyDown={handleKeyDown}
-                placeholder="Ask me anything... (Enter to send)"
+                placeholder="Ask me anything... (Enter to send, Shift+Enter for new line)"
                 disabled={isLoading}
                 rows={1}
-                className="w-full px-3 sm:px-4 py-2 sm:py-3 border border-gray-300 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none transition-all disabled:opacity-50 text-sm"
-                style={{ minHeight: "42px", maxHeight: "100px" }}
+                className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none transition-all disabled:opacity-50 text-sm"
+                style={{ minHeight: "48px", maxHeight: "120px" }}
               />
             </div>
             <button
               onClick={() => handleSend()}
               disabled={!input.trim() || isLoading}
-              className="flex-shrink-0 w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center rounded-xl bg-blue-600 hover:bg-blue-700 text-white disabled:opacity-50 disabled:cursor-not-allowed transition-all hover:scale-105 active:scale-95">
+              className="flex-shrink-0 w-12 h-12 flex items-center justify-center rounded-xl bg-blue-600 hover:bg-blue-700 text-white disabled:opacity-50 disabled:cursor-not-allowed transition-all hover:scale-105 active:scale-95">
               {isLoading
-                ? <svg className="animate-spin h-4 w-4 sm:h-5 sm:w-5" viewBox="0 0 24 24" fill="none">
+                ? <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24" fill="none">
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
                   </svg>
-                : <span className="material-symbols-outlined text-xl sm:text-2xl">send</span>
+                : <span className="material-symbols-outlined text-2xl">send</span>
               }
             </button>
           </div>
-          <p className="text-[10px] sm:text-xs text-gray-400 mt-2 text-center">
+          <p className="text-xs text-gray-400 mt-2 text-center">
             AI can make mistakes. Verify important information with your instructor.
           </p>
         </div>

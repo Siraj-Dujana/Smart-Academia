@@ -82,7 +82,7 @@ const TeacherDashboard = () => {
   // ✅ Use dynamic values
   const displayName = user.fullName || "Teacher";
   const userInitial = displayName.charAt(0).toUpperCase();
-  const userSpecialization = user.specialization || "Educator";
+  const userSpecialization = "Educator";
   const teacherId = user.employeeId || user.id?.slice(-6) || "";
   const userAvatar = user.avatar || null;
 
@@ -169,7 +169,7 @@ const TeacherDashboard = () => {
         </aside>
 
         {/* Main content */}
-        <div className="flex-1 flex flex-col lg:ml-0 min-w-0">
+        <div className="flex-1 flex flex-col lg:ml-64 min-w-0">
 
           {/* Header */}
           <header className="flex items-center justify-between border-b border-gray-200 dark:border-gray-700 px-4 sm:px-6 lg:px-8 py-3 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm sticky top-0 z-30">

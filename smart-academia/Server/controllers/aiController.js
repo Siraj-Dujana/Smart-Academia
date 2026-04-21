@@ -23,7 +23,7 @@ const generateSummary = async (req, res) => {
       return res.status(404).json({ message: 'Document not found' });
     }
 
-    const ai = getAI(); // 👈 initialize here
+    const ai = getAI();
     const response = await ai.models.generateContent({
       model: 'gemini-2.5-flash-lite',
       contents: `
@@ -69,13 +69,15 @@ const chatWithDocument = async (req, res) => {
 
     let chatHistory = await ChatHistory.findOne({
       user: req.user._id,
-      document: req.params.documentId
+      document: req.params.documentId,
+      type: 'document'
     });
 
     if (!chatHistory) {
       chatHistory = await ChatHistory.create({
         user: req.user._id,
         document: req.params.documentId,
+        type: 'document',
         messages: []
       });
     }
@@ -120,7 +122,8 @@ const getChatHistory = async (req, res) => {
   try {
     const chatHistory = await ChatHistory.findOne({
       user: req.user._id,
-      document: req.params.documentId
+      document: req.params.documentId,
+      type: 'document'
     });
 
     if (!chatHistory) {
@@ -139,7 +142,8 @@ const clearChatHistory = async (req, res) => {
   try {
     await ChatHistory.findOneAndDelete({
       user: req.user._id,
-      document: req.params.documentId
+      document: req.params.documentId,
+      type: 'document'
     });
 
     res.status(200).json({ message: 'Chat history cleared' });
@@ -308,7 +312,6 @@ const getAnalytics = async (req, res) => {
     const userId = req.user._id;
     const { range = "week" } = req.query;
 
-    // Get counts
     const AIDocument = require('../models/Document');
     const AIFlashcard = require('../models/Flashcard');
     const AIQuiz = require('../models/AIQuiz');
@@ -317,7 +320,6 @@ const getAnalytics = async (req, res) => {
     const totalFlashcardSets = await AIFlashcard.countDocuments({ user: userId });
     const totalQuizzes = await AIQuiz.countDocuments({ user: userId });
 
-    // Quiz stats
     const quizzes = await AIQuiz.find({ user: userId });
     let totalQuizAttempts = 0;
     let totalScore = 0;
@@ -336,7 +338,6 @@ const getAnalytics = async (req, res) => {
 
     const avgQuizScore = totalQuizAttempts > 0 ? Math.round(totalScore / totalQuizAttempts) : 0;
 
-    // Recent activity (simplified - no date filtering for now)
     const recentQuizzes = await AIQuiz.find({ user: userId })
       .sort({ updatedAt: -1 })
       .limit(3);
@@ -377,6 +378,196 @@ const getAnalytics = async (req, res) => {
   }
 };
 
+// ✅ ===== STUDENT AI TUTOR =====
+// @route   POST /api/ai/student-chat
+const studentChat = async (req, res) => {
+  try {
+    const { message, context = "general" } = req.body;
+
+    if (!message) {
+      return res.status(400).json({ message: 'Message is required' });
+    }
+
+    let chatHistory = await ChatHistory.findOne({
+      user: req.user._id,
+      type: 'student-tutor'
+    });
+
+    if (!chatHistory) {
+      chatHistory = await ChatHistory.create({
+        user: req.user._id,
+        type: 'student-tutor',
+        messages: []
+      });
+    }
+
+    const historyText = chatHistory.messages
+      .slice(-10)
+      .map(m => `${m.role === 'user' ? 'Student' : 'Assistant'}: ${m.content}`)
+      .join('\n');
+
+    const ai = getAI();
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.5-flash-lite',
+      contents: `
+        You are a helpful AI tutor for university students. 
+        Explain concepts clearly, provide examples, and help with understanding course material.
+        Keep responses educational and encouraging.
+        
+        Context: ${context === 'general' ? 'General learning' : context}
+        
+        Previous conversation:
+        ${historyText}
+        
+        Student's question: ${message}
+        
+        Provide a clear, helpful response:
+      `
+    });
+
+    const reply = response.text;
+
+    chatHistory.messages.push({ role: 'user', content: message });
+    chatHistory.messages.push({ role: 'assistant', content: reply });
+    await chatHistory.save();
+
+    res.status(200).json({ 
+      reply, 
+      chatHistory: chatHistory.messages 
+    });
+
+  } catch (error) {
+    console.error('Student chat error:', error);
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// ✅ ===== TEACHER AI TUTOR =====
+// @route   POST /api/ai/teacher-chat
+const teacherChat = async (req, res) => {
+  try {
+    const { message, context = "general", courseContext = null } = req.body;
+
+    if (!message) {
+      return res.status(400).json({ message: 'Message is required' });
+    }
+
+    let chatHistory = await ChatHistory.findOne({
+      user: req.user._id,
+      type: 'teacher-tutor'
+    });
+
+    if (!chatHistory) {
+      chatHistory = await ChatHistory.create({
+        user: req.user._id,
+        type: 'teacher-tutor',
+        messages: []
+      });
+    }
+
+    const getContextPrompt = (ctx) => {
+      const base = "You are an AI teaching assistant for university instructors. ";
+      switch(ctx) {
+        case "lesson_planning":
+          return base + "Focus ONLY on lesson planning: learning objectives, activities, materials, and assessments.";
+        case "assessment":
+          return base + "Focus ONLY on assessment design: quizzes, rubrics, grading strategies, and evaluation methods.";
+        case "student_support":
+          return base + "Focus ONLY on student support: helping struggling students, engagement techniques, and differentiated instruction.";
+        case "content_generation":
+          return base + "Focus ONLY on generating educational content: quiz questions, assignments, examples, and explanations.";
+        default:
+          return base + "Provide helpful, practical teaching advice for university instructors.";
+      }
+    };
+
+    const historyText = chatHistory.messages
+      .slice(-10)
+      .map(m => `${m.role === 'user' ? 'Teacher' : 'Assistant'}: ${m.content}`)
+      .join('\n');
+
+    const courseInfo = courseContext ? `Course context: ${courseContext}` : '';
+
+    const ai = getAI();
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.5-flash-lite',
+      contents: `
+        ${getContextPrompt(context)}
+        ${courseInfo}
+        
+        Previous conversation:
+        ${historyText}
+        
+        Teacher's question: ${message}
+      `
+    });
+
+    const reply = response.text;
+
+    chatHistory.messages.push({ role: 'user', content: message });
+    chatHistory.messages.push({ role: 'assistant', content: reply });
+    await chatHistory.save();
+
+    res.status(200).json({ 
+      reply, 
+      chatHistory: chatHistory.messages 
+    });
+
+  } catch (error) {
+    console.error('Teacher chat error:', error);
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// ✅ History functions
+const getStudentChatHistory = async (req, res) => {
+  try {
+    const chatHistory = await ChatHistory.findOne({
+      user: req.user._id,
+      type: 'student-tutor'
+    });
+    res.status(200).json({ messages: chatHistory?.messages || [] });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+const getTeacherChatHistory = async (req, res) => {
+  try {
+    const chatHistory = await ChatHistory.findOne({
+      user: req.user._id,
+      type: 'teacher-tutor'
+    });
+    res.status(200).json({ messages: chatHistory?.messages || [] });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+const clearStudentChatHistory = async (req, res) => {
+  try {
+    await ChatHistory.findOneAndDelete({
+      user: req.user._id,
+      type: 'student-tutor'
+    });
+    res.status(200).json({ message: 'Chat history cleared' });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+const clearTeacherChatHistory = async (req, res) => {
+  try {
+    await ChatHistory.findOneAndDelete({
+      user: req.user._id,
+      type: 'teacher-tutor'
+    });
+    res.status(200).json({ message: 'Chat history cleared' });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
 
 module.exports = {
   generateSummary,
@@ -386,6 +577,11 @@ module.exports = {
   explainConcept,
   generateFlashcards,
   generateQuiz,
-  getAnalytics
-  
+  getAnalytics,
+  studentChat,
+  teacherChat,
+  getStudentChatHistory,
+  getTeacherChatHistory,
+  clearStudentChatHistory,
+  clearTeacherChatHistory
 };

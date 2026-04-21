@@ -14,7 +14,7 @@ const apiFetch = async (url, options = {}) => {
   return res;
 };
 
-// ── Avatar Component ────────────────────────────────────────────
+// ─── Avatar Component ────────────────────────────────────────────
 const Avatar = ({ user, size = 96, onUpload, onDelete, uploading }) => {
   const fileRef = useRef();
   const initials = user?.fullName
@@ -27,29 +27,12 @@ const Avatar = ({ user, size = 96, onUpload, onDelete, uploading }) => {
     : "??";
 
   return (
-    <div style={{ position: "relative", display: "inline-block" }}>
+    <div className="relative inline-block">
       <div
-        style={{
-          width: size,
-          height: size,
-          borderRadius: "50%",
-          overflow: "hidden",
-          border: "3px solid #135bec",
-          boxShadow: "0 0 0 3px rgba(19,91,236,0.15)",
-          background: user?.avatar
-            ? "transparent"
-            : "linear-gradient(135deg, #135bec 0%, #3b82f6 100%)",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          fontSize: size * 0.32,
-          fontWeight: 700,
-          color: "white",
-          letterSpacing: "0.05em",
-          cursor: "pointer",
-          transition: "box-shadow 0.2s",
-          position: "relative",
-        }}
+        className={`relative flex items-center justify-center rounded-full overflow-hidden border-4 border-indigo-500 shadow-lg cursor-pointer transition-all hover:shadow-xl ${
+          user?.avatar ? "bg-transparent" : "bg-gradient-to-br from-indigo-600 to-blue-500"
+        }`}
+        style={{ width: size, height: size }}
         onClick={() => fileRef.current?.click()}
         title="Click to change photo"
       >
@@ -57,66 +40,26 @@ const Avatar = ({ user, size = 96, onUpload, onDelete, uploading }) => {
           <img
             src={user.avatar}
             alt={user.fullName}
-            style={{ width: "100%", height: "100%", objectFit: "cover" }}
+            className="w-full h-full object-cover"
           />
         ) : (
-          initials
+          <span
+            className="font-bold text-white"
+            style={{ fontSize: size * 0.32 }}
+          >
+            {initials}
+          </span>
         )}
 
         {/* Hover overlay */}
-        <div
-          className="avatar-overlay"
-          style={{
-            position: "absolute",
-            inset: 0,
-            background: "rgba(0,0,0,0.45)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            opacity: 0,
-            transition: "opacity 0.2s",
-            borderRadius: "50%",
-          }}
-        >
+        <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity rounded-full">
           {uploading ? (
-            <svg
-              className="spin"
-              width="22"
-              height="22"
-              viewBox="0 0 24 24"
-              fill="none"
-            >
-              <circle
-                cx="12"
-                cy="12"
-                r="10"
-                stroke="white"
-                strokeWidth="3"
-                strokeOpacity="0.3"
-              />
-              <path
-                d="M12 2a10 10 0 0 1 10 10"
-                stroke="white"
-                strokeWidth="3"
-                strokeLinecap="round"
-              />
+            <svg className="animate-spin w-6 h-6 text-white" viewBox="0 0 24 24" fill="none">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" />
+              <path className="opacity-75" fill="currentColor" d="M12 2a10 10 0 0110 10" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
             </svg>
           ) : (
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
-              <path
-                d="M12 16V8m0 0l-3 3m3-3l3 3"
-                stroke="white"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-              <path
-                d="M3 16v2a3 3 0 003 3h12a3 3 0 003-3v-2"
-                stroke="white"
-                strokeWidth="2"
-                strokeLinecap="round"
-              />
-            </svg>
+            <span className="material-symbols-outlined text-white text-xl">upload</span>
           )}
         </div>
       </div>
@@ -128,30 +71,7 @@ const Avatar = ({ user, size = 96, onUpload, onDelete, uploading }) => {
             e.stopPropagation();
             onDelete();
           }}
-          title="Remove photo"
-          style={{
-            position: "absolute",
-            bottom: 0,
-            right: 0,
-            width: 26,
-            height: 26,
-            borderRadius: "50%",
-            background: "#ef4444",
-            border: "2px solid white",
-            color: "white",
-            cursor: "pointer",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            fontSize: 14,
-            fontWeight: 700,
-            lineHeight: 1,
-            transition: "transform 0.15s",
-          }}
-          onMouseEnter={(e) =>
-            (e.currentTarget.style.transform = "scale(1.15)")
-          }
-          onMouseLeave={(e) => (e.currentTarget.style.transform = "scale(1)")}
+          className="absolute -bottom-1 -right-1 w-7 h-7 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center text-lg font-bold border-2 border-white dark:border-gray-800 transition-transform hover:scale-110"
         >
           ×
         </button>
@@ -161,281 +81,47 @@ const Avatar = ({ user, size = 96, onUpload, onDelete, uploading }) => {
         ref={fileRef}
         type="file"
         accept="image/*"
-        style={{ display: "none" }}
+        className="hidden"
         onChange={(e) => e.target.files[0] && onUpload(e.target.files[0])}
       />
-
-      <style>{`
-        div:hover > .avatar-overlay { opacity: 1 !important; }
-        @keyframes spin { to { transform: rotate(360deg); } }
-        .spin { animation: spin 0.8s linear infinite; }
-      `}</style>
     </div>
   );
 };
 
-// ── Input Component ─────────────────────────────────────────────
-const Field = ({
-  label,
-  value,
-  onChange,
-  type = "text",
-  placeholder,
-  icon,
-  disabled,
-  hint,
-}) => (
-  <div style={{ marginBottom: 18 }}>
-    <label
-      style={{
-        display: "block",
-        fontSize: 12,
-        fontWeight: 600,
-        color: "var(--text-secondary)",
-        textTransform: "uppercase",
-        letterSpacing: "0.06em",
-        marginBottom: 6,
-      }}
-    >
-      {label}
-    </label>
-    <div style={{ position: "relative" }}>
-      {icon && (
-        <span
-          className="material-symbols-outlined"
-          style={{
-            position: "absolute",
-            left: 12,
-            top: "50%",
-            transform: "translateY(-50%)",
-            fontSize: 18,
-            color: "var(--text-secondary)",
-            pointerEvents: "none",
-          }}
-        >
-          {icon}
-        </span>
-      )}
-      <input
-        type={type}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        placeholder={placeholder}
-        disabled={disabled}
-        style={{
-          width: "100%",
-          padding: icon ? "10px 14px 10px 40px" : "10px 14px",
-          borderRadius: 10,
-          border: "1.5px solid var(--border)",
-          background: disabled ? "var(--surface-disabled)" : "var(--surface)",
-          color: disabled ? "var(--text-secondary)" : "var(--text-primary)",
-          fontSize: 14,
-          outline: "none",
-          boxSizing: "border-box",
-          transition: "border-color 0.2s, box-shadow 0.2s",
-          cursor: disabled ? "not-allowed" : "text",
-        }}
-        onFocus={(e) => {
-          if (!disabled) {
-            e.target.style.borderColor = "#135bec";
-            e.target.style.boxShadow = "0 0 0 3px rgba(19,91,236,0.1)";
-          }
-        }}
-        onBlur={(e) => {
-          e.target.style.borderColor = "var(--border)";
-          e.target.style.boxShadow = "none";
-        }}
-      />
-    </div>
-    {hint && (
-      <p
-        style={{ fontSize: 11, color: "var(--text-secondary)", marginTop: 4 }}
-      >
-        {hint}
-      </p>
-    )}
-  </div>
-);
-
-// ── Select Component ────────────────────────────────────────────
-const SelectField = ({ label, value, onChange, options, icon }) => (
-  <div style={{ marginBottom: 18 }}>
-    <label
-      style={{
-        display: "block",
-        fontSize: 12,
-        fontWeight: 600,
-        color: "var(--text-secondary)",
-        textTransform: "uppercase",
-        letterSpacing: "0.06em",
-        marginBottom: 6,
-      }}
-    >
-      {label}
-    </label>
-    <div style={{ position: "relative" }}>
-      {icon && (
-        <span
-          className="material-symbols-outlined"
-          style={{
-            position: "absolute",
-            left: 12,
-            top: "50%",
-            transform: "translateY(-50%)",
-            fontSize: 18,
-            color: "var(--text-secondary)",
-            pointerEvents: "none",
-            zIndex: 1,
-          }}
-        >
-          {icon}
-        </span>
-      )}
-      <select
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        style={{
-          width: "100%",
-          padding: icon ? "10px 14px 10px 40px" : "10px 14px",
-          borderRadius: 10,
-          border: "1.5px solid var(--border)",
-          background: "var(--surface)",
-          color: "var(--text-primary)",
-          fontSize: 14,
-          outline: "none",
-          boxSizing: "border-box",
-          appearance: "none",
-          cursor: "pointer",
-        }}
-        onFocus={(e) => {
-          e.target.style.borderColor = "#135bec";
-          e.target.style.boxShadow = "0 0 0 3px rgba(19,91,236,0.1)";
-        }}
-        onBlur={(e) => {
-          e.target.style.borderColor = "var(--border)";
-          e.target.style.boxShadow = "none";
-        }}
-      >
-        {options.map((opt) => (
-          <option key={opt.value} value={opt.value}>
-            {opt.label}
-          </option>
-        ))}
-      </select>
-    </div>
-  </div>
-);
-
-// ── Toast ───────────────────────────────────────────────────────
+// ─── Toast ───────────────────────────────────────────────────────
 const Toast = ({ msg, type }) => {
   if (!msg) return null;
   const colors = {
-    success: { bg: "#f0fdf4", border: "#86efac", color: "#166534", icon: "check_circle" },
-    error: { bg: "#fef2f2", border: "#fca5a5", color: "#991b1b", icon: "error" },
+    success: "bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800 text-green-700 dark:text-green-300",
+    error: "bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800 text-red-700 dark:text-red-300",
   };
-  const c = colors[type] || colors.success;
   return (
-    <div
-      style={{
-        position: "fixed",
-        top: 20,
-        right: 20,
-        zIndex: 9999,
-        background: c.bg,
-        border: `1px solid ${c.border}`,
-        color: c.color,
-        borderRadius: 12,
-        padding: "12px 18px",
-        display: "flex",
-        alignItems: "center",
-        gap: 8,
-        fontSize: 14,
-        fontWeight: 500,
-        boxShadow: "0 8px 24px rgba(0,0,0,0.12)",
-        animation: "slideIn 0.25s ease",
-        maxWidth: 340,
-      }}
-    >
-      <span className="material-symbols-outlined" style={{ fontSize: 18 }}>
-        {c.icon}
+    <div className={`fixed top-5 right-5 z-50 px-5 py-3 rounded-xl border shadow-lg flex items-center gap-2 text-sm font-medium animate-slideIn max-w-sm ${colors[type] || colors.success}`}>
+      <span className="material-symbols-outlined text-lg">
+        {type === "success" ? "check_circle" : "error"}
       </span>
       {msg}
     </div>
   );
 };
 
-// ── Card ────────────────────────────────────────────────────────
-const Card = ({ title, icon, children }) => (
-  <div
-    style={{
-      background: "var(--card)",
-      borderRadius: 16,
-      border: "1px solid var(--border)",
-      marginBottom: 20,
-      overflow: "hidden",
-    }}
-  >
-    <div
-      style={{
-        padding: "16px 20px",
-        borderBottom: "1px solid var(--border)",
-        display: "flex",
-        alignItems: "center",
-        gap: 10,
-      }}
-    >
-      <span
-        className="material-symbols-outlined"
-        style={{ fontSize: 20, color: "#135bec" }}
-      >
-        {icon}
-      </span>
-      <h3
-        style={{
-          margin: 0,
-          fontSize: 15,
-          fontWeight: 700,
-          color: "var(--text-primary)",
-        }}
-      >
-        {title}
-      </h3>
-    </div>
-    <div style={{ padding: "20px 20px 4px" }}>{children}</div>
-  </div>
-);
-
-// ── Badge ───────────────────────────────────────────────────────
+// ─── Role Badge ──────────────────────────────────────────────────
 const RoleBadge = ({ role }) => {
-  const cfg = {
-    student: { label: "Student", bg: "#eff6ff", color: "#1d4ed8", icon: "school" },
-    teacher: { label: "Teacher", bg: "#f0fdf4", color: "#166534", icon: "cast_for_education" },
-    admin: { label: "Admin", bg: "#fef3c7", color: "#92400e", icon: "admin_panel_settings" },
+  const config = {
+    student: { label: "Student", className: "bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300", icon: "school" },
+    teacher: { label: "Teacher", className: "bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300", icon: "cast_for_education" },
+    admin: { label: "Admin", className: "bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300", icon: "admin_panel_settings" },
   };
-  const c = cfg[role] || cfg.student;
+  const c = config[role] || config.student;
   return (
-    <span
-      style={{
-        display: "inline-flex",
-        alignItems: "center",
-        gap: 4,
-        background: c.bg,
-        color: c.color,
-        borderRadius: 20,
-        padding: "3px 10px",
-        fontSize: 12,
-        fontWeight: 600,
-      }}
-    >
-      <span className="material-symbols-outlined" style={{ fontSize: 13 }}>
-        {c.icon}
-      </span>
+    <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold ${c.className}`}>
+      <span className="material-symbols-outlined text-sm">{c.icon}</span>
       {c.label}
     </span>
   );
 };
 
-// ── Main Profile Page ───────────────────────────────────────────
+// ─── Main Profile Page ───────────────────────────────────────────
 const ProfileManagement = () => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -445,18 +131,14 @@ const ProfileManagement = () => {
   const [toast, setToast] = useState({ msg: "", type: "success" });
   const [activeTab, setActiveTab] = useState("profile");
 
-  // Profile form
   const [form, setForm] = useState({
     fullName: "",
     department: "",
     semester: "",
     specialization: "",
     qualification: "",
-    employeeId: "",
-    studentId: "",
   });
 
-  // Password form
   const [passwordForm, setPasswordForm] = useState({
     currentPassword: "",
     newPassword: "",
@@ -490,11 +172,9 @@ const ProfileManagement = () => {
           semester: data.user.semester || "",
           specialization: data.user.specialization || "",
           qualification: data.user.qualification || "",
-          employeeId: data.user.employeeId || "",
-          studentId: data.user.studentId || "",
         });
       }
-    } catch (err) {
+    } catch {
       showToast("Failed to load profile", "error");
     } finally {
       setLoading(false);
@@ -516,9 +196,9 @@ const ProfileManagement = () => {
       if (!res.ok) throw new Error(data.message);
       setUser((prev) => ({ ...prev, avatar: data.avatar }));
 
-      // Update localStorage user
       const stored = JSON.parse(localStorage.getItem("user") || "{}");
       localStorage.setItem("user", JSON.stringify({ ...stored, avatar: data.avatar }));
+      window.dispatchEvent(new Event("profileUpdated"));
 
       showToast("Profile photo updated!");
     } catch (err) {
@@ -533,10 +213,11 @@ const ProfileManagement = () => {
     try {
       const res = await apiFetch("/api/profile/avatar", { method: "DELETE" });
       if (!res.ok) throw new Error("Failed to remove");
-      setUser((prev) => ({ ...prev, avatar: null, avatarPublicId: null }));
+      setUser((prev) => ({ ...prev, avatar: null }));
 
       const stored = JSON.parse(localStorage.getItem("user") || "{}");
       localStorage.setItem("user", JSON.stringify({ ...stored, avatar: null }));
+      window.dispatchEvent(new Event("profileUpdated"));
 
       showToast("Profile photo removed");
     } catch {
@@ -560,6 +241,7 @@ const ProfileManagement = () => {
 
       const stored = JSON.parse(localStorage.getItem("user") || "{}");
       localStorage.setItem("user", JSON.stringify({ ...stored, fullName: data.user.fullName }));
+      window.dispatchEvent(new Event("profileUpdated"));
 
       showToast("Profile saved successfully!");
     } catch (err) {
@@ -571,10 +253,12 @@ const ProfileManagement = () => {
 
   const handleChangePassword = async (e) => {
     e.preventDefault();
-    if (passwordForm.newPassword !== passwordForm.confirmPassword)
+    if (passwordForm.newPassword !== passwordForm.confirmPassword) {
       return showToast("Passwords do not match", "error");
-    if (passwordForm.newPassword.length < 8)
+    }
+    if (passwordForm.newPassword.length < 8) {
       return showToast("Password must be at least 8 characters", "error");
+    }
     setSavingPassword(true);
     try {
       const res = await apiFetch("/api/profile/change-password", {
@@ -596,725 +280,320 @@ const ProfileManagement = () => {
     }
   };
 
-  const SEMESTERS = ["1st", "2nd", "3rd", "4th", "5th", "6th", "7th", "8th"].map((s) => ({
-    value: s,
-    label: `${s} Semester`,
-  }));
-
-  // Color scheme based on dark mode class on document
-  const isDark =
-    typeof document !== "undefined" &&
-    document.documentElement.classList.contains("dark");
-
-  const cssVars = `
-    :root {
-      --card: ${isDark ? "#1a2232" : "#ffffff"};
-      --surface: ${isDark ? "#101622" : "#f8fafc"};
-      --surface-disabled: ${isDark ? "#1a2232" : "#f1f5f9"};
-      --border: ${isDark ? "#343d50" : "#e2e8f0"};
-      --text-primary: ${isDark ? "#f6f6f8" : "#111318"};
-      --text-secondary: ${isDark ? "#9ea8ba" : "#616f89"};
-      --bg: ${isDark ? "#101622" : "#f0f2f5"};
-    }
-    @keyframes slideIn {
-      from { opacity: 0; transform: translateX(16px); }
-      to { opacity: 1; transform: translateX(0); }
-    }
-    @keyframes spin { to { transform: rotate(360deg); } }
-    .spin { animation: spin 0.8s linear infinite; }
-  `;
+  const semesters = ["1st", "2nd", "3rd", "4th", "5th", "6th", "7th", "8th"];
 
   if (loading) {
     return (
-      <>
-        <style>{cssVars}</style>
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            height: "60vh",
-            flexDirection: "column",
-            gap: 16,
-          }}
-        >
-          <svg
-            className="spin"
-            width="36"
-            height="36"
-            viewBox="0 0 24 24"
-            fill="none"
-          >
-            <circle
-              cx="12"
-              cy="12"
-              r="10"
-              stroke="#135bec"
-              strokeWidth="3"
-              strokeOpacity="0.2"
-            />
-            <path
-              d="M12 2a10 10 0 0 1 10 10"
-              stroke="#135bec"
-              strokeWidth="3"
-              strokeLinecap="round"
-            />
-          </svg>
-          <p style={{ color: "var(--text-secondary)", fontSize: 14 }}>
-            Loading profile…
-          </p>
-        </div>
-      </>
+      <div className="flex items-center justify-center h-64">
+        <svg className="animate-spin h-8 w-8 text-indigo-600" viewBox="0 0 24 24" fill="none">
+          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
+        </svg>
+      </div>
     );
   }
 
   return (
-    <>
-      <style>{cssVars}</style>
+    <div className="max-w-3xl mx-auto px-4 sm:px-6 pb-10">
       <Toast msg={toast.msg} type={toast.type} />
 
-      <div style={{ maxWidth: 720, margin: "0 auto", padding: "0 16px 40px" }}>
-        {/* ── Header ───────────────────────────────────────────── */}
-        <div style={{ marginBottom: 28 }}>
-          <h1
-            style={{
-              fontSize: 24,
-              fontWeight: 800,
-              color: "var(--text-primary)",
-              margin: "0 0 4px",
-            }}
-          >
-            My Profile
-          </h1>
-          <p style={{ color: "var(--text-secondary)", fontSize: 14, margin: 0 }}>
-            Manage your personal information and account settings
-          </p>
-        </div>
+      {/* Header */}
+      <div className="mb-6">
+        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">My Profile</h1>
+        <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+          Manage your personal information and account settings
+        </p>
+      </div>
 
-        {/* ── Profile hero card ─────────────────────────────────── */}
-        <div
-          style={{
-            background: "var(--card)",
-            borderRadius: 16,
-            border: "1px solid var(--border)",
-            padding: "28px 24px",
-            marginBottom: 20,
-            display: "flex",
-            alignItems: "center",
-            gap: 24,
-            flexWrap: "wrap",
-          }}
-        >
+      {/* Profile Card */}
+      <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-6 sm:p-8 mb-6">
+        <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6">
           <Avatar
             user={user}
-            size={90}
+            size={96}
             onUpload={handleAvatarUpload}
             onDelete={handleAvatarDelete}
             uploading={avatarUploading}
           />
-          <div style={{ flex: 1, minWidth: 200 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", marginBottom: 6 }}>
-              <h2
-                style={{
-                  margin: 0,
-                  fontSize: 20,
-                  fontWeight: 700,
-                  color: "var(--text-primary)",
-                }}
-              >
-                {user?.fullName}
-              </h2>
+          <div className="flex-1 text-center sm:text-left">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-2">
+              <h2 className="text-xl font-bold text-gray-900 dark:text-white">{user?.fullName}</h2>
               <RoleBadge role={user?.role} />
             </div>
-            <p
-              style={{
-                margin: "0 0 6px",
-                color: "var(--text-secondary)",
-                fontSize: 14,
-              }}
-            >
-              {user?.email}
-            </p>
-            <p
-              style={{
-                margin: 0,
-                color: "var(--text-secondary)",
-                fontSize: 13,
-              }}
-            >
-              {user?.department && (
-                <span>
-                  <span className="material-symbols-outlined" style={{ fontSize: 14, verticalAlign: "middle", marginRight: 4 }}>
-                    corporate_fare
-                  </span>
-                  {user.department}
-                </span>
-              )}
-              {user?.semester && (
-                <span style={{ marginLeft: 12 }}>
-                  <span className="material-symbols-outlined" style={{ fontSize: 14, verticalAlign: "middle", marginRight: 4 }}>
-                    calendar_today
-                  </span>
-                  {user.semester} Semester
-                </span>
-              )}
-            </p>
-          </div>
-          <div style={{ textAlign: "right" }}>
-            <p style={{ margin: 0, fontSize: 11, color: "var(--text-secondary)" }}>
-              Click photo to change
-            </p>
-            {avatarUploading && (
-              <p style={{ margin: "4px 0 0", fontSize: 11, color: "#135bec" }}>
-                Uploading…
+            <p className="text-gray-600 dark:text-gray-400 text-sm mb-1">{user?.email}</p>
+            {user?.department && (
+              <p className="text-gray-500 dark:text-gray-500 text-xs flex items-center justify-center sm:justify-start gap-1">
+                <span className="material-symbols-outlined text-sm">corporate_fare</span>
+                {user.department}
+                {user.semester && ` • ${user.semester} Semester`}
               </p>
             )}
           </div>
+          <p className="text-xs text-gray-400">Click photo to change</p>
         </div>
+      </div>
 
-        {/* ── Tabs ─────────────────────────────────────────────── */}
-        <div
-          style={{
-            display: "flex",
-            gap: 4,
-            background: "var(--card)",
-            borderRadius: 12,
-            padding: 4,
-            border: "1px solid var(--border)",
-            marginBottom: 20,
-          }}
-        >
-          {[
-            { id: "profile", label: "Personal Info", icon: "person" },
-            { id: "security", label: "Security", icon: "lock" },
-            { id: "account", label: "Account Details", icon: "badge" },
-          ].map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              style={{
-                flex: 1,
-                padding: "9px 12px",
-                borderRadius: 9,
-                border: "none",
-                cursor: "pointer",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                gap: 6,
-                fontSize: 13,
-                fontWeight: activeTab === tab.id ? 700 : 500,
-                background:
-                  activeTab === tab.id
-                    ? "#135bec"
-                    : "transparent",
-                color:
-                  activeTab === tab.id
-                    ? "white"
-                    : "var(--text-secondary)",
-                transition: "all 0.15s",
-              }}
-            >
-              <span className="material-symbols-outlined" style={{ fontSize: 16 }}>
-                {tab.icon}
-              </span>
-              <span
-                style={{
-                  display: "inline",
-                }}
-              >
-                {tab.label}
-              </span>
-            </button>
-          ))}
-        </div>
+      {/* Tabs */}
+      <div className="flex gap-1 bg-white dark:bg-gray-800 rounded-xl p-1 border border-gray-200 dark:border-gray-700 mb-6">
+        {[
+          { id: "profile", label: "Personal Info", icon: "person" },
+          { id: "security", label: "Security", icon: "lock" },
+          { id: "account", label: "Account Details", icon: "badge" },
+        ].map((tab) => (
+          <button
+            key={tab.id}
+            onClick={() => setActiveTab(tab.id)}
+            className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all ${
+              activeTab === tab.id
+                ? "bg-indigo-600 text-white shadow-md"
+                : "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700"
+            }`}
+          >
+            <span className="material-symbols-outlined text-base">{tab.icon}</span>
+            <span className="hidden sm:inline">{tab.label}</span>
+          </button>
+        ))}
+      </div>
 
-        {/* ── Tab: Personal Info ───────────────────────────────── */}
-        {activeTab === "profile" && (
-          <form onSubmit={handleSaveProfile}>
-            <Card title="Personal Information" icon="person">
-              <Field
-                label="Full Name"
-                value={form.fullName}
-                onChange={(v) => setForm((p) => ({ ...p, fullName: v }))}
-                placeholder="Your full name"
-                icon="badge"
-              />
-              <Field
-                label="Email Address"
-                value={user?.email || ""}
-                onChange={() => {}}
-                disabled
-                icon="email"
-                hint="Email cannot be changed here. Contact admin for email changes."
-              />
-              <Field
-                label="Department"
-                value={form.department}
-                onChange={(v) => setForm((p) => ({ ...p, department: v }))}
-                placeholder="e.g. Computer Science"
-                icon="corporate_fare"
-              />
+      {/* Tab: Personal Info */}
+      {activeTab === "profile" && (
+        <form onSubmit={handleSaveProfile}>
+          <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 overflow-hidden mb-6">
+            <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+              <h3 className="font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+                <span className="material-symbols-outlined text-indigo-600">person</span>
+                Personal Information
+              </h3>
+            </div>
+            <div className="p-6 space-y-5">
+              {/* Full Name */}
+              <div>
+                <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1.5">
+                  Full Name
+                </label>
+                <div className="relative">
+                  <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-lg">
+                    badge
+                  </span>
+                  <input
+                    type="text"
+                    value={form.fullName}
+                    onChange={(e) => setForm((p) => ({ ...p, fullName: e.target.value }))}
+                    className="w-full pl-10 pr-4 py-2.5 text-sm border border-gray-300 dark:border-gray-600 rounded-xl bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition-all"
+                  />
+                </div>
+              </div>
 
+              {/* Email */}
+              <div>
+                <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1.5">
+                  Email Address
+                </label>
+                <div className="relative">
+                  <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-lg">
+                    email
+                  </span>
+                  <input
+                    type="email"
+                    value={user?.email || ""}
+                    disabled
+                    className="w-full pl-10 pr-4 py-2.5 text-sm border border-gray-300 dark:border-gray-600 rounded-xl bg-gray-100 dark:bg-gray-600 text-gray-500 dark:text-gray-400 cursor-not-allowed outline-none"
+                  />
+                </div>
+                <p className="text-xs text-gray-500 mt-1">Email cannot be changed</p>
+              </div>
+
+              {/* Department */}
+              <div>
+                <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1.5">
+                  Department
+                </label>
+                <div className="relative">
+                  <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-lg">
+                    corporate_fare
+                  </span>
+                  <input
+                    type="text"
+                    value={form.department}
+                    onChange={(e) => setForm((p) => ({ ...p, department: e.target.value }))}
+                    placeholder="e.g. Computer Science"
+                    className="w-full pl-10 pr-4 py-2.5 text-sm border border-gray-300 dark:border-gray-600 rounded-xl bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition-all"
+                  />
+                </div>
+              </div>
+
+              {/* Student Fields */}
               {user?.role === "student" && (
-                <SelectField
-                  label="Current Semester"
-                  value={form.semester}
-                  onChange={(v) => setForm((p) => ({ ...p, semester: v }))}
-                  options={[{ value: "", label: "Select semester…" }, ...SEMESTERS]}
-                  icon="calendar_today"
-                />
+                <div>
+                  <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1.5">
+                    Current Semester
+                  </label>
+                  <div className="relative">
+                    <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-lg">
+                      calendar_today
+                    </span>
+                    <select
+                      value={form.semester}
+                      onChange={(e) => setForm((p) => ({ ...p, semester: e.target.value }))}
+                      className="w-full pl-10 pr-4 py-2.5 text-sm border border-gray-300 dark:border-gray-600 rounded-xl bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition-all appearance-none"
+                    >
+                      <option value="">Select semester…</option>
+                      {semesters.map((s) => (
+                        <option key={s} value={s}>{s} Semester</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
               )}
 
+              {/* Teacher Fields */}
               {user?.role === "teacher" && (
                 <>
-                  <Field
-                    label="Specialization"
-                    value={form.specialization}
-                    onChange={(v) => setForm((p) => ({ ...p, specialization: v }))}
-                    placeholder="e.g. Artificial Intelligence"
-                    icon="psychology"
-                  />
-                  <Field
-                    label="Qualification"
-                    value={form.qualification}
-                    onChange={(v) => setForm((p) => ({ ...p, qualification: v }))}
-                    placeholder="e.g. PhD, M.Sc"
-                    icon="school"
-                  />
-                </>
-              )}
-            </Card>
-
-            <button
-              type="submit"
-              disabled={savingProfile}
-              style={{
-                width: "100%",
-                padding: "12px 20px",
-                borderRadius: 12,
-                border: "none",
-                background: savingProfile
-                  ? "#9ca3af"
-                  : "linear-gradient(135deg, #135bec 0%, #3b82f6 100%)",
-                color: "white",
-                fontSize: 15,
-                fontWeight: 700,
-                cursor: savingProfile ? "not-allowed" : "pointer",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                gap: 8,
-                transition: "opacity 0.2s, transform 0.15s",
-                boxShadow: savingProfile ? "none" : "0 4px 14px rgba(19,91,236,0.35)",
-              }}
-              onMouseEnter={(e) => {
-                if (!savingProfile) e.currentTarget.style.transform = "translateY(-1px)";
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.transform = "translateY(0)";
-              }}
-            >
-              {savingProfile ? (
-                <>
-                  <svg className="spin" width="18" height="18" viewBox="0 0 24 24" fill="none">
-                    <circle cx="12" cy="12" r="10" stroke="white" strokeWidth="3" strokeOpacity="0.3" />
-                    <path d="M12 2a10 10 0 0 1 10 10" stroke="white" strokeWidth="3" strokeLinecap="round" />
-                  </svg>
-                  Saving…
-                </>
-              ) : (
-                <>
-                  <span className="material-symbols-outlined" style={{ fontSize: 18 }}>
-                    save
-                  </span>
-                  Save Changes
-                </>
-              )}
-            </button>
-          </form>
-        )}
-
-        {/* ── Tab: Security ────────────────────────────────────── */}
-        {activeTab === "security" && (
-          <form onSubmit={handleChangePassword}>
-            <Card title="Change Password" icon="lock">
-              {/* Current password */}
-              <div style={{ marginBottom: 18 }}>
-                <label
-                  style={{
-                    display: "block",
-                    fontSize: 12,
-                    fontWeight: 600,
-                    color: "var(--text-secondary)",
-                    textTransform: "uppercase",
-                    letterSpacing: "0.06em",
-                    marginBottom: 6,
-                  }}
-                >
-                  Current Password
-                </label>
-                <div style={{ position: "relative" }}>
-                  <span
-                    className="material-symbols-outlined"
-                    style={{
-                      position: "absolute",
-                      left: 12,
-                      top: "50%",
-                      transform: "translateY(-50%)",
-                      fontSize: 18,
-                      color: "var(--text-secondary)",
-                      pointerEvents: "none",
-                    }}
-                  >
-                    lock
-                  </span>
-                  <input
-                    type={showPasswords.current ? "text" : "password"}
-                    value={passwordForm.currentPassword}
-                    onChange={(e) =>
-                      setPasswordForm((p) => ({ ...p, currentPassword: e.target.value }))
-                    }
-                    placeholder="Enter your current password"
-                    style={{
-                      width: "100%",
-                      padding: "10px 42px 10px 40px",
-                      borderRadius: 10,
-                      border: "1.5px solid var(--border)",
-                      background: "var(--surface)",
-                      color: "var(--text-primary)",
-                      fontSize: 14,
-                      outline: "none",
-                      boxSizing: "border-box",
-                    }}
-                    onFocus={(e) => {
-                      e.target.style.borderColor = "#135bec";
-                      e.target.style.boxShadow = "0 0 0 3px rgba(19,91,236,0.1)";
-                    }}
-                    onBlur={(e) => {
-                      e.target.style.borderColor = "var(--border)";
-                      e.target.style.boxShadow = "none";
-                    }}
-                  />
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setShowPasswords((p) => ({ ...p, current: !p.current }))
-                    }
-                    style={{
-                      position: "absolute",
-                      right: 12,
-                      top: "50%",
-                      transform: "translateY(-50%)",
-                      background: "none",
-                      border: "none",
-                      cursor: "pointer",
-                      color: "var(--text-secondary)",
-                      display: "flex",
-                      alignItems: "center",
-                    }}
-                  >
-                    <span className="material-symbols-outlined" style={{ fontSize: 18 }}>
-                      {showPasswords.current ? "visibility_off" : "visibility"}
-                    </span>
-                  </button>
-                </div>
-              </div>
-
-              {/* New password */}
-              <div style={{ marginBottom: 18 }}>
-                <label
-                  style={{
-                    display: "block",
-                    fontSize: 12,
-                    fontWeight: 600,
-                    color: "var(--text-secondary)",
-                    textTransform: "uppercase",
-                    letterSpacing: "0.06em",
-                    marginBottom: 6,
-                  }}
-                >
-                  New Password
-                </label>
-                <div style={{ position: "relative" }}>
-                  <span
-                    className="material-symbols-outlined"
-                    style={{
-                      position: "absolute",
-                      left: 12,
-                      top: "50%",
-                      transform: "translateY(-50%)",
-                      fontSize: 18,
-                      color: "var(--text-secondary)",
-                      pointerEvents: "none",
-                    }}
-                  >
-                    lock_reset
-                  </span>
-                  <input
-                    type={showPasswords.new ? "text" : "password"}
-                    value={passwordForm.newPassword}
-                    onChange={(e) =>
-                      setPasswordForm((p) => ({ ...p, newPassword: e.target.value }))
-                    }
-                    placeholder="Minimum 8 characters"
-                    style={{
-                      width: "100%",
-                      padding: "10px 42px 10px 40px",
-                      borderRadius: 10,
-                      border: "1.5px solid var(--border)",
-                      background: "var(--surface)",
-                      color: "var(--text-primary)",
-                      fontSize: 14,
-                      outline: "none",
-                      boxSizing: "border-box",
-                    }}
-                    onFocus={(e) => {
-                      e.target.style.borderColor = "#135bec";
-                      e.target.style.boxShadow = "0 0 0 3px rgba(19,91,236,0.1)";
-                    }}
-                    onBlur={(e) => {
-                      e.target.style.borderColor = "var(--border)";
-                      e.target.style.boxShadow = "none";
-                    }}
-                  />
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setShowPasswords((p) => ({ ...p, new: !p.new }))
-                    }
-                    style={{
-                      position: "absolute",
-                      right: 12,
-                      top: "50%",
-                      transform: "translateY(-50%)",
-                      background: "none",
-                      border: "none",
-                      cursor: "pointer",
-                      color: "var(--text-secondary)",
-                      display: "flex",
-                      alignItems: "center",
-                    }}
-                  >
-                    <span className="material-symbols-outlined" style={{ fontSize: 18 }}>
-                      {showPasswords.new ? "visibility_off" : "visibility"}
-                    </span>
-                  </button>
-                </div>
-                {/* Strength bar */}
-                {passwordForm.newPassword && (
-                  <div style={{ marginTop: 8 }}>
-                    {(() => {
-                      const pwd = passwordForm.newPassword;
-                      let strength = 0;
-                      if (pwd.length >= 8) strength++;
-                      if (/[A-Z]/.test(pwd)) strength++;
-                      if (/[0-9]/.test(pwd)) strength++;
-                      if (/[^A-Za-z0-9]/.test(pwd)) strength++;
-                      const labels = ["", "Weak", "Fair", "Good", "Strong"];
-                      const colors = ["", "#ef4444", "#f59e0b", "#3b82f6", "#22c55e"];
-                      return (
-                        <>
-                          <div
-                            style={{
-                              height: 4,
-                              borderRadius: 2,
-                              background: "var(--border)",
-                              overflow: "hidden",
-                              marginBottom: 4,
-                            }}
-                          >
-                            <div
-                              style={{
-                                width: `${(strength / 4) * 100}%`,
-                                height: "100%",
-                                background: colors[strength],
-                                borderRadius: 2,
-                                transition: "width 0.3s, background 0.3s",
-                              }}
-                            />
-                          </div>
-                          <p
-                            style={{
-                              fontSize: 11,
-                              color: colors[strength],
-                              margin: 0,
-                              fontWeight: 600,
-                            }}
-                          >
-                            {labels[strength]}
-                          </p>
-                        </>
-                      );
-                    })()}
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1.5">
+                      Specialization
+                    </label>
+                    <div className="relative">
+                      <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-lg">
+                        psychology
+                      </span>
+                      <input
+                        type="text"
+                        value={form.specialization}
+                        onChange={(e) => setForm((p) => ({ ...p, specialization: e.target.value }))}
+                        placeholder="e.g. Artificial Intelligence"
+                        className="w-full pl-10 pr-4 py-2.5 text-sm border border-gray-300 dark:border-gray-600 rounded-xl bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition-all"
+                      />
+                    </div>
                   </div>
-                )}
-              </div>
-
-              {/* Confirm password */}
-              <div style={{ marginBottom: 4 }}>
-                <label
-                  style={{
-                    display: "block",
-                    fontSize: 12,
-                    fontWeight: 600,
-                    color: "var(--text-secondary)",
-                    textTransform: "uppercase",
-                    letterSpacing: "0.06em",
-                    marginBottom: 6,
-                  }}
-                >
-                  Confirm New Password
-                </label>
-                <div style={{ position: "relative" }}>
-                  <span
-                    className="material-symbols-outlined"
-                    style={{
-                      position: "absolute",
-                      left: 12,
-                      top: "50%",
-                      transform: "translateY(-50%)",
-                      fontSize: 18,
-                      color: "var(--text-secondary)",
-                      pointerEvents: "none",
-                    }}
-                  >
-                    check_circle
-                  </span>
-                  <input
-                    type={showPasswords.confirm ? "text" : "password"}
-                    value={passwordForm.confirmPassword}
-                    onChange={(e) =>
-                      setPasswordForm((p) => ({ ...p, confirmPassword: e.target.value }))
-                    }
-                    placeholder="Repeat new password"
-                    style={{
-                      width: "100%",
-                      padding: "10px 42px 10px 40px",
-                      borderRadius: 10,
-                      border: `1.5px solid ${
-                        passwordForm.confirmPassword &&
-                        passwordForm.newPassword !== passwordForm.confirmPassword
-                          ? "#ef4444"
-                          : "var(--border)"
-                      }`,
-                      background: "var(--surface)",
-                      color: "var(--text-primary)",
-                      fontSize: 14,
-                      outline: "none",
-                      boxSizing: "border-box",
-                    }}
-                    onFocus={(e) => {
-                      if (
-                        !passwordForm.confirmPassword ||
-                        passwordForm.newPassword === passwordForm.confirmPassword
-                      ) {
-                        e.target.style.borderColor = "#135bec";
-                        e.target.style.boxShadow = "0 0 0 3px rgba(19,91,236,0.1)";
-                      }
-                    }}
-                    onBlur={(e) => {
-                      e.target.style.borderColor =
-                        passwordForm.confirmPassword &&
-                        passwordForm.newPassword !== passwordForm.confirmPassword
-                          ? "#ef4444"
-                          : "var(--border)";
-                      e.target.style.boxShadow = "none";
-                    }}
-                  />
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setShowPasswords((p) => ({ ...p, confirm: !p.confirm }))
-                    }
-                    style={{
-                      position: "absolute",
-                      right: 12,
-                      top: "50%",
-                      transform: "translateY(-50%)",
-                      background: "none",
-                      border: "none",
-                      cursor: "pointer",
-                      color: "var(--text-secondary)",
-                      display: "flex",
-                      alignItems: "center",
-                    }}
-                  >
-                    <span className="material-symbols-outlined" style={{ fontSize: 18 }}>
-                      {showPasswords.confirm ? "visibility_off" : "visibility"}
-                    </span>
-                  </button>
-                </div>
-                {passwordForm.confirmPassword &&
-                  passwordForm.newPassword !== passwordForm.confirmPassword && (
-                    <p style={{ fontSize: 11, color: "#ef4444", marginTop: 4, fontWeight: 600 }}>
-                      Passwords do not match
-                    </p>
-                  )}
-              </div>
-            </Card>
-
-            <button
-              type="submit"
-              disabled={
-                savingPassword ||
-                !passwordForm.currentPassword ||
-                !passwordForm.newPassword ||
-                passwordForm.newPassword !== passwordForm.confirmPassword
-              }
-              style={{
-                width: "100%",
-                padding: "12px 20px",
-                borderRadius: 12,
-                border: "none",
-                background:
-                  savingPassword ||
-                  !passwordForm.currentPassword ||
-                  !passwordForm.newPassword ||
-                  passwordForm.newPassword !== passwordForm.confirmPassword
-                    ? "#9ca3af"
-                    : "linear-gradient(135deg, #135bec 0%, #3b82f6 100%)",
-                color: "white",
-                fontSize: 15,
-                fontWeight: 700,
-                cursor:
-                  savingPassword ||
-                  !passwordForm.currentPassword ||
-                  !passwordForm.newPassword ||
-                  passwordForm.newPassword !== passwordForm.confirmPassword
-                    ? "not-allowed"
-                    : "pointer",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                gap: 8,
-                boxShadow:
-                  savingPassword ? "none" : "0 4px 14px rgba(19,91,236,0.35)",
-              }}
-            >
-              {savingPassword ? (
-                <>
-                  <svg className="spin" width="18" height="18" viewBox="0 0 24 24" fill="none">
-                    <circle cx="12" cy="12" r="10" stroke="white" strokeWidth="3" strokeOpacity="0.3" />
-                    <path d="M12 2a10 10 0 0 1 10 10" stroke="white" strokeWidth="3" strokeLinecap="round" />
-                  </svg>
-                  Changing Password…
-                </>
-              ) : (
-                <>
-                  <span className="material-symbols-outlined" style={{ fontSize: 18 }}>
-                    key
-                  </span>
-                  Update Password
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1.5">
+                      Qualification
+                    </label>
+                    <div className="relative">
+                      <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-lg">
+                        school
+                      </span>
+                      <input
+                        type="text"
+                        value={form.qualification}
+                        onChange={(e) => setForm((p) => ({ ...p, qualification: e.target.value }))}
+                        placeholder="e.g. PhD, M.Sc"
+                        className="w-full pl-10 pr-4 py-2.5 text-sm border border-gray-300 dark:border-gray-600 rounded-xl bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition-all"
+                      />
+                    </div>
+                  </div>
                 </>
               )}
-            </button>
-          </form>
-        )}
+            </div>
+          </div>
 
-        {/* ── Tab: Account Details ─────────────────────────────── */}
-        {activeTab === "account" && (
-          <Card title="Account Details" icon="badge">
+          <button
+            type="submit"
+            disabled={savingProfile}
+            className="w-full py-3 rounded-xl bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800 text-white font-semibold disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg shadow-indigo-200 dark:shadow-indigo-900/30 flex items-center justify-center gap-2"
+          >
+            {savingProfile ? (
+              <>
+                <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
+                </svg>
+                Saving…
+              </>
+            ) : (
+              <>
+                <span className="material-symbols-outlined text-lg">save</span>
+                Save Changes
+              </>
+            )}
+          </button>
+        </form>
+      )}
+
+      {/* Tab: Security */}
+      {activeTab === "security" && (
+        <form onSubmit={handleChangePassword}>
+          <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 overflow-hidden mb-6">
+            <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+              <h3 className="font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+                <span className="material-symbols-outlined text-indigo-600">lock</span>
+                Change Password
+              </h3>
+            </div>
+            <div className="p-6 space-y-5">
+              {[
+                { label: "Current Password", key: "currentPassword", icon: "lock", show: showPasswords.current },
+                { label: "New Password", key: "newPassword", icon: "lock_reset", show: showPasswords.new },
+                { label: "Confirm New Password", key: "confirmPassword", icon: "check_circle", show: showPasswords.confirm },
+              ].map((field) => (
+                <div key={field.key}>
+                  <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1.5">
+                    {field.label}
+                  </label>
+                  <div className="relative">
+                    <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-lg">
+                      {field.icon}
+                    </span>
+                    <input
+                      type={field.show ? "text" : "password"}
+                      value={passwordForm[field.key]}
+                      onChange={(e) => setPasswordForm((p) => ({ ...p, [field.key]: e.target.value }))}
+                      className="w-full pl-10 pr-12 py-2.5 text-sm border border-gray-300 dark:border-gray-600 rounded-xl bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition-all"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPasswords((p) => ({ ...p, [field.key.split(/(?=[A-Z])/)[0].toLowerCase()]: !p[field.key.split(/(?=[A-Z])/)[0].toLowerCase()] }))}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                    >
+                      <span className="material-symbols-outlined text-lg">
+                        {field.show ? "visibility_off" : "visibility"}
+                      </span>
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <button
+            type="submit"
+            disabled={
+              savingPassword ||
+              !passwordForm.currentPassword ||
+              !passwordForm.newPassword ||
+              passwordForm.newPassword !== passwordForm.confirmPassword
+            }
+            className="w-full py-3 rounded-xl bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800 text-white font-semibold disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg shadow-indigo-200 dark:shadow-indigo-900/30 flex items-center justify-center gap-2"
+          >
+            {savingPassword ? (
+              <>
+                <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
+                </svg>
+                Changing Password…
+              </>
+            ) : (
+              <>
+                <span className="material-symbols-outlined text-lg">key</span>
+                Update Password
+              </>
+            )}
+          </button>
+        </form>
+      )}
+
+      {/* Tab: Account Details */}
+      {activeTab === "account" && (
+        <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 overflow-hidden">
+          <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+            <h3 className="font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+              <span className="material-symbols-outlined text-indigo-600">badge</span>
+              Account Details
+            </h3>
+          </div>
+          <div className="divide-y divide-gray-200 dark:divide-gray-700">
             {[
               { label: "Account Type", value: user?.role, icon: "manage_accounts" },
               { label: "Full Name", value: user?.fullName, icon: "person" },
@@ -1325,77 +604,21 @@ const ProfileManagement = () => {
               user?.semester && { label: "Semester", value: user.semester, icon: "calendar_today" },
               user?.specialization && { label: "Specialization", value: user.specialization, icon: "psychology" },
               user?.qualification && { label: "Qualification", value: user.qualification, icon: "workspace_premium" },
-              {
-                label: "Email Verified",
-                value: user?.isEmailVerified ? "Yes ✓" : "No",
-                icon: user?.isEmailVerified ? "verified" : "cancel",
-              },
-              {
-                label: "Member Since",
-                value: user?.createdAt
-                  ? new Date(user.createdAt).toLocaleDateString("en-US", {
-                      year: "numeric",
-                      month: "long",
-                      day: "numeric",
-                    })
-                  : "—",
-                icon: "event",
-              },
-            ]
-              .filter(Boolean)
-              .map((item, i) => (
-                <div
-                  key={i}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 12,
-                    padding: "12px 0",
-                    borderBottom: "1px solid var(--border)",
-                  }}
-                >
-                  <span
-                    className="material-symbols-outlined"
-                    style={{
-                      fontSize: 18,
-                      color: "#135bec",
-                      flexShrink: 0,
-                    }}
-                  >
-                    {item.icon}
-                  </span>
-                  <div style={{ flex: 1 }}>
-                    <p
-                      style={{
-                        margin: 0,
-                        fontSize: 11,
-                        color: "var(--text-secondary)",
-                        textTransform: "uppercase",
-                        letterSpacing: "0.06em",
-                        fontWeight: 600,
-                      }}
-                    >
-                      {item.label}
-                    </p>
-                    <p
-                      style={{
-                        margin: "2px 0 0",
-                        fontSize: 14,
-                        color: "var(--text-primary)",
-                        fontWeight: 500,
-                        textTransform: item.label === "Account Type" ? "capitalize" : "none",
-                      }}
-                    >
-                      {item.value || "—"}
-                    </p>
-                  </div>
+              { label: "Email Verified", value: user?.isEmailVerified ? "Yes ✓" : "No", icon: user?.isEmailVerified ? "verified" : "cancel" },
+              { label: "Member Since", value: user?.createdAt ? new Date(user.createdAt).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" }) : "—", icon: "event" },
+            ].filter(Boolean).map((item, i) => (
+              <div key={i} className="flex items-center gap-4 px-6 py-4">
+                <span className="material-symbols-outlined text-indigo-600 text-lg">{item.icon}</span>
+                <div className="flex-1">
+                  <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">{item.label}</p>
+                  <p className="text-sm font-medium text-gray-900 dark:text-white capitalize">{item.value}</p>
                 </div>
-              ))}
-            <div style={{ height: 8 }} />
-          </Card>
-        )}
-      </div>
-    </>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
   );
 };
 

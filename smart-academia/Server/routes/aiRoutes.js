@@ -8,9 +8,11 @@ const {
   explainConcept,
   generateFlashcards,
   generateQuiz,
-  getAnalytics
+  getAnalytics,
+  studentChat,
+  teacherChat
 } = require('../controllers/aiController');
-const { protect } = require('../middleware/authMiddleware');
+const { protect, authorize } = require('../middleware/authMiddleware');
 
 // All routes protected
 router.get('/analytics', protect, getAnalytics);
@@ -21,5 +23,9 @@ router.delete('/chat/:documentId/history', protect, clearChatHistory);
 router.post('/explain/:documentId', protect, explainConcept);
 router.post('/flashcards/:documentId', protect, generateFlashcards);
 router.post('/quiz/:documentId', protect, generateQuiz);
+
+// ✅ AI Tutor Routes
+router.post('/student-chat', protect, authorize('student'), studentChat);
+router.post('/teacher-chat', protect, authorize('teacher', 'admin'), teacherChat);
 
 module.exports = router;
