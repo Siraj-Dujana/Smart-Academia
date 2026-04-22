@@ -9,6 +9,8 @@ import AIAssistant from "../components/dashboard/StudentDashboard/Student Tabs/A
 import FloatingButtons from '../components/sections/LandingPage/FloatingButtons';
 import ProfileManagement from '../components/dashboard/StudentDashboard/Student Tabs/Profilemanagement';
 import { useNavigate, useLocation } from "react-router-dom";
+import Notifications from "../components/dashboard/StudentDashboard/Student Tabs/Notifications";
+import NotificationBell from "../components/notifications/NotificationBell";
 
 const StudentDashboard = () => {
   const navigate = useNavigate();
@@ -51,7 +53,8 @@ const StudentDashboard = () => {
     { icon: "bar_chart_4_bars", label: "Progress", key: 'progress' },
     { icon: "smart_toy", label: "AI Tutor", key: 'ai-tutor' },
     { icon: "assistant", label: "AI Assistant", key: 'ai-assistant' },
-    { icon: 'person', label: 'My Profile', key: 'profile' }
+    { icon: 'person', label: 'My Profile', key: 'profile' },
+    { icon: "notifications", label: "Notifications", key: "notifications" },
   ];
 
   const handleMenuClick = (menuKey) => {
@@ -89,6 +92,7 @@ const StudentDashboard = () => {
         return <AIAssistant />;
       case 'profile':
         return <ProfileManagement />;
+      case "notifications": return <Notifications />;
       default:
         return <Dashboard />;
     }
@@ -202,13 +206,7 @@ const StudentDashboard = () => {
             {/* Right Section */}
             <div className="flex items-center gap-2 sm:gap-4">
               {/* Notifications */}
-              <button
-                onClick={handleNotifications}
-                className="relative p-2 rounded-lg text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 transition-all duration-200 hover:scale-105"
-              >
-                <span className="material-symbols-outlined text-xl sm:text-2xl">notifications</span>
-                <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-red-500 rounded-full animate-pulse"></span>
-              </button>
+              <NotificationBell />
 
               {/* Logout */}
               <button

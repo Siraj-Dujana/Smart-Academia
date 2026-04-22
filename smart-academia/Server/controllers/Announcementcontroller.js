@@ -1,11 +1,12 @@
 const Announcement = require("../models/Announcement");
 const Course       = require("../models/Course");
 const Enrollment   = require("../models/Enrollment");
+const { notifyAnnouncement } = require("../utils/notificationHooks");
 
 // TEACHER: Create announcement
 const createAnnouncement = async (req, res) => {
   try {
-    const { title, content, courseId, priority } = req.body;
+    const { title, content, courseId, priority, sendEmail } = req.body;  // ✅ Added sendEmail
 
     if (!title?.trim()) return res.status(400).json({ message: "Title is required" });
     if (!content?.trim()) return res.status(400).json({ message: "Content is required" });
@@ -22,6 +23,15 @@ const createAnnouncement = async (req, res) => {
       course:    courseId,
       createdBy: req.user._id,
       priority:  priority || "normal",
+    });
+
+    // ✅ Updated with email support
+    await notifyAnnouncement({
+      courseId,
+      senderId: req.user._id,
+      title: `📢 ${title}`,
+      content,
+      sendEmailNotif: sendEmail || false,  // ✅ Pass the checkbox value
     });
 
     // Attach extra fields for response

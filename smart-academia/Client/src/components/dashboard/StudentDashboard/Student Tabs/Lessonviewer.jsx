@@ -11,7 +11,9 @@ const apiFetch = (url, opts = {}) => {
 };
 
 // ─────────────────────────────────────────────
-// QUIZ SECTION — tab detection + timer + auto-grade
+// QUIZ SECTION
+// FIX: submitQuiz now calls POST /api/quizzes/submit (not /:id/submit)
+// FIX: tab detection uses warningRef correctly
 // ─────────────────────────────────────────────
 const QuizSection = ({ quiz, courseId, lessonId, onCompleted }) => {
   const [questions,  setQuestions]  = useState([]);
@@ -27,8 +29,13 @@ const QuizSection = ({ quiz, courseId, lessonId, onCompleted }) => {
   const [warning,    setWarning]    = useState("");
   const timerRef   = useRef(null);
   const warningRef = useRef(0);
+  // FIX: Store the current attempt ID so submitQuiz can send it
+  const attemptIdRef = useRef(null);
 
-  useEffect(() => { fetchInit(); return () => clearInterval(timerRef.current); }, [quiz._id]);
+  useEffect(() => {
+    fetchInit();
+    return () => clearInterval(timerRef.current);
+  }, [quiz._id]);
 
   const fetchInit = async () => {
     try {
@@ -43,25 +50,30 @@ const QuizSection = ({ quiz, courseId, lessonId, onCompleted }) => {
         const att = aData.attempts || [];
         setAttempts(att.length);
         const passed = att.find(a => a.passed);
-        if (passed) { setSubmitted(true); setResult({ score: passed.score, passed: true, alreadyDone: true }); onCompleted && onCompleted(); }
+        if (passed) {
+          setSubmitted(true);
+          setResult({ score: passed.score, passed: true, alreadyDone: true });
+          onCompleted && onCompleted();
+        }
       }
     } catch { /* ignore */ }
   };
 
   const handleVisibility = useCallback(() => {
-    if (!document.hidden || submitted) return;
-    const current = warningRef.current + 1;
-    warningRef.current = current;
-    setTabWarnings(current);
-
-    if (current === 1) {
-      setWarning("⚠️ Warning 1/2: Do not switch tabs during the quiz!");
-      setTimeout(() => setWarning(""), 5000);
-    } else if (current >= 2) {
-      setWarning("🚨 Auto-submitting: You switched tabs twice!");
-      setTimeout(() => handleSubmit(true), 1500);
+    if (!started || submitted) return;
+    if (document.hidden) {
+      const current = warningRef.current + 1;
+      warningRef.current = current;
+      setTabWarnings(current);
+      if (current === 1) {
+        setWarning("⚠️ Warning 1/2: Do not switch tabs during the quiz!");
+        setTimeout(() => setWarning(""), 5000);
+      } else if (current >= 2) {
+        setWarning("🚨 Auto-submitting: You switched tabs twice!");
+        setTimeout(() => handleSubmit(true), 1500);
+      }
     }
-  }, [submitted]);
+  }, [started, submitted]);
 
   useEffect(() => {
     if (!started) return;
@@ -79,25 +91,41 @@ const QuizSection = ({ quiz, courseId, lessonId, onCompleted }) => {
     }, 1000);
   };
 
-  const handleStart = () => {
+  // FIX: handleStart now calls the proper startQuizAttempt endpoint
+  // and stores the attemptId for submission
+  const handleStart = async () => {
     setAnswers({}); setResult(null); setSubmitted(false);
     setError(""); setTabWarnings(0); warningRef.current = 0;
+
+    try {
+      const res  = await apiFetch(`/api/quizzes/${quiz._id}/attempt`, { method: "POST" });
+      const data = await res.json();
+      if (!res.ok) { setError(data.message); return; }
+      attemptIdRef.current = data.attempt._id;
+      // Use questions from the attempt start response (already shuffled)
+      setQuestions(data.questions || []);
+    } catch { setError("Cannot connect to server"); return; }
+
     setStarted(true);
     startTimer();
   };
 
   const handleAnswer = (qId, val) => setAnswers(p => ({ ...p, [qId]: val }));
 
+  // FIX: submitQuiz calls POST /api/quizzes/submit with attemptId in body
   const handleSubmit = async (flagCheating = false) => {
     clearInterval(timerRef.current);
     setSubmitting(true); setError(""); setStarted(false);
     try {
       const payload = {
-        answers: questions.map(q => ({ questionId: q._id, answer: answers[q._id] || "" })),
-        timeTaken: quiz.timeLimit * 60 - (timeLeft || 0),
+        attemptId:          attemptIdRef.current,
+        answers:            Object.fromEntries(
+          questions.map((q, idx) => [q._id, answers[q._id] ?? null])
+        ),
+        timeTaken:          quiz.timeLimit * 60 - (timeLeft || 0),
         flaggedForCheating: flagCheating || warningRef.current >= 2,
       };
-      const res  = await apiFetch(`/api/quizzes/${quiz._id}/submit`, { method: "POST", body: JSON.stringify(payload) });
+      const res  = await apiFetch(`/api/quizzes/submit`, { method: "POST", body: JSON.stringify(payload) });
       const data = await res.json();
       if (!res.ok) { setError(data.message); return; }
       setResult(data); setSubmitted(true); setAttempts(p => p + 1);
@@ -126,7 +154,7 @@ const QuizSection = ({ quiz, courseId, lessonId, onCompleted }) => {
           <span className="material-symbols-outlined text-amber-500 text-2xl">quiz</span>
           <div>
             <p className="font-semibold text-gray-900 dark:text-white text-sm sm:text-base">{quiz.title || "Lesson Quiz"}</p>
-            <p className="text-xs text-gray-500">{questions.length} questions · {quiz.timeLimit} min · Pass: {quiz.passingScore}%</p>
+            <p className="text-xs text-gray-500">{quiz.questions?.length || "?"} questions · {quiz.timeLimit} min · Pass: {quiz.passingScore}%</p>
           </div>
         </div>
         <div className="p-3 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 text-xs text-amber-700 dark:text-amber-300">
@@ -138,6 +166,7 @@ const QuizSection = ({ quiz, courseId, lessonId, onCompleted }) => {
           <span className="material-symbols-outlined text-base">play_arrow</span>
           {attempts > 0 ? "Retake Quiz" : "Start Quiz"}
         </button>
+        {error && <p className="text-xs text-red-600">{error}</p>}
       </div>
     );
   }
@@ -146,11 +175,11 @@ const QuizSection = ({ quiz, courseId, lessonId, onCompleted }) => {
     return (
       <div className={`p-4 sm:p-5 rounded-xl border ${result.passed ? "border-green-300 bg-green-50 dark:bg-green-900/20" : "border-red-300 bg-red-50 dark:bg-red-900/20"}`}>
         <div className="flex items-center gap-3 mb-3">
-          <span className={`material-symbols-outlined text-2xl ${result.passed?"text-green-600":"text-red-500"}`}>
+          <span className={`material-symbols-outlined text-2xl ${result.passed ? "text-green-600" : "text-red-500"}`}>
             {result.passed ? "check_circle" : "cancel"}
           </span>
           <div>
-            <p className={`font-bold ${result.passed?"text-green-700 dark:text-green-300":"text-red-700 dark:text-red-300"} text-sm sm:text-base`}>
+            <p className={`font-bold ${result.passed ? "text-green-700 dark:text-green-300" : "text-red-700 dark:text-red-300"} text-sm sm:text-base`}>
               {result.alreadyDone ? "Already Passed ✓" : result.passed ? `Passed! ${result.score}%` : `Failed — ${result.score}%`}
             </p>
             {!result.passed && <p className="text-xs text-gray-500">Need {quiz.passingScore}% to pass</p>}
@@ -188,23 +217,26 @@ const QuizSection = ({ quiz, courseId, lessonId, onCompleted }) => {
         {error && <p className="text-sm text-red-600">{error}</p>}
         {questions.map((q, i) => (
           <div key={q._id}>
-            <p className="text-sm font-medium text-gray-900 dark:text-white mb-2">{i+1}. {q.questionText}</p>
-            {q.questionType === "mcq" && q.options?.filter(Boolean).map((opt, j) => (
-              <label key={j} className={`flex items-center gap-2 p-2 mb-1.5 rounded-lg border cursor-pointer transition-all ${answers[q._id]===opt?"border-blue-500 bg-blue-50 dark:bg-blue-900/20":"border-gray-200 dark:border-gray-600 hover:bg-gray-50"}`}>
-                <input type="radio" name={q._id} value={opt} checked={answers[q._id]===opt} onChange={() => handleAnswer(q._id, opt)} className="text-blue-600"/>
-                <span className="text-sm text-gray-800 dark:text-gray-200">{opt}</span>
-              </label>
-            ))}
-            {q.questionType === "true_false" && ["true","false"].map(opt => (
-              <label key={opt} className={`flex items-center gap-2 p-2 mb-1.5 rounded-lg border cursor-pointer transition-all ${answers[q._id]===opt?"border-blue-500 bg-blue-50 dark:bg-blue-900/20":"border-gray-200 dark:border-gray-600"}`}>
-                <input type="radio" name={q._id} value={opt} checked={answers[q._id]===opt} onChange={() => handleAnswer(q._id, opt)} className="text-blue-600"/>
-                <span className="text-sm capitalize text-gray-800 dark:text-gray-200">{opt}</span>
-              </label>
-            ))}
-            {q.questionType === "short_answer" && (
-              <input value={answers[q._id]||""} onChange={e => handleAnswer(q._id, e.target.value)}
-                placeholder="Your answer..." className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"/>
-            )}
+            <p className="text-sm font-medium text-gray-900 dark:text-white mb-2">{i+1}. {q.text || q.questionText}</p>
+            {/* FIX: Handle both { text, index } format from startAttempt and plain string options */}
+            {(q.options || []).map((opt, j) => {
+              const optText  = typeof opt === "object" ? opt.text  : opt;
+              const optIndex = typeof opt === "object" ? opt.index : j;
+              return (
+                <label key={j} className={`flex items-center gap-2 p-2 mb-1.5 rounded-lg border cursor-pointer transition-all ${
+                  answers[q._id] === optIndex
+                    ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20"
+                    : "border-gray-200 dark:border-gray-600 hover:bg-gray-50"
+                }`}>
+                  <input type="radio" name={q._id} value={optIndex}
+                    checked={answers[q._id] === optIndex}
+                    onChange={() => handleAnswer(q._id, optIndex)}
+                    className="text-blue-600"
+                  />
+                  <span className="text-sm text-gray-800 dark:text-gray-200">{optText}</span>
+                </label>
+              );
+            })}
           </div>
         ))}
       </div>
@@ -223,93 +255,66 @@ const QuizSection = ({ quiz, courseId, lessonId, onCompleted }) => {
 };
 
 // ─────────────────────────────────────────────
-// LAB SECTION — Submit only (NO Run Code)
+// LAB SECTION (unchanged — lab submit was already correct)
 // ─────────────────────────────────────────────
 const LabSection = ({ lab, lessonId, courseId, onCompleted }) => {
-  const [answer, setAnswer] = useState("");
+  const [answer,     setAnswer]     = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const [submitted, setSubmitted] = useState(false);
-  const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
-  const [pdfFile, setPdfFile] = useState(null);
+  const [submitted,  setSubmitted]  = useState(false);
+  const [error,      setError]      = useState("");
+  const [success,    setSuccess]    = useState("");
+  const [pdfFile,    setPdfFile]    = useState(null);
   const [pdfPreview, setPdfPreview] = useState(null);
   const fileInputRef = useRef(null);
 
-  useEffect(() => { 
-    fetchMySubmission(); 
-  }, [lab._id]);
+  useEffect(() => { fetchMySubmission(); }, [lab._id]);
 
   const fetchMySubmission = async () => {
     try {
-      const res = await apiFetch(`/api/courses/${courseId}/lessons/${lessonId}/lab/${lab._id}/my-submission`);
+      const res  = await apiFetch(`/api/courses/${courseId}/lessons/${lessonId}/lab/${lab._id}/my-submission`);
       const data = await res.json();
       if (res.ok && data.submission) {
         setAnswer(data.submission.answer || "");
         setSubmitted(true);
-        if (data.submission.pdfUrl) {
-          setPdfPreview(data.submission.pdfUrl);
-        }
+        if (data.submission.pdfUrl) setPdfPreview(data.submission.pdfUrl);
         onCompleted && onCompleted();
       } else if (lab.starterCode) {
         setAnswer(lab.starterCode);
       }
-    } catch { 
-      if (lab.starterCode) setAnswer(lab.starterCode); 
+    } catch {
+      if (lab.starterCode) setAnswer(lab.starterCode);
     }
   };
 
   const handleSubmit = async () => {
-    if (!answer.trim() && !pdfFile) { 
-      setError("Please write an answer or upload a PDF file"); 
-      return; 
-    }
-    
-    setSubmitting(true); 
-    setError("");
-    setSuccess("");
-    
+    if (!answer.trim() && !pdfFile) { setError("Please write an answer or upload a PDF file"); return; }
+    setSubmitting(true); setError(""); setSuccess("");
     try {
       const formData = new FormData();
       if (answer.trim()) formData.append("answer", answer.trim());
-      if (pdfFile) formData.append("pdf", pdfFile);
-      
+      if (pdfFile)       formData.append("pdf", pdfFile);
       const token = localStorage.getItem("token");
-      
-      const res = await fetch(`${API}/api/courses/${courseId}/lessons/${lessonId}/lab/${lab._id}/submit`, {
-        method: "POST",
-        body: formData,
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+      const res   = await fetch(`${API}/api/courses/${courseId}/lessons/${lessonId}/lab/${lab._id}/submit`, {
+        method: "POST", body: formData,
+        headers: { Authorization: `Bearer ${token}` },
       });
-      
       const data = await res.json();
-      
-      if (!res.ok) { 
-        setError(data.message || "Submission failed"); 
-        return; 
-      }
-      
-      setSubmitted(true);
-      setPdfFile(null);
+      if (!res.ok) { setError(data.message || "Submission failed"); return; }
+      setSubmitted(true); setPdfFile(null);
       if (fileInputRef.current) fileInputRef.current.value = "";
       onCompleted && onCompleted();
       setSuccess("Lab submitted successfully!");
       setTimeout(() => setSuccess(""), 3000);
-      
       await fetchMySubmission();
-      
-    } catch (err) { 
-      setError("Cannot connect to server"); 
-    }
+    } catch { setError("Cannot connect to server"); }
     finally { setSubmitting(false); }
   };
 
   const labCfg = {
-    programming: { icon: "terminal", color: "text-green-600", label: "Programming Lab" },
-    dld: { icon: "schema", color: "text-blue-600", label: "DLD Lab" },
-    networking: { icon: "hub", color: "text-purple-600", label: "Networking Lab" },
-    theory: { icon: "description", color: "text-amber-600", label: "Theory Lab" },
+    programming: { icon: "terminal",    color: "text-green-600",  label: "Programming Lab" },
+    dld:         { icon: "schema",      color: "text-blue-600",   label: "DLD Lab"         },
+    networking:  { icon: "hub",         color: "text-purple-600", label: "Networking Lab"  },
+    theory:      { icon: "description", color: "text-amber-600",  label: "Theory Lab"      },
   };
   const cfg = labCfg[lab.labType] || labCfg.theory;
 
@@ -350,32 +355,21 @@ const LabSection = ({ lab, lessonId, courseId, onCompleted }) => {
           </div>
         )}
 
-        {error && <p className="text-xs sm:text-sm text-red-600">{error}</p>}
+        {error   && <p className="text-xs sm:text-sm text-red-600">{error}</p>}
         {success && <p className="text-xs sm:text-sm text-green-600">{success}</p>}
 
-        <textarea 
-          value={answer} 
-          onChange={e => setAnswer(e.target.value)} 
+        <textarea
+          value={answer} onChange={e => setAnswer(e.target.value)}
           rows={lab.labType === "programming" ? 10 : 6}
           placeholder={lab.labType === "programming" ? "Write your code here..." : "Write your answer here..."}
           className={`w-full px-3 py-2.5 text-sm border border-gray-300 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 resize-none ${lab.labType === "programming" ? "font-mono" : ""}`}
         />
 
-        {/* PDF Upload Section */}
         <div className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-xl p-4">
           <div className="flex flex-col sm:flex-row items-center gap-3">
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept=".pdf"
-              onChange={(e) => setPdfFile(e.target.files[0])}
-              className="hidden"
-            />
-            <button
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-            >
+            <input ref={fileInputRef} type="file" accept=".pdf" onChange={e => setPdfFile(e.target.files[0])} className="hidden"/>
+            <button type="button" onClick={() => fileInputRef.current?.click()}
+              className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
               <span className="material-symbols-outlined text-base">upload_file</span>
               Upload PDF
             </button>
@@ -389,18 +383,15 @@ const LabSection = ({ lab, lessonId, courseId, onCompleted }) => {
               </div>
             )}
             {pdfPreview && !pdfFile && (
-              <div className="flex items-center gap-2 text-sm text-blue-600">
+              <a href={pdfPreview} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-sm text-blue-600 hover:underline">
                 <span className="material-symbols-outlined text-base">description</span>
-                <a href={pdfPreview} target="_blank" rel="noopener noreferrer" className="hover:underline">
-                  View submitted PDF
-                </a>
-              </div>
+                View submitted PDF
+              </a>
             )}
           </div>
           <p className="text-xs text-gray-500 mt-2 text-center">Upload your solution as a PDF file (optional)</p>
         </div>
 
-        {/* Only Submit Button - No Run Code */}
         <button onClick={handleSubmit} disabled={submitting}
           className="w-full py-2.5 rounded-xl text-sm font-medium text-white bg-purple-600 hover:bg-purple-700 disabled:opacity-50 flex items-center justify-center gap-2">
           {submitting
@@ -415,6 +406,9 @@ const LabSection = ({ lab, lessonId, courseId, onCompleted }) => {
 
 // ─────────────────────────────────────────────
 // MAIN LESSON VIEWER
+// FIX: Tab switching now works even when clicking the same lesson
+// FIX: refreshAfterStep refreshes lesson list and progress WITHOUT changing the active lesson
+// FIX: Sidebar lesson list re-renders with correct lock states after completion
 // ─────────────────────────────────────────────
 const LessonViewer = () => {
   const { courseId } = useParams();
@@ -422,6 +416,9 @@ const LessonViewer = () => {
 
   const [lessons,       setLessons]       = useState([]);
   const [activeLesson,  setActiveLesson]  = useState(null);
+  // FIX: Separate loading trigger from activeLesson identity
+  // so clicking the same lesson still reloads content
+  const [loadTrigger,   setLoadTrigger]   = useState(0);
   const [lessonData,    setLessonData]    = useState(null);
   const [loadingList,   setLoadingList]   = useState(true);
   const [loadingLesson, setLoadingLesson] = useState(false);
@@ -431,8 +428,13 @@ const LessonViewer = () => {
   const [error,         setError]         = useState("");
   const [sidebarOpen,   setSidebarOpen]   = useState(false);
 
+  // FIX: Initial load
   useEffect(() => { fetchAll(); }, [courseId]);
-  useEffect(() => { if (activeLesson?._id) openLesson(activeLesson._id); }, [activeLesson?._id]);
+
+  // FIX: Load lesson content whenever loadTrigger changes OR activeLesson changes
+  useEffect(() => {
+    if (activeLesson?._id) openLesson(activeLesson._id);
+  }, [activeLesson?._id, loadTrigger]);
 
   const fetchAll = async () => {
     setLoadingList(true);
@@ -446,7 +448,10 @@ const LessonViewer = () => {
       if (cRes.ok) setCourse(cData.course);
       if (lRes.ok && lData.lessons?.length > 0) {
         setLessons(lData.lessons);
-        const target = lData.lessons.find(l => !l.isLocked && !l.isCompleted) || lData.lessons.find(l => !l.isLocked);
+        // Auto-select first unlocked+incomplete lesson, or first unlocked lesson
+        const target =
+          lData.lessons.find(l => !l.isLocked && !l.isCompleted) ||
+          lData.lessons.find(l => !l.isLocked);
         if (target) setActiveLesson(target);
       }
     } catch { setError("Cannot connect to server"); }
@@ -466,20 +471,37 @@ const LessonViewer = () => {
     finally { setLoadingLesson(false); }
   };
 
+  // FIX: refreshAfterStep only refreshes the sidebar lesson list and re-fetches
+  // current lesson progress WITHOUT changing which lesson is active or triggering
+  // a full re-render cascade. This prevents the "switching tab resets everything" bug.
   const refreshAfterStep = async () => {
-    const [lRes, ldRes] = await Promise.all([
-      apiFetch(`/api/courses/${courseId}/lessons`),
-      activeLesson ? apiFetch(`/api/courses/${courseId}/lessons/${activeLesson._id}/content`) : Promise.resolve(null),
-    ]);
-    const lData = await lRes.json();
-    if (lRes.ok) setLessons(lData.lessons);
-    if (ldRes) {
-      const ldData = await ldRes.json();
-      if (ldData) {
-        setLessonData(ldData);
-        setQuizDone(ldData.progress?.quizCompleted || false);
-        setLabDone(ldData.progress?.labCompleted   || false);
+    try {
+      // Refresh lesson list (to update lock/completion states in sidebar)
+      const lRes  = await apiFetch(`/api/courses/${courseId}/lessons`);
+      const lData = await lRes.json();
+      if (lRes.ok) setLessons(lData.lessons);
+
+      // Refresh current lesson progress only
+      if (activeLesson?._id) {
+        const ldRes  = await apiFetch(`/api/courses/${courseId}/lessons/${activeLesson._id}/content`);
+        const ldData = await ldRes.json();
+        if (ldRes.ok) {
+          setLessonData(ldData);
+          setQuizDone(ldData.progress?.quizCompleted || false);
+          setLabDone(ldData.progress?.labCompleted   || false);
+        }
       }
+    } catch { /* silent — user already sees success message from quiz/lab */ }
+  };
+
+  // FIX: Clicking a lesson in sidebar always loads it, even if it's the same lesson
+  const handleLessonClick = (lesson) => {
+    setSidebarOpen(false);
+    if (lesson._id === activeLesson?._id) {
+      // Same lesson clicked — force a reload by bumping the trigger
+      setLoadTrigger(t => t + 1);
+    } else {
+      setActiveLesson(lesson);
     }
   };
 
@@ -506,17 +528,11 @@ const LessonViewer = () => {
             className="flex items-center justify-center w-8 h-8 sm:w-9 sm:h-9 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
             <span className="material-symbols-outlined text-gray-600 dark:text-gray-400 text-xl sm:text-2xl">arrow_back</span>
           </button>
-          
-          {/* Mobile menu button */}
-          <button 
-            onClick={() => setSidebarOpen(!sidebarOpen)}
-            className="lg:hidden flex items-center justify-center w-8 h-8 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-          >
+          <button onClick={() => setSidebarOpen(!sidebarOpen)}
+            className="lg:hidden flex items-center justify-center w-8 h-8 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
             <span className="material-symbols-outlined text-gray-600 dark:text-gray-400">menu</span>
           </button>
-          
           <h1 className="flex-1 font-bold text-gray-900 dark:text-white truncate text-sm sm:text-base">{course?.title}</h1>
-          
           <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
             <span className="text-[10px] sm:text-xs text-gray-500 hidden xs:inline">{lessons.filter(l=>l.isCompleted).length}/{lessons.length}</span>
             <div className="w-16 sm:w-24 h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
@@ -529,14 +545,15 @@ const LessonViewer = () => {
 
       <div className="max-w-7xl mx-auto flex flex-col lg:flex-row" style={{ height: "calc(100vh - 53px)" }}>
 
-        {/* Sidebar - Mobile overlay */}
+        {/* Mobile overlay */}
         {sidebarOpen && (
           <div className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden" onClick={() => setSidebarOpen(false)} />
         )}
-        
+
+        {/* Sidebar */}
         <aside className={`
           fixed lg:static inset-y-0 left-0 z-50 w-64 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 flex flex-col flex-shrink-0 overflow-hidden transition-transform duration-300 transform
-          ${sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
+          ${sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}
         `}>
           <div className="p-3 sm:p-4 border-b border-gray-200 dark:border-gray-700">
             <div className="flex items-center justify-between">
@@ -549,20 +566,25 @@ const LessonViewer = () => {
               </button>
             </div>
           </div>
+
           <div className="flex-1 overflow-y-auto p-2 sm:p-3 space-y-2">
-            {lessons.map((lesson) => (
+            {lessons.map(lesson => (
               <button key={lesson._id} disabled={lesson.isLocked}
-                onClick={() => { setActiveLesson(lesson); setSidebarOpen(false); }}
+                onClick={() => handleLessonClick(lesson)}
                 className={`w-full text-left p-2.5 sm:p-3 rounded-xl border transition-all ${
-                  lesson.isLocked ? "border-gray-100 dark:border-gray-700/50 opacity-50 cursor-not-allowed bg-gray-50 dark:bg-gray-800/50"
-                  : activeLesson?._id === lesson._id ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20"
-                  : "border-gray-200 dark:border-gray-700 hover:border-blue-300 dark:hover:border-blue-700"
+                  lesson.isLocked
+                    ? "border-gray-100 dark:border-gray-700/50 opacity-50 cursor-not-allowed bg-gray-50 dark:bg-gray-800/50"
+                    : activeLesson?._id === lesson._id
+                    ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20"
+                    : "border-gray-200 dark:border-gray-700 hover:border-blue-300 dark:hover:border-blue-700"
                 }`}>
                 <div className="flex items-center gap-2">
                   <div className={`flex items-center justify-center w-6 h-6 sm:w-7 sm:h-7 rounded-full flex-shrink-0 text-xs font-bold ${
-                    lesson.isCompleted ? "bg-green-100 dark:bg-green-900/30 text-green-700"
-                    : lesson.isLocked  ? "bg-gray-100 dark:bg-gray-700 text-gray-400"
-                    : "bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300"
+                    lesson.isCompleted
+                      ? "bg-green-100 dark:bg-green-900/30 text-green-700"
+                      : lesson.isLocked
+                      ? "bg-gray-100 dark:bg-gray-700 text-gray-400"
+                      : "bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300"
                   }`}>
                     {lesson.isCompleted ? "✓" : lesson.isLocked ? "🔒" : lesson.order}
                   </div>
@@ -614,7 +636,10 @@ const LessonViewer = () => {
               {lessonData.lesson.videoUrl && (
                 <div className="rounded-xl overflow-hidden bg-black aspect-video">
                   {lessonData.lesson.videoUrl.includes("youtube.com") || lessonData.lesson.videoUrl.includes("youtu.be") ? (
-                    <iframe src={lessonData.lesson.videoUrl.replace("watch?v=","embed/")} className="w-full h-full" allowFullScreen title={lessonData.lesson.title}/>
+                    <iframe
+                      src={lessonData.lesson.videoUrl.replace("watch?v=", "embed/").replace("youtu.be/", "www.youtube.com/embed/")}
+                      className="w-full h-full" allowFullScreen title={lessonData.lesson.title}
+                    />
                   ) : (
                     <video controls className="w-full h-full" src={lessonData.lesson.videoUrl}/>
                   )}
@@ -636,8 +661,10 @@ const LessonViewer = () => {
               {/* Text content */}
               {lessonData.lesson.content && (
                 <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-4 sm:p-6">
-                  <div className="prose prose-sm sm:prose dark:prose-invert max-w-none text-gray-700 dark:text-gray-300"
-                    dangerouslySetInnerHTML={{ __html: lessonData.lesson.content }}/>
+                  <div
+                    className="prose prose-sm sm:prose dark:prose-invert max-w-none text-gray-700 dark:text-gray-300"
+                    dangerouslySetInnerHTML={{ __html: lessonData.lesson.content }}
+                  />
                 </div>
               )}
 
@@ -647,14 +674,14 @@ const LessonViewer = () => {
                   <p className="text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">Complete to unlock next lesson:</p>
                   <div className="flex flex-wrap gap-4 sm:gap-6">
                     {lessonData.lesson.requiresQuiz && (
-                      <div className={`flex items-center gap-2 text-xs sm:text-sm ${quizDone?"text-green-600 dark:text-green-400":"text-gray-500"}`}>
-                        <span className="material-symbols-outlined text-base">{quizDone?"check_circle":"radio_button_unchecked"}</span>
+                      <div className={`flex items-center gap-2 text-xs sm:text-sm ${quizDone ? "text-green-600 dark:text-green-400" : "text-gray-500"}`}>
+                        <span className="material-symbols-outlined text-base">{quizDone ? "check_circle" : "radio_button_unchecked"}</span>
                         Pass Quiz
                       </div>
                     )}
                     {lessonData.lesson.requiresLab && (
-                      <div className={`flex items-center gap-2 text-xs sm:text-sm ${labDone?"text-green-600 dark:text-green-400":"text-gray-500"}`}>
-                        <span className="material-symbols-outlined text-base">{labDone?"check_circle":"radio_button_unchecked"}</span>
+                      <div className={`flex items-center gap-2 text-xs sm:text-sm ${labDone ? "text-green-600 dark:text-green-400" : "text-gray-500"}`}>
+                        <span className="material-symbols-outlined text-base">{labDone ? "check_circle" : "radio_button_unchecked"}</span>
                         Submit Lab
                       </div>
                     )}
@@ -664,14 +691,22 @@ const LessonViewer = () => {
 
               {/* Quiz */}
               {lessonData.quiz && lessonData.lesson.requiresQuiz && (
-                <QuizSection quiz={lessonData.quiz} courseId={courseId} lessonId={lessonData.lesson._id}
-                  onCompleted={() => { setQuizDone(true); refreshAfterStep(); }}/>
+                <QuizSection
+                  quiz={lessonData.quiz}
+                  courseId={courseId}
+                  lessonId={lessonData.lesson._id}
+                  onCompleted={() => { setQuizDone(true); refreshAfterStep(); }}
+                />
               )}
 
               {/* Lab */}
               {lessonData.lab && lessonData.lesson.requiresLab && (
-                <LabSection lab={lessonData.lab} lessonId={lessonData.lesson._id} courseId={courseId}
-                  onCompleted={() => { setLabDone(true); refreshAfterStep(); }}/>
+                <LabSection
+                  lab={lessonData.lab}
+                  lessonId={lessonData.lesson._id}
+                  courseId={courseId}
+                  onCompleted={() => { setLabDone(true); refreshAfterStep(); }}
+                />
               )}
 
               {/* Completion banner */}
@@ -693,7 +728,9 @@ const LessonViewer = () => {
             <div className="flex items-center justify-center h-full">
               <div className="text-center p-6 sm:p-8">
                 <span className="material-symbols-outlined text-5xl sm:text-6xl text-gray-300 dark:text-gray-600">menu_book</span>
-                <p className="text-sm text-gray-500 mt-3">{lessons.length === 0 ? "No lessons added yet" : "Select a lesson to start"}</p>
+                <p className="text-sm text-gray-500 mt-3">
+                  {lessons.length === 0 ? "No lessons added yet" : "Select a lesson to start"}
+                </p>
               </div>
             </div>
           )}

@@ -4,9 +4,11 @@ const Enrollment     = require("../models/Enrollment");
 const Course         = require("../models/Course");
 const Quiz           = require("../models/Quiz");
 const Lab            = require("../models/Lab");
+const User           = require("../models/User");  // ✅ ADDED
 const cloudinary     = require("../config/cloudinary");
 const multer         = require("multer");
 const path           = require("path");
+const { notifyLessonUnlocked, notifyCourseCompleted } = require("../utils/notificationHooks");  // ✅ ADDED
 
 // Multer setup for image/video uploads
 const storage = multer.diskStorage({
@@ -15,7 +17,7 @@ const storage = multer.diskStorage({
 });
 const upload = multer({
   storage,
-  limits: { fileSize: 100 * 1024 * 1024 }, // 100MB
+  limits: { fileSize: 100 * 1024 * 1024 },
   fileFilter: (req, file, cb) => {
     const allowed = /jpeg|jpg|png|gif|webp|mp4|mov|avi|mkv|pdf/;
     cb(null, allowed.test(path.extname(file.originalname).toLowerCase()));
@@ -23,38 +25,97 @@ const upload = multer({
 });
 module.exports.uploadMiddleware = upload.single("file");
 
-// ── CORE: Unlock next lesson ────────────────────────────────
+// ── CORE: Unlock next lesson ─────────────────────────────────
 const checkAndUnlockNext = async (studentId, lessonId, courseId) => {
   try {
-    const lesson   = await Lesson.findById(lessonId);
-    if (!lesson)   return;
-    const progress = await LessonProgress.findOne({ student: studentId, lesson: lessonId });
-    if (!progress || progress.isCompleted) return;
+    const lesson = await Lesson.findById(lessonId);
+    if (!lesson) return;
 
+    const progress = await LessonProgress.findOne({ student: studentId, lesson: lessonId });
+    if (!progress) return;
+
+    // Already completed — nothing to do
+    if (progress.isCompleted) return;
+
+    // Only require what the lesson actually requires
     const quizOk = !lesson.requiresQuiz || progress.quizCompleted;
     const labOk  = !lesson.requiresLab  || progress.labCompleted;
+    const viewOk = progress.lessonViewed;
 
-    if (quizOk && labOk) {
+    if (viewOk && quizOk && labOk) {
+      // Mark this lesson as completed
       progress.isCompleted = true;
       progress.completedAt = new Date();
       await progress.save();
 
-      const nextLesson = await Lesson.findOne({ course: courseId, order: lesson.order + 1, isPublished: true });
+      // Unlock the next lesson by creating its progress record
+      const nextLesson = await Lesson.findOne({
+        course: courseId,
+        order: lesson.order + 1,
+        isPublished: true,
+      });
+
       if (nextLesson) {
         await LessonProgress.findOneAndUpdate(
           { student: studentId, lesson: nextLesson._id },
-          { $setOnInsert: { student: studentId, lesson: nextLesson._id, course: courseId, lessonViewed: false, quizCompleted: false, labCompleted: false, isCompleted: false } },
+          {
+            $setOnInsert: {
+              student: studentId,
+              lesson:  nextLesson._id,
+              course:  courseId,
+              lessonViewed:  false,
+              quizCompleted: false,
+              labCompleted:  false,
+              isCompleted:   false,
+            },
+          },
           { upsert: true }
         );
+
+        // ✅ NOTIFICATION: Lesson Unlocked
+        const student = await User.findById(studentId).select("fullName email");
+        await notifyLessonUnlocked({
+          studentId,
+          lessonTitle: nextLesson.title,
+          courseId,
+          sendEmailNotif: false,  // Set to true if you want unlock emails
+          recipientEmail: student?.email || null,
+          recipientName: student?.fullName || null,
+        });
       }
 
-      const totalLessons   = await Lesson.countDocuments({ course: courseId, isPublished: true });
-      const completedCount = await LessonProgress.countDocuments({ student: studentId, course: courseId, isCompleted: true });
-      const overallProgress = totalLessons > 0 ? Math.round((completedCount / totalLessons) * 100) : 0;
+      // Update overall enrollment progress
+      const totalLessons = await Lesson.countDocuments({ course: courseId, isPublished: true });
+      const completedCount = await LessonProgress.countDocuments({
+        student: studentId,
+        course:  courseId,
+        isCompleted: true,
+      });
+      const overallProgress = totalLessons > 0
+        ? Math.round((completedCount / totalLessons) * 100)
+        : 0;
+
       await Enrollment.findOneAndUpdate(
         { student: studentId, course: courseId },
         { progress: overallProgress, isCompleted: overallProgress === 100 }
       );
+
+      // ✅ NOTIFICATION: Course Completed
+      if (overallProgress === 100) {
+        const course = await Course.findById(courseId);
+        const student = await User.findById(studentId).select("fullName email");
+        
+        if (course && student) {
+          await notifyCourseCompleted({
+            studentId,
+            courseTitle: course.title,
+            courseId,
+            sendEmailNotif: true,              // ✅ Send email for course completion!
+            recipientEmail: student.email,
+            recipientName: student.fullName,
+          });
+        }
+      }
     }
   } catch (err) {
     console.error("checkAndUnlockNext error:", err.message);
@@ -98,7 +159,10 @@ const createLesson = async (req, res) => {
     if (course.teacher.toString() !== req.user._id.toString())
       return res.status(403).json({ message: "Not your course" });
 
-    const { title, description, format, content, videoUrl, images, duration, points, requiresQuiz, requiresLab } = req.body;
+    const {
+      title, description, format, content, videoUrl,
+      images, duration, points, requiresQuiz, requiresLab,
+    } = req.body;
     if (!title?.trim()) return res.status(400).json({ message: "Lesson title is required" });
 
     const last  = await Lesson.findOne({ course: course._id }).sort({ order: -1 });
@@ -110,22 +174,33 @@ const createLesson = async (req, res) => {
       course:      course._id,
       createdBy:   req.user._id,
       order,
-      format:      format  || "text",
-      content:     content || "",
+      format:      format   || "text",
+      content:     content  || "",
       videoUrl:    videoUrl || null,
-      images:      images  || [],
+      images:      images   || [],
       duration:    duration || "30 min",
-      points:      points  ?? 100,
+      points:      points   ?? 100,
       requiresQuiz: requiresQuiz !== undefined ? requiresQuiz : true,
       requiresLab:  requiresLab  !== undefined ? requiresLab  : true,
     });
 
+    // For the FIRST lesson, create LessonProgress for all already-enrolled students
     if (order === 1) {
       const enrollments = await Enrollment.find({ course: course._id });
       const ops = enrollments.map(en => ({
         updateOne: {
           filter: { student: en.student, lesson: lesson._id },
-          update: { $setOnInsert: { student: en.student, lesson: lesson._id, course: course._id } },
+          update: {
+            $setOnInsert: {
+              student: en.student,
+              lesson:  lesson._id,
+              course:  course._id,
+              lessonViewed:  false,
+              quizCompleted: false,
+              labCompleted:  false,
+              isCompleted:   false,
+            },
+          },
           upsert: true,
         },
       }));
@@ -148,8 +223,11 @@ const updateLesson = async (req, res) => {
     if (lesson.course.teacher.toString() !== req.user._id.toString())
       return res.status(403).json({ message: "Not your lesson" });
 
-    ["title","description","format","content","videoUrl","images","duration","points","isPublished","requiresQuiz","requiresLab"]
-      .forEach(f => { if (req.body[f] !== undefined) lesson[f] = req.body[f]; });
+    [
+      "title","description","format","content","videoUrl","images",
+      "duration","points","isPublished","requiresQuiz","requiresLab",
+    ].forEach(f => { if (req.body[f] !== undefined) lesson[f] = req.body[f]; });
+
     await lesson.save();
     res.status(200).json({ message: "Lesson updated", lesson });
   } catch (err) {
@@ -215,21 +293,39 @@ module.exports.getTeacherLessonById = getTeacherLessonById;
 // ── STUDENT: Get lessons with lock status ───────────────────
 const getStudentLessons = async (req, res) => {
   try {
-    const enrollment = await Enrollment.findOne({ student: req.user._id, course: req.params.courseId });
+    const enrollment = await Enrollment.findOne({
+      student: req.user._id,
+      course:  req.params.courseId,
+    });
     if (!enrollment) return res.status(403).json({ message: "Not enrolled" });
 
-    const lessons = await Lesson.find({ course: req.params.courseId, isPublished: true }).sort({ order: 1 });
-    const progressRecords = await LessonProgress.find({ student: req.user._id, course: req.params.courseId });
+    const lessons = await Lesson.find({
+      course:      req.params.courseId,
+      isPublished: true,
+    }).sort({ order: 1 });
+
+    const progressRecords = await LessonProgress.find({
+      student: req.user._id,
+      course:  req.params.courseId,
+    });
+
     const progressMap = {};
     progressRecords.forEach(p => { progressMap[p.lesson.toString()] = p; });
 
     const result = lessons.map((lesson, index) => {
       const progress = progressMap[lesson._id.toString()];
       const isLocked = index === 0 ? false : !progress;
+
       return {
-        _id: lesson._id, title: lesson.title, description: lesson.description,
-        order: lesson.order, format: lesson.format, duration: lesson.duration,
-        points: lesson.points, requiresQuiz: lesson.requiresQuiz, requiresLab: lesson.requiresLab,
+        _id:          lesson._id,
+        title:        lesson.title,
+        description:  lesson.description,
+        order:        lesson.order,
+        format:       lesson.format,
+        duration:     lesson.duration,
+        points:       lesson.points,
+        requiresQuiz: lesson.requiresQuiz,
+        requiresLab:  lesson.requiresLab,
         isLocked,
         isCompleted:   progress?.isCompleted   || false,
         lessonViewed:  progress?.lessonViewed  || false,
@@ -237,6 +333,7 @@ const getStudentLessons = async (req, res) => {
         labCompleted:  progress?.labCompleted  || false,
       };
     });
+
     res.status(200).json({ lessons: result });
   } catch (err) {
     console.error(err);
@@ -249,26 +346,52 @@ module.exports.getStudentLessons = getStudentLessons;
 const getLessonContent = async (req, res) => {
   try {
     const lesson = await Lesson.findById(req.params.id);
-    if (!lesson || !lesson.isPublished) return res.status(404).json({ message: "Lesson not found" });
+    if (!lesson || !lesson.isPublished)
+      return res.status(404).json({ message: "Lesson not found" });
 
-    const enrollment = await Enrollment.findOne({ student: req.user._id, course: lesson.course });
+    const enrollment = await Enrollment.findOne({
+      student: req.user._id,
+      course:  lesson.course,
+    });
     if (!enrollment) return res.status(403).json({ message: "Not enrolled" });
 
     if (lesson.order > 1) {
-      const myProgress = await LessonProgress.findOne({ student: req.user._id, lesson: lesson._id });
-      if (!myProgress) return res.status(403).json({ message: "Complete the previous lesson first" });
+      const myProgress = await LessonProgress.findOne({
+        student: req.user._id,
+        lesson:  lesson._id,
+      });
+      if (!myProgress) {
+        return res.status(403).json({ message: "Complete the previous lesson first" });
+      }
     }
 
     const progress = await LessonProgress.findOneAndUpdate(
       { student: req.user._id, lesson: lesson._id },
-      { $set: { lessonViewed: true }, $setOnInsert: { student: req.user._id, lesson: lesson._id, course: lesson.course } },
+      {
+        $set:      { lessonViewed: true },
+        $setOnInsert: {
+          student: req.user._id,
+          lesson:  lesson._id,
+          course:  lesson.course,
+          quizCompleted: false,
+          labCompleted:  false,
+          isCompleted:   false,
+        },
+      },
       { upsert: true, new: true }
     );
 
     const quiz = await Quiz.findOne({ lesson: lesson._id, isPublished: true });
     const lab  = await Lab.findOne({  lesson: lesson._id, isPublished: true });
 
-    res.status(200).json({ lesson, progress, quiz, lab });
+    await checkAndUnlockNext(req.user._id, lesson._id, lesson.course);
+
+    const updatedProgress = await LessonProgress.findOne({
+      student: req.user._id,
+      lesson:  lesson._id,
+    });
+
+    res.status(200).json({ lesson, progress: updatedProgress || progress, quiz, lab });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: "Server error" });
@@ -279,11 +402,16 @@ module.exports.getLessonContent = getLessonContent;
 // ── STUDENT: Get course progress ────────────────────────────
 const getCourseProgress = async (req, res) => {
   try {
-    const enrollment = await Enrollment.findOne({ student: req.user._id, course: req.params.courseId });
+    const enrollment = await Enrollment.findOne({
+      student: req.user._id,
+      course:  req.params.courseId,
+    });
     if (!enrollment) return res.status(403).json({ message: "Not enrolled" });
 
-    const progressRecords = await LessonProgress.find({ student: req.user._id, course: req.params.courseId })
-      .populate("lesson", "title order duration");
+    const progressRecords = await LessonProgress.find({
+      student: req.user._id,
+      course:  req.params.courseId,
+    }).populate("lesson", "title order duration");
 
     res.status(200).json({
       progress:        progressRecords,

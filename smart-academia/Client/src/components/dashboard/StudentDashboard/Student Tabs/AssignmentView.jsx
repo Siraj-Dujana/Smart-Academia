@@ -34,31 +34,64 @@ const AssignmentView = ({ courseId }) => {
     else { setSubmission(null); setAnswerText(""); }
   };
 
+  const handleFileChange = (e) => {
+    const selectedFile = e.target.files[0];
+    if (!selectedFile) return;
+    
+    // ✅ Only allow PDF files
+    if (selectedFile.type !== "application/pdf") {
+      setError("Only PDF files are allowed");
+      setFile(null);
+      if (fileRef.current) fileRef.current.value = "";
+      return;
+    }
+    
+    setError("");
+    setFile(selectedFile);
+  };
+
   const handleSubmit = async () => {
-    if (!answerText.trim() && !file) { setError("Write an answer or attach a file"); return; }
-    setSubmitting(true); setError(""); setSuccess("");
+    if (!answerText.trim() && !file) { 
+      setError("Write an answer or attach a PDF file"); 
+      return; 
+    }
+    
+    setSubmitting(true); 
+    setError(""); 
+    setSuccess("");
+    
     try {
       const formData = new FormData();
       if (answerText.trim()) formData.append("answerText", answerText.trim());
-      if (file)              formData.append("file", file);
+      if (file) formData.append("file", file);
 
-      const res  = await apiFetch(`/api/assignments/${active._id}/submit`, {
-        method: "POST", body: formData,
+      const res = await apiFetch(`/api/assignments/${active._id}/submit`, {
+        method: "POST", 
+        body: formData,
         headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
       });
+      
       const data = await res.json();
-      if (!res.ok) { setError(data.message); return; }
+      if (!res.ok) { 
+        setError(data.message); 
+        return; 
+      }
+      
       setSubmission(data.submission);
       setSuccess("Assignment submitted successfully!");
       setFile(null);
+      if (fileRef.current) fileRef.current.value = "";
       setTimeout(() => setSuccess(""), 4000);
-    } catch { setError("Cannot connect to server"); }
-    finally { setSubmitting(false); }
+    } catch { 
+      setError("Cannot connect to server"); 
+    } finally { 
+      setSubmitting(false); 
+    }
   };
 
   const statusConfig = {
-    submitted: { color: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300", label: "Submitted — Awaiting Review" },
-    reviewed:  { color: "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300", label: "Reviewed" },
+    submitted: { color: "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300", label: "Submitted — Awaiting Review" },
+    reviewed:  { color: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300", label: "Reviewed" },
     approved:  { color: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300", label: "Approved ✓" },
     rejected:  { color: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300", label: "Rejected" },
   };
@@ -81,8 +114,8 @@ const AssignmentView = ({ courseId }) => {
             <button key={a._id} onClick={() => setActive(a)}
               className={`w-full text-left p-3 sm:p-4 rounded-xl border transition-all ${
                 active?._id === a._id 
-                  ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20 ring-2 ring-blue-500/20" 
-                  : "border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-blue-300 dark:hover:border-blue-600"
+                  ? "border-indigo-500 bg-indigo-50 dark:bg-indigo-900/20 ring-2 ring-indigo-500/20" 
+                  : "border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-indigo-300 dark:hover:border-indigo-600"
               }`}>
               <p className="font-medium text-gray-900 dark:text-white text-sm sm:text-base">{a.title}</p>
               <div className="flex flex-wrap items-center gap-2 mt-1">
@@ -121,8 +154,8 @@ const AssignmentView = ({ courseId }) => {
           <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-4 sm:space-y-5">
             {/* Instructions */}
             {active.instructions && (
-              <div className="p-3 sm:p-4 bg-blue-50 dark:bg-blue-900/20 rounded-xl border border-blue-200 dark:border-blue-800">
-                <p className="text-xs font-medium text-blue-700 dark:text-blue-300 mb-2 flex items-center gap-1">
+              <div className="p-3 sm:p-4 bg-indigo-50 dark:bg-indigo-900/20 rounded-xl border border-indigo-200 dark:border-indigo-800">
+                <p className="text-xs font-medium text-indigo-700 dark:text-indigo-300 mb-2 flex items-center gap-1">
                   <span className="material-symbols-outlined text-sm">info</span>
                   Instructions
                 </p>
@@ -135,17 +168,17 @@ const AssignmentView = ({ courseId }) => {
               <div className={`p-4 rounded-xl border ${
                 submission.status === "approved" 
                   ? "bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800" 
-                  : "bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-800"
+                  : "bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800"
               }`}>
                 <div className="flex items-start gap-3">
                   <span className={`material-symbols-outlined text-xl ${
-                    submission.status === "approved" ? "text-green-600 dark:text-green-400" : "text-yellow-600 dark:text-yellow-400"
+                    submission.status === "approved" ? "text-green-600 dark:text-green-400" : "text-amber-600 dark:text-amber-400"
                   }`}>
                     {submission.status === "approved" ? "verified" : "rate_review"}
                   </span>
                   <div className="flex-1">
                     <p className={`font-bold ${
-                      submission.status === "approved" ? "text-green-700 dark:text-green-300" : "text-yellow-700 dark:text-yellow-300"
+                      submission.status === "approved" ? "text-green-700 dark:text-green-300" : "text-amber-700 dark:text-amber-300"
                     }`}>
                       {statusConfig[submission.status]?.label}
                     </p>
@@ -164,11 +197,11 @@ const AssignmentView = ({ courseId }) => {
 
             {/* Submission Pending Status */}
             {submission && submission.marksAwarded === null && (
-              <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-xl border border-blue-200 dark:border-blue-800">
+              <div className="p-4 bg-indigo-50 dark:bg-indigo-900/20 rounded-xl border border-indigo-200 dark:border-indigo-800">
                 <div className="flex items-start gap-3">
-                  <span className="material-symbols-outlined text-blue-600 dark:text-blue-400">pending</span>
+                  <span className="material-symbols-outlined text-indigo-600 dark:text-indigo-400">pending</span>
                   <div>
-                    <p className="font-medium text-blue-700 dark:text-blue-300 text-sm">Submitted — Awaiting Teacher Review</p>
+                    <p className="font-medium text-indigo-700 dark:text-indigo-300 text-sm">Submitted — Awaiting Teacher Review</p>
                     <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
                       Submitted {new Date(submission.submittedAt).toLocaleString()}
                     </p>
@@ -201,43 +234,58 @@ const AssignmentView = ({ courseId }) => {
                 onChange={e => setAnswerText(e.target.value)} 
                 rows={6}
                 placeholder="Write your answer here..."
-                className="w-full px-3 py-2.5 border border-gray-300 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none text-sm"
+                className="w-full px-3 py-2.5 border border-gray-300 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent resize-none text-sm"
               />
 
-              {/* File Upload Section */}
-              <div className="flex flex-wrap items-center gap-3">
-                <input ref={fileRef} type="file" onChange={e => setFile(e.target.files[0])} className="hidden"/>
-                <button 
-                  onClick={() => fileRef.current?.click()}
-                  className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-                >
-                  <span className="material-symbols-outlined text-base">attach_file</span>
-                  Attach File
-                </button>
-                {file && (
-                  <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 px-3 py-1.5 rounded-lg">
-                    <span className="material-symbols-outlined text-base text-blue-500">description</span>
-                    <span className="max-w-[150px] sm:max-w-[200px] truncate">{file.name}</span>
-                    <button 
-                      onClick={() => setFile(null)} 
-                      className="text-red-400 hover:text-red-500"
-                    >
-                      <span className="material-symbols-outlined text-sm">close</span>
-                    </button>
-                  </div>
-                )}
+              {/* ✅ PDF Only Upload Section */}
+              <div className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-xl p-4">
+                <div className="flex flex-col sm:flex-row items-center gap-3">
+                  <input 
+                    ref={fileRef} 
+                    type="file" 
+                    accept=".pdf,application/pdf"
+                    onChange={handleFileChange} 
+                    className="hidden"
+                  />
+                  <button 
+                    onClick={() => fileRef.current?.click()}
+                    className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                  >
+                    <span className="material-symbols-outlined text-base">upload_file</span>
+                    Upload PDF
+                  </button>
+                  {file && (
+                    <div className="flex items-center gap-2 text-sm text-green-600">
+                      <span className="material-symbols-outlined text-base">check_circle</span>
+                      <span className="max-w-[150px] sm:max-w-[200px] truncate">{file.name}</span>
+                      <button 
+                        onClick={() => {
+                          setFile(null);
+                          if (fileRef.current) fileRef.current.value = "";
+                        }} 
+                        className="text-red-400 hover:text-red-500"
+                      >
+                        <span className="material-symbols-outlined text-sm">close</span>
+                      </button>
+                    </div>
+                  )}
+                </div>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-2 text-center">
+                  Only PDF files are allowed (max 10MB)
+                </p>
               </div>
               
-              {/* Previously Submitted File Link */}
+              {/* Previously Submitted PDF Link */}
               {submission?.fileUrl && !file && (
                 <a 
                   href={submission.fileUrl} 
                   target="_blank" 
                   rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1 text-xs text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300"
+                  className="inline-flex items-center gap-2 text-sm text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300"
                 >
-                  <span className="material-symbols-outlined text-sm">download</span>
-                  Previously submitted: {submission.fileName}
+                  <span className="material-symbols-outlined text-base">description</span>
+                  Previously submitted: {submission.fileName || "assignment.pdf"}
+                  <span className="material-symbols-outlined text-sm">open_in_new</span>
                 </a>
               )}
             </div>
@@ -246,7 +294,7 @@ const AssignmentView = ({ courseId }) => {
             <button 
               onClick={handleSubmit} 
               disabled={submitting}
-              className="w-full py-3 rounded-xl text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 transition-all duration-200 hover:scale-105 active:scale-95"
+              className="w-full py-3 rounded-xl text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 transition-all duration-200 shadow-md shadow-indigo-200 dark:shadow-indigo-900/30"
             >
               {submitting ? (
                 <>

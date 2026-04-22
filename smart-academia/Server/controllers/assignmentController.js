@@ -2,6 +2,8 @@ const Assignment           = require("../models/Assignment");
 const AssignmentSubmission = require("../models/AssignmentSubmission");
 const Enrollment           = require("../models/Enrollment");
 const cloudinary           = require("../config/cloudinary");
+const { notifyAssignmentGraded } = require("../utils/notificationHooks");
+
 
 // ── TEACHER: Create assignment ──────────────────────────────
 const createAssignment = async (req, res) => {
@@ -95,7 +97,8 @@ const gradeSubmission = async (req, res) => {
   try {
     const { marksAwarded, feedback, status } = req.body;
     const submission = await AssignmentSubmission.findById(req.params.submissionId)
-      .populate("assignment");
+      .populate("assignment")
+      .populate("student", "fullName email");  // ✅ ADDED: Populate student for email
 
     if (!submission) return res.status(404).json({ message: "Submission not found" });
     if (submission.assignment.createdBy.toString() !== req.user._id.toString())
@@ -111,6 +114,18 @@ const gradeSubmission = async (req, res) => {
     submission.reviewedAt    = new Date();
     submission.reviewedBy    = req.user._id;
     await submission.save();
+
+    // ✅ Updated with email support
+    await notifyAssignmentGraded({
+      studentId: submission.student._id,
+      assignmentTitle: submission.assignment.title,
+      marks: marksAwarded,
+      totalMarks: submission.assignment.totalMarks,
+      courseId: submission.assignment.course,
+      sendEmailNotif: true,                        // ✅ Send email
+      recipientEmail: submission.student.email,    // ✅ Student's email
+      recipientName: submission.student.fullName,  // ✅ Student's name
+    });
 
     res.status(200).json({ message: "Submission graded", submission });
   } catch (err) {

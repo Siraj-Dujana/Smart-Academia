@@ -8,6 +8,8 @@ import Announcements    from "../components/dashboard/TeacherDashboard/Teacher T
 import AITutor          from "../components/dashboard/TeacherDashboard/Teacher Tabs/AITutor";
 import FloatingButtons  from "../components/sections/LandingPage/FloatingButtons";
 import ProfileManagement from '../components/dashboard/TeacherDashboard/Teacher Tabs/Profilemanagement';
+import SendNotifications from "../components/dashboard/TeacherDashboard/Teacher Tabs/SendNotifications"; // ✅ ADDED
+import NotificationBell from "../components/notifications/NotificationBell"; // ✅ ADDED
 import { useNavigate, useLocation }  from "react-router-dom";
 
 const TeacherDashboard = () => {
@@ -50,7 +52,8 @@ const TeacherDashboard = () => {
     { icon: "bar_chart",    label: "Student Progress",  key: "progress"        },
     { icon: "campaign",     label: "Announcements",     key: "announcements"   },
     { icon: "smart_toy",    label: "AI Tutor",          key: "ai-tutor"        },
-    { icon: 'person',       label: 'My Profile',        key: 'profile'         }
+    { icon: "send",         label: "Send Notifications", key: "send-notifications" }, // ✅ ADDED
+    { icon: "person",       label: "My Profile",        key: "profile"         }
   ];
 
   const handleMenuClick = (key) => {
@@ -67,23 +70,24 @@ const TeacherDashboard = () => {
 
   const renderActiveTab = () => {
     switch (activeMenu) {
-      case "dashboard":       return <Dashboard />;
-      case "courses":         return <CourseManagement />;
-      case "lessons":         return <LessonManagement />;
-      case "lab-submissions": return <LabSubmissions />;
-      case "progress":        return <StudentProgress />;
-      case "announcements":   return <Announcements />;
-      case "ai-tutor":        return <AITutor />;
-      case "profile":         return <ProfileManagement />;
-      default:                return <Dashboard />;
+      case "dashboard":         return <Dashboard />;
+      case "courses":           return <CourseManagement />;
+      case "lessons":           return <LessonManagement />;
+      case "lab-submissions":   return <LabSubmissions />;
+      case "progress":          return <StudentProgress />;
+      case "announcements":     return <Announcements />;
+      case "ai-tutor":          return <AITutor />;
+      case "send-notifications": return <SendNotifications />; // ✅ ADDED
+      case "profile":           return <ProfileManagement />;
+      default:                  return <Dashboard />;
     }
   };
 
   // ✅ Use dynamic values
   const displayName = user.fullName || "Teacher";
   const userInitial = displayName.charAt(0).toUpperCase();
-  const userSpecialization = "Educator";
-  const teacherId = user.employeeId || user.id?.slice(-6) || "";
+  const userSpecialization = user.specialization || "Educator";
+  const teacherId = user.employeeId || "";
   const userAvatar = user.avatar || null;
 
   return (
@@ -99,7 +103,7 @@ const TeacherDashboard = () => {
         )}
 
         {/* Sidebar */}
-        <aside className={`flex flex-col w-64 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 fixed  inset-y-0 left-0 z-50 transform transition-transform duration-300 ease-in-out h-screen overflow-y-auto ${
+        <aside className={`flex flex-col w-64 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 fixed lg:static inset-y-0 left-0 z-50 transform transition-transform duration-300 ease-in-out h-screen overflow-y-auto ${
           sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
         }`}>
 
@@ -169,7 +173,7 @@ const TeacherDashboard = () => {
         </aside>
 
         {/* Main content */}
-        <div className="flex-1 flex flex-col lg:ml-64 min-w-0">
+        <div className="flex-1 flex flex-col lg:ml-0 min-w-0">
 
           {/* Header */}
           <header className="flex items-center justify-between border-b border-gray-200 dark:border-gray-700 px-4 sm:px-6 lg:px-8 py-3 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm sticky top-0 z-30">
@@ -189,10 +193,9 @@ const TeacherDashboard = () => {
 
             {/* Right Section */}
             <div className="flex items-center gap-2 sm:gap-3">
-              <button className="relative p-2 rounded-lg text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 transition-all hover:scale-105">
-                <span className="material-symbols-outlined text-xl sm:text-2xl">notifications</span>
-                <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-red-500 rounded-full animate-pulse"/>
-              </button>
+              {/* ✅ Notification Bell */}
+              <NotificationBell />
+              
               <button
                 onClick={handleLogout}
                 className="p-2 rounded-lg text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 transition-all hover:scale-105"

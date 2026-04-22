@@ -6,6 +6,7 @@ const Lesson         = require("../models/Lesson");
 const cloudinary     = require("../config/cloudinary");
 const { checkAndUnlockNext } = require("./lessonController");
 const { GoogleGenAI } = require("@google/genai");
+const { notifyLabGraded } = require("../utils/notificationHooks");
 
 // ─────────────────────────────────────────────────────────────
 // SHARED: Get lab for a lesson (teacher editor + student view)
@@ -325,7 +326,8 @@ const gradeSubmission = async (req, res) => {
       .populate({
         path: "lab",
         populate: { path: "lesson", populate: { path: "course" } },
-      });
+      })
+      .populate("student", "fullName email");  // ✅ ADDED: Populate student for email
 
     if (!submission)
       return res.status(404).json({ message: "Submission not found" });
@@ -338,6 +340,18 @@ const gradeSubmission = async (req, res) => {
     submission.gradedAt = new Date();
     submission.gradedBy = req.user._id;
     await submission.save();
+
+    // ✅ Updated with email support
+    await notifyLabGraded({
+      studentId: submission.student._id,
+      labTitle: submission.lab.title,
+      marks: Number(marks),
+      totalMarks: submission.lab.totalMarks || 100,
+      courseId: submission.course,
+      sendEmailNotif: true,                        // ✅ Send email
+      recipientEmail: submission.student.email,    // ✅ Student's email
+      recipientName: submission.student.fullName,  // ✅ Student's name
+    });
 
     res.status(200).json({ message: "Graded successfully", submission });
   } catch (err) {

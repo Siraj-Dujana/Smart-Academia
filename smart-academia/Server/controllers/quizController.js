@@ -2,8 +2,10 @@ const Quiz           = require("../models/Quiz");
 const Question       = require("../models/Question");
 const QuizAttempt    = require("../models/QuizAttempt");
 const LessonProgress = require("../models/LessonProgress");
+const User           = require("../models/User");  // ✅ ADDED
 const { checkAndUnlockNext } = require("./lessonController");
 const { GoogleGenAI } = require("@google/genai");
+const { notifyQuizPassed } = require("../utils/notificationHooks");  // ✅ ADDED
 
 // ── TEACHER: Create quiz ────────────────────────────────────
 const createQuiz = async (req, res) => {
@@ -21,11 +23,11 @@ const createQuiz = async (req, res) => {
       course,
       lesson:           lesson || null,
       createdBy:        req.user._id,
-      timeLimit:        timeLimit || 30,
-      passingScore:     passingScore || 70,
-      maxAttempts:      maxAttempts || 3,
+      timeLimit:        timeLimit        || 30,
+      passingScore:     passingScore     || 70,
+      maxAttempts:      maxAttempts      || 3,
       shuffleQuestions: shuffleQuestions !== undefined ? shuffleQuestions : true,
-      isPublished:      isPublished !== undefined ? isPublished : false,
+      isPublished:      isPublished      !== undefined ? isPublished      : false,
     });
     res.status(201).json({ message: "Quiz created", quiz });
   } catch (err) {
@@ -73,7 +75,7 @@ const deleteQuiz = async (req, res) => {
   }
 };
 
-// ── TEACHER: Get quizzes (filter by lessonId or courseId) ───
+// ── TEACHER: Get quizzes ────────────────────────────────────
 const getQuizzes = async (req, res) => {
   try {
     const filter = { createdBy: req.user._id };
@@ -146,7 +148,7 @@ const deleteQuestion = async (req, res) => {
   }
 };
 
-// ── TEACHER: AI generate questions via Gemini ───────────────
+// ── TEACHER: AI generate questions ─────────────────────────
 const aiGenerateQuestions = async (req, res) => {
   try {
     const quiz = await Quiz.findById(req.params.quizId);
@@ -161,40 +163,26 @@ const aiGenerateQuestions = async (req, res) => {
       return res.status(400).json({ message: "GEMINI_API_KEY not configured in .env" });
     }
 
-    const genAI = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-
-    const numQ = Math.min(parseInt(count) || 5, 15);
-    const diff = difficulty || "medium";
+    const genAI  = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+    const numQ   = Math.min(parseInt(count) || 5, 15);
+    const diff   = difficulty || "medium";
 
     const prompt = `Generate exactly ${numQ} multiple choice questions about "${topic}" at ${diff} difficulty.
-
 Return ONLY a valid JSON array. No explanation. No markdown. No code blocks. Just raw JSON.
-
-Format:
-[{"questionText":"...","options":["A","B","C","D"],"correctAnswer":"A","explanation":"..."}]`;
+Format: [{"questionText":"...","options":["A","B","C","D"],"correctAnswer":"A","explanation":"..."}]`;
 
     const response = await genAI.models.generateContent({
-      model: "gemini-2.5-flash-lite",
+      model:    "gemini-2.5-flash-lite",
       contents: [{ role: "user", parts: [{ text: prompt }] }],
-      config: { maxOutputTokens: 2048, temperature: 0.7 },
+      config:   { maxOutputTokens: 2048, temperature: 0.7 },
     });
 
-    let text = response.text || "";
-    if (!text && response.candidates?.[0]) {
-      text = response.candidates[0].content?.parts?.[0]?.text || "";
-    }
-    text = text.trim()
-      .replace(/^```json\s*/i, "")
-      .replace(/^```\s*/i, "")
-      .replace(/```\s*$/i, "")
-      .trim();
+    let text = (response.text || "").trim()
+      .replace(/^```json\s*/i, "").replace(/^```\s*/i, "").replace(/```\s*$/i, "").trim();
 
     let generated;
-    try {
-      generated = JSON.parse(text);
-    } catch (err) {
-      return res.status(500).json({ message: "AI returned invalid format. Try again." });
-    }
+    try { generated = JSON.parse(text); }
+    catch { return res.status(500).json({ message: "AI returned invalid format. Try again." }); }
 
     if (!Array.isArray(generated) || generated.length === 0) {
       return res.status(500).json({ message: "AI returned no questions. Try again." });
@@ -245,31 +233,28 @@ const getStudentQuizzesByCourse = async (req, res) => {
 
     const result = await Promise.all(quizzes.map(async (quiz) => {
       const attempts = await QuizAttempt.find({
-        quiz: quiz._id,
+        quiz:    quiz._id,
         student: req.user._id,
       }).sort({ createdAt: -1 });
 
       const attemptCount = attempts.length;
-      const passed = attempts.some(a => a.passed);
-      const bestScore = attempts.length > 0
-        ? Math.max(...attempts.map(a => a.score))
-        : null;
-
-      const questions = await Question.find({ quiz: quiz._id });
+      const passed       = attempts.some(a => a.passed);
+      const bestScore    = attempts.length > 0 ? Math.max(...attempts.map(a => a.score)) : null;
+      const questions    = await Question.find({ quiz: quiz._id });
 
       return {
-        _id:           quiz._id,
-        title:         quiz.title,
-        description:   quiz.description || "",
-        timeLimit:     quiz.timeLimit,
-        passingScore:  quiz.passingScore,
-        maxAttempts:   quiz.maxAttempts,
+        _id:            quiz._id,
+        title:          quiz.title,
+        description:    quiz.description || "",
+        timeLimit:      quiz.timeLimit,
+        passingScore:   quiz.passingScore,
+        maxAttempts:    quiz.maxAttempts,
         totalQuestions: questions.length,
-        difficulty:    quiz.difficulty || "Intermediate",
+        difficulty:     quiz.difficulty || "Intermediate",
         attemptCount,
         passed,
         bestScore,
-        canAttempt:    !passed && attemptCount < quiz.maxAttempts,
+        canAttempt:     !passed && attemptCount < quiz.maxAttempts,
       };
     }));
 
@@ -292,7 +277,6 @@ const startQuizAttempt = async (req, res) => {
       student: req.user._id,
     });
 
-    // Check if already passed
     const passed = await QuizAttempt.findOne({
       quiz:    quiz._id,
       student: req.user._id,
@@ -303,7 +287,6 @@ const startQuizAttempt = async (req, res) => {
     if (attemptCount >= quiz.maxAttempts)
       return res.status(400).json({ message: `Maximum ${quiz.maxAttempts} attempts reached` });
 
-    // Create a pending attempt
     const attempt = await QuizAttempt.create({
       quiz:          quiz._id,
       student:       req.user._id,
@@ -314,13 +297,11 @@ const startQuizAttempt = async (req, res) => {
       passed:        false,
     });
 
-    // Get questions (shuffle if required)
     let questions = await Question.find({ quiz: quiz._id });
     if (quiz.shuffleQuestions) {
       questions = questions.sort(() => Math.random() - 0.5);
     }
 
-    // Return questions with options but NOT correctAnswer
     const safeQuestions = questions.map(q => ({
       _id:          q._id,
       text:         q.questionText,
@@ -343,7 +324,7 @@ const startQuizAttempt = async (req, res) => {
   }
 };
 
-// ── STUDENT: Submit quiz (fixed format: attemptId + answers as {qId: optionIndex}) ──
+// ── STUDENT: Submit quiz ─────────────────────────────────────
 const submitQuiz = async (req, res) => {
   try {
     const { attemptId, answers, timeTaken, tabSwitchCount } = req.body;
@@ -362,25 +343,21 @@ const submitQuiz = async (req, res) => {
     if (questions.length === 0)
       return res.status(400).json({ message: "No questions in this quiz" });
 
-    // answers is { [questionId]: optionIndex (number) }
+    // Grade answers — answers is { [questionId]: optionIndex }
     let correctCount = 0;
     let totalPoints  = 0;
     let earnedPoints = 0;
 
     const gradedAnswers = questions.map(q => {
       const givenIndex = answers?.[q._id.toString()];
-      // Convert option index to option text
-      const givenText = givenIndex !== undefined && givenIndex !== null
+      const givenText  = givenIndex !== undefined && givenIndex !== null
         ? q.options[givenIndex] || null
         : null;
-      const correct   = q.correctAnswer;
-      const isCorrect = givenText !== null &&
+      const correct    = q.correctAnswer;
+      const isCorrect  = givenText !== null &&
         givenText.toString().toLowerCase().trim() === correct.toString().toLowerCase().trim();
 
-      if (isCorrect) {
-        correctCount++;
-        earnedPoints += q.points || 1;
-      }
+      if (isCorrect) { correctCount++; earnedPoints += q.points || 1; }
       totalPoints += q.points || 1;
 
       return {
@@ -393,12 +370,24 @@ const submitQuiz = async (req, res) => {
       };
     });
 
-    const score  = questions.length > 0
-      ? Math.round((correctCount / questions.length) * 100)
-      : 0;
+    const score  = questions.length > 0 ? Math.round((correctCount / questions.length) * 100) : 0;
     const passed = score >= quiz.passingScore;
 
-    // Update attempt with results
+    // ✅ NOTIFICATION: Quiz Passed with email support
+    if (passed) {
+      const student = await User.findById(req.user._id).select("fullName email");
+      
+      await notifyQuizPassed({
+        studentId: req.user._id,
+        quizTitle: quiz.title,
+        score,
+        courseId: quiz.course,
+        sendEmailNotif: true,              // ✅ Send email
+        recipientEmail: student?.email,    // ✅ Student's email
+        recipientName: student?.fullName,  // ✅ Student's name
+      });
+    }
+
     attempt.answers            = gradedAnswers;
     attempt.score              = score;
     attempt.passed             = passed;
@@ -407,21 +396,20 @@ const submitQuiz = async (req, res) => {
     attempt.submittedAt        = new Date();
     await attempt.save();
 
-    // Build results for the response (so Quizzes.jsx can show the review)
     const results = gradedAnswers.map(ga => {
       const question = questions.find(q => q._id.toString() === ga.questionId.toString());
       return {
-        questionText:  ga.questionText,
-        isCorrect:     ga.isCorrect,
-        correctIndex:  question ? question.options.indexOf(question.correctAnswer) : 0,
-        options:       question ? question.options.map(o => ({ text: o })) : [],
-        explanation:   question?.explanation || "",
-        points:        ga.points,
+        questionText: ga.questionText,
+        isCorrect:    ga.isCorrect,
+        correctIndex: question ? question.options.indexOf(question.correctAnswer) : 0,
+        options:      question ? question.options.map(o => ({ text: o })) : [],
+        explanation:  question?.explanation || "",
+        points:       ga.points,
       };
     });
 
-    // Unlock next lesson if quiz is linked
-    if (quiz.lesson) {
+    // Update LessonProgress if quiz is linked to a lesson
+    if (quiz.lesson && passed) {
       await LessonProgress.findOneAndUpdate(
         { student: req.user._id, lesson: quiz.lesson },
         {
@@ -469,14 +457,13 @@ const getMyAttempts = async (req, res) => {
   }
 };
 
-// ── STUDENT: Get best result with review details ─────────────
+// ── STUDENT: Get best result ─────────────────────────────────
 const getMyResults = async (req, res) => {
   try {
     const attempts = await QuizAttempt.find({
       quiz:    req.params.quizId,
       student: req.user._id,
     }).sort({ score: -1 });
-
     res.status(200).json({ attempts });
   } catch (err) {
     console.error(err);
