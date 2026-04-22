@@ -1,49 +1,24 @@
+🎯 Problem 1: Quiz and Lab Should Be OPTIONAL
+Current: Every lesson has both tabs
+Fix: Hide tabs based on checkbox settings
 
+🎯 Problem 2: Unlock on SUBMIT (Not PASS)
+Current: Student must pass quiz/lab to unlock next lesson
+Fix: Change condition from quizCompleted to quizSubmitted
 
+🎯 Problem 3: PDF Not Viewed Properly
+Current: PDF doesn't display in the browser
+Fix: Add proper PDF viewer component
 
-there are two tabs in teacher which are hard coded system: student progress and dashboard
-3. ## 🧠 AI FEATURES 
+🎯 Problem 4: AI Evaluation on PDF Submissions
+Current: AI evaluation only works on text answers
+Fix: Extract text from PDF and evaluate against lab requirements
 
-### AI Lab Assistant
-- Explain lab in simple steps
+🎯 Problem 5: AI Explainer Not Working
+Current: AI explainer fails or returns errors
+Fix: Check API endpoint and Gemini integration
 
-### AI Evaluation Assistant
-- Analyze submitted PDF text
-- Return:
-{
-  score,
-  mistakes,
-  feedback,
-  suggestions
-}
-
----
-
-## ⚙️ AI OUTPUT FORMAT (STRICT JSON)
-
-Lab Generation:
-{
-  title,
-  description,
-  outputExample,
-  difficulty
-}
-
-Lab Explanation:
-{
-  steps,
-  concepts,
-  tips
-}
-
-Evaluation:
-{
-  score,
-  mistakes,
-  feedback,
-  suggestions
-}
-
-
-
+🎯 Problem 6: Quiz Always Gives 0 Score
+Current: Even correct answers marked wrong
+Fix: This is the most critical bug! The answer comparison is broken.
 

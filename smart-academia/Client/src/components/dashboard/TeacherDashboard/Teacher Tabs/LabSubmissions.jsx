@@ -5,331 +5,488 @@ const API = import.meta.env.VITE_API_URL || "http://localhost:5000";
 const LabSubmissions = () => {
   const token = localStorage.getItem("token");
 
-  const [courses, setCourses] = useState([]);
-  const [selectedCourse, setSelectedCourse] = useState("");
-  const [lessons, setLessons] = useState([]);
-  const [selectedLesson, setSelectedLesson] = useState("");
-  const [selectedLab, setSelectedLab] = useState(null);
-  const [submissions, setSubmissions] = useState([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
-  const [gradingId, setGradingId] = useState(null);
-  const [gradeForm, setGradeForm] = useState({ marks: "", feedback: "" });
-  const [selectedSubmission, setSelectedSubmission] = useState(null);
-  const [showPDFModal, setShowPDFModal] = useState(false);
+  const [courses,           setCourses]           = useState([]);
+  const [selectedCourse,    setSelectedCourse]    = useState("");
+  const [lessons,           setLessons]           = useState([]);
+  const [selectedLesson,    setSelectedLesson]    = useState("");
+  const [selectedLab,       setSelectedLab]       = useState(null);
+  const [submissions,       setSubmissions]       = useState([]);
+  const [isLoading,         setIsLoading]         = useState(false);
+  const [error,             setError]             = useState("");
+  const [success,           setSuccess]           = useState("");
+  const [gradingId,         setGradingId]         = useState(null);
+  const [gradeForm,         setGradeForm]         = useState({ marks: "", feedback: "" });
+  const [selectedSub,       setSelectedSub]       = useState(null);
+  const [showPDFModal,      setShowPDFModal]      = useState(false);
+  const [aiEvaluating,      setAiEvaluating]      = useState(null); // submissionId being AI-evaluated
+  const [aiEvaluation,      setAiEvaluation]      = useState(null); // { score, mistakes, feedback, suggestions }
+  const [filter,            setFilter]            = useState("all"); // all | submitted | graded
+  const [searchTerm,        setSearchTerm]        = useState("");
 
   useEffect(() => { fetchCourses(); }, []);
-  useEffect(() => { if (selectedCourse) fetchLessons(); }, [selectedCourse]);
-  useEffect(() => { if (selectedLesson) fetchLab(); }, [selectedLesson]);
+  useEffect(() => { if (selectedCourse) { setSelectedLesson(""); setSelectedLab(null); setSubmissions([]); fetchLessons(); } }, [selectedCourse]);
+  useEffect(() => { if (selectedLesson) { setSelectedLab(null); setSubmissions([]); fetchLab(); } }, [selectedLesson]);
   useEffect(() => { if (selectedLab) fetchSubmissions(); }, [selectedLab]);
+
+  const apiFetch = (url, opts = {}) =>
+    fetch(`${API}${url}`, { ...opts, headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}`, ...(opts.headers || {}) } });
 
   const fetchCourses = async () => {
     try {
-      const res = await fetch(`${API}/api/courses/my-courses`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const res  = await apiFetch("/api/courses/my-courses");
       const data = await res.json();
       if (res.ok && data.courses?.length > 0) {
         setCourses(data.courses);
         setSelectedCourse(data.courses[0]._id);
       }
-    } catch {
-      setError("Cannot connect to server");
-    }
+    } catch { setError("Cannot connect to server"); }
   };
 
   const fetchLessons = async () => {
     if (!selectedCourse) return;
     setIsLoading(true);
     try {
-      const res = await fetch(`${API}/api/courses/${selectedCourse}/lessons/teacher`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const res  = await apiFetch(`/api/courses/${selectedCourse}/lessons/teacher`);
       const data = await res.json();
       if (res.ok) {
         setLessons(data.lessons || []);
-        if (data.lessons?.length > 0) {
-          setSelectedLesson(data.lessons[0]._id);
-        } else {
-          setSelectedLesson("");
-          setSelectedLab(null);
-          setSubmissions([]);
-        }
+        if (data.lessons?.length > 0) setSelectedLesson(data.lessons[0]._id);
+        else { setSelectedLesson(""); setSelectedLab(null); setSubmissions([]); }
       }
-    } catch {
-      setError("Cannot connect to server");
-    } finally {
-      setIsLoading(false);
-    }
+    } catch { setError("Cannot connect to server"); }
+    finally { setIsLoading(false); }
   };
 
-  // ✅ FIXED: uses GET /:lessonId/lab endpoint
   const fetchLab = async () => {
     if (!selectedLesson) return;
-    setSelectedLab(null);
-    setSubmissions([]);
+    setSelectedLab(null); setSubmissions([]);
     try {
-      const res = await fetch(
-        `${API}/api/courses/${selectedCourse}/lessons/${selectedLesson}/lab`,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      const res  = await apiFetch(`/api/courses/${selectedCourse}/lessons/${selectedLesson}/lab`);
       const data = await res.json();
-      if (res.ok && data.lab) {
-        setSelectedLab(data.lab);
-      } else {
-        setSelectedLab(null);
-      }
-    } catch {
-      setError("Cannot connect to server");
-    }
+      if (res.ok && data.lab) setSelectedLab(data.lab);
+    } catch { setError("Cannot connect to server"); }
   };
 
   const fetchSubmissions = async () => {
     if (!selectedLab) return;
     setIsLoading(true);
     try {
-      const res = await fetch(
-        `${API}/api/courses/${selectedCourse}/lessons/${selectedLesson}/lab/${selectedLab._id}/submissions`,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      const res  = await apiFetch(`/api/courses/${selectedCourse}/lessons/${selectedLesson}/lab/${selectedLab._id}/submissions`);
       const data = await res.json();
       if (res.ok) setSubmissions(data.submissions || []);
-    } catch {
-      setError("Cannot connect to server");
-    } finally {
-      setIsLoading(false);
-    }
+    } catch { setError("Cannot connect to server"); }
+    finally { setIsLoading(false); }
   };
 
   const handleGrade = async (submissionId) => {
-    if (!gradeForm.marks && gradeForm.marks !== 0) {
-      setError("Please enter marks");
-      return;
-    }
+    if (gradeForm.marks === "" && gradeForm.marks !== 0) { setError("Please enter marks"); return; }
+    const numMarks = Number(gradeForm.marks);
+    if (isNaN(numMarks) || numMarks < 0) { setError("Marks must be a valid non-negative number"); return; }
+    if (numMarks > (selectedLab.totalMarks || 100)) { setError(`Marks cannot exceed ${selectedLab.totalMarks || 100}`); return; }
+
+    setError("");
     try {
-      const res = await fetch(
-        `${API}/api/courses/${selectedCourse}/lessons/${selectedLesson}/lab/${selectedLab._id}/submissions/${submissionId}/grade`,
-        {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify(gradeForm),
-        }
+      const res  = await apiFetch(
+        `/api/courses/${selectedCourse}/lessons/${selectedLesson}/lab/${selectedLab._id}/submissions/${submissionId}/grade`,
+        { method: "PUT", body: JSON.stringify(gradeForm) }
       );
-      if (res.ok) {
-        setSuccess("Grade submitted successfully!");
-        setGradingId(null);
-        fetchSubmissions();
-        setTimeout(() => setSuccess(""), 3000);
-      } else {
-        const data = await res.json();
-        setError(data.message);
-      }
-    } catch {
-      setError("Cannot connect to server");
-    }
+      const data = await res.json();
+      if (!res.ok) { setError(data.message); return; }
+      setSuccess("Grade saved successfully!");
+      setGradingId(null);
+      setAiEvaluation(null);
+      fetchSubmissions();
+      setTimeout(() => setSuccess(""), 3000);
+    } catch { setError("Cannot connect to server"); }
+  };
+
+  const handleAiEvaluate = async (submissionId) => {
+    setAiEvaluating(submissionId); setAiEvaluation(null); setError("");
+    try {
+      const res  = await apiFetch(
+        `/api/courses/${selectedCourse}/lessons/${selectedLesson}/lab/${selectedLab._id}/submissions/${submissionId}/ai-evaluate`,
+        { method: "POST" }
+      );
+      const data = await res.json();
+      if (!res.ok) { setError(data.message); return; }
+      setAiEvaluation({ submissionId, ...data.evaluation });
+      // Pre-fill the grade form with AI suggestion
+      setGradeForm(p => ({
+        marks:    data.evaluation.score ?? p.marks,
+        feedback: data.evaluation.feedback ?? p.feedback,
+      }));
+      setGradingId(submissionId);
+    } catch { setError("Cannot connect to server"); }
+    finally { setAiEvaluating(null); }
   };
 
   const getStatusColor = (status) => {
     switch (status) {
       case "graded":    return "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300";
       case "submitted": return "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300";
-      default:          return "bg-gray-100 text-gray-700 dark:bg-gray-700/50 dark:text-gray-300";
+      default:          return "bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400";
     }
   };
 
+  const filteredSubmissions = submissions.filter(s => {
+    const matchFilter =
+      filter === "all" ||
+      (filter === "submitted" && s.status !== "graded") ||
+      (filter === "graded" && s.status === "graded");
+    const matchSearch = !searchTerm || s.student?.fullName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      s.student?.studentId?.toLowerCase().includes(searchTerm.toLowerCase());
+    return matchFilter && matchSearch;
+  });
+
+  const stats = {
+    total:    submissions.length,
+    graded:   submissions.filter(s => s.status === "graded").length,
+    pending:  submissions.filter(s => s.status !== "graded").length,
+    avgScore: submissions.filter(s => s.marks !== null && s.marks !== undefined).length > 0
+      ? Math.round(submissions.filter(s => s.marks !== null && s.marks !== undefined).reduce((a, s) => a + s.marks, 0) /
+          submissions.filter(s => s.marks !== null && s.marks !== undefined).length)
+      : null,
+  };
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-5 sm:space-y-6">
       {/* Header */}
-      <div className="bg-gradient-to-r from-blue-600 to-indigo-600 rounded-2xl p-6 text-white">
-        <h1 className="text-2xl sm:text-3xl font-bold">Grade Lab Submissions</h1>
-        <p className="text-blue-100 mt-1">View and grade student lab submissions</p>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
+        <div>
+          <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 dark:text-white">
+            Grade Lab Submissions
+          </h1>
+          <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400 mt-1">
+            Review and grade student lab submissions
+          </p>
+        </div>
       </div>
 
+      {/* Alerts */}
       {error && (
-        <div className="p-4 rounded-xl bg-red-50 dark:bg-red-900/20 border-l-4 border-red-500 flex items-center gap-3">
-          <span className="material-symbols-outlined text-red-500">error</span>
-          <p className="text-red-600 dark:text-red-400 flex-1">{error}</p>
+        <div className="p-3 rounded-xl bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 flex items-center gap-2">
+          <span className="material-symbols-outlined text-red-500 text-sm">error</span>
+          <p className="text-sm text-red-600 dark:text-red-400 flex-1">{error}</p>
           <button onClick={() => setError("")} className="text-red-400 hover:text-red-600">
-            <span className="material-symbols-outlined">close</span>
+            <span className="material-symbols-outlined text-sm">close</span>
           </button>
         </div>
       )}
       {success && (
-        <div className="p-4 rounded-xl bg-green-50 dark:bg-green-900/20 border-l-4 border-green-500 flex items-center gap-3">
-          <span className="material-symbols-outlined text-green-500">check_circle</span>
-          <p className="text-green-600 dark:text-green-400 flex-1">{success}</p>
+        <div className="p-3 rounded-xl bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 flex items-center gap-2">
+          <span className="material-symbols-outlined text-green-500 text-sm">check_circle</span>
+          <p className="text-sm text-green-600 dark:text-green-400 flex-1">{success}</p>
         </div>
       )}
 
       {/* Selectors */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4">
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Select Course</label>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Course</label>
           <select
             value={selectedCourse}
-            onChange={(e) => setSelectedCourse(e.target.value)}
-            className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+            onChange={e => setSelectedCourse(e.target.value)}
+            className="w-full px-3 py-2.5 text-sm border border-gray-300 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
           >
-            {courses.map(course => (
-              <option key={course._id} value={course._id}>{course.title}</option>
-            ))}
+            {courses.length === 0
+              ? <option value="">No courses found</option>
+              : courses.map(c => <option key={c._id} value={c._id}>{c.title}</option>)
+            }
           </select>
         </div>
 
         <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4">
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Select Lesson</label>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Lesson</label>
           <select
             value={selectedLesson}
-            onChange={(e) => setSelectedLesson(e.target.value)}
-            className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+            onChange={e => setSelectedLesson(e.target.value)}
             disabled={lessons.length === 0}
+            className="w-full px-3 py-2.5 text-sm border border-gray-300 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
           >
             {lessons.length === 0
               ? <option value="">No lessons available</option>
-              : lessons.map(lesson => (
-                  <option key={lesson._id} value={lesson._id}>{lesson.title}</option>
-                ))
+              : lessons.map(l => <option key={l._id} value={l._id}>{l.order}. {l.title}</option>)
             }
           </select>
         </div>
       </div>
 
-      {/* Lab info + no lab message */}
+      {/* No lab message */}
       {selectedLesson && !selectedLab && !isLoading && (
-        <div className="text-center py-10 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700">
+        <div className="text-center py-12 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700">
           <span className="material-symbols-outlined text-5xl text-gray-300 dark:text-gray-600">science</span>
           <p className="text-gray-500 dark:text-gray-400 mt-2 text-sm">No lab created for this lesson yet.</p>
         </div>
       )}
 
-      {/* Submissions List */}
+      {/* Submissions panel */}
       {selectedLab && (
         <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
-          <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700/30">
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-              {selectedLab.title} — Submissions
-            </h3>
-            <p className="text-sm text-gray-500">Total: {submissions.length}</p>
+          {/* Lab header */}
+          <div className="px-5 py-4 border-b border-gray-200 dark:border-gray-700 bg-gradient-to-r from-indigo-50 to-blue-50 dark:from-indigo-900/20 dark:to-blue-900/20">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <h3 className="text-base font-bold text-gray-900 dark:text-white">{selectedLab.title}</h3>
+                <p className="text-xs text-gray-500 mt-0.5">
+                  {selectedLab.labType} · {selectedLab.difficulty} · {selectedLab.totalMarks} pts
+                </p>
+              </div>
+              {/* Stats row */}
+              {submissions.length > 0 && (
+                <div className="flex flex-wrap gap-3">
+                  {[
+                    { label: "Total", value: stats.total, color: "text-gray-700 dark:text-gray-300" },
+                    { label: "Graded", value: stats.graded, color: "text-green-700 dark:text-green-300" },
+                    { label: "Pending", value: stats.pending, color: "text-amber-700 dark:text-amber-300" },
+                    ...(stats.avgScore !== null ? [{ label: "Avg score", value: `${stats.avgScore}/${selectedLab.totalMarks}`, color: "text-indigo-700 dark:text-indigo-300" }] : []),
+                  ].map(s => (
+                    <div key={s.label} className="text-center">
+                      <p className={`text-lg font-bold ${s.color}`}>{s.value}</p>
+                      <p className="text-[10px] text-gray-500">{s.label}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
 
+          {/* Filters */}
+          {submissions.length > 0 && (
+            <div className="px-5 py-3 border-b border-gray-200 dark:border-gray-700 flex flex-col sm:flex-row gap-3">
+              <div className="relative flex-1">
+                <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">search</span>
+                <input
+                  type="text"
+                  placeholder="Search by student name or ID..."
+                  value={searchTerm}
+                  onChange={e => setSearchTerm(e.target.value)}
+                  className="w-full pl-9 pr-4 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
+              <div className="flex gap-1.5">
+                {[
+                  { key: "all",       label: "All",     count: stats.total   },
+                  { key: "submitted", label: "Pending", count: stats.pending },
+                  { key: "graded",    label: "Graded",  count: stats.graded  },
+                ].map(f => (
+                  <button
+                    key={f.key}
+                    onClick={() => setFilter(f.key)}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                      filter === f.key
+                        ? "bg-blue-600 text-white"
+                        : "bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600"
+                    }`}
+                  >
+                    {f.label} ({f.count})
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Loading */}
           {isLoading ? (
             <div className="text-center py-12">
               <svg className="animate-spin h-8 w-8 text-blue-600 mx-auto" viewBox="0 0 24 24" fill="none">
                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
               </svg>
+              <p className="text-gray-500 mt-2 text-sm">Loading submissions...</p>
             </div>
-          ) : submissions.length === 0 ? (
+          ) : filteredSubmissions.length === 0 ? (
             <div className="text-center py-12">
-              <span className="material-symbols-outlined text-5xl text-gray-300">inbox</span>
-              <p className="text-gray-500 mt-2">No submissions yet</p>
+              <span className="material-symbols-outlined text-5xl text-gray-300 dark:text-gray-600">inbox</span>
+              <p className="text-gray-500 dark:text-gray-400 mt-2 text-sm">
+                {submissions.length === 0 ? "No submissions yet" : "No submissions match your filter"}
+              </p>
             </div>
           ) : (
-            <div className="divide-y divide-gray-200 dark:divide-gray-700">
-              {submissions.map((sub) => (
-                <div key={sub._id} className="p-5 hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors">
+            <div className="divide-y divide-gray-200 dark:divide-gray-700 max-h-[700px] overflow-y-auto">
+              {filteredSubmissions.map(sub => (
+                <div key={sub._id} className="p-4 sm:p-5 hover:bg-gray-50 dark:hover:bg-gray-700/20 transition-colors">
                   <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
-                    <div className="flex-1">
+                    {/* Student info */}
+                    <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-3 mb-3">
-                        <div className="w-10 h-10 rounded-full bg-gradient-to-r from-indigo-500 to-purple-500 flex items-center justify-center text-white font-bold">
-                          {sub.student?.fullName?.charAt(0).toUpperCase()}
+                        <div className="w-10 h-10 rounded-full bg-gradient-to-r from-indigo-500 to-purple-500 flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
+                          {sub.student?.fullName?.charAt(0).toUpperCase() || "?"}
                         </div>
-                        <div>
-                          <h4 className="font-semibold text-gray-900 dark:text-white">{sub.student?.fullName}</h4>
-                          <p className="text-xs text-gray-500">ID: {sub.student?.studentId}</p>
-                          <p className="text-xs text-gray-400">Submitted: {new Date(sub.submittedAt).toLocaleString()}</p>
+                        <div className="min-w-0">
+                          <p className="font-semibold text-gray-900 dark:text-white text-sm sm:text-base truncate">
+                            {sub.student?.fullName || "Unknown Student"}
+                          </p>
+                          <div className="flex flex-wrap items-center gap-2 mt-0.5">
+                            <p className="text-xs text-gray-500">ID: {sub.student?.studentId || "N/A"}</p>
+                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium ${getStatusColor(sub.status)}`}>
+                              {sub.status}
+                            </span>
+                            {sub.marks !== null && sub.marks !== undefined && (
+                              <span className="text-xs font-bold text-indigo-600 dark:text-indigo-400">
+                                {sub.marks} / {selectedLab.totalMarks} pts
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-[10px] text-gray-400 mt-0.5">
+                            Submitted {new Date(sub.submittedAt).toLocaleString()}
+                          </p>
                         </div>
-                        <span className={`ml-auto px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(sub.status)}`}>
-                          {sub.status || "submitted"}
-                        </span>
                       </div>
 
+                      {/* Submitted answer preview */}
                       {sub.answer && (
-                        <div className="mt-3 p-3 bg-gray-50 dark:bg-gray-700/30 rounded-lg">
-                          <p className="text-xs font-medium text-gray-500 mb-1">Student's Answer:</p>
-                          <p className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap line-clamp-4">{sub.answer}</p>
+                        <div className={`mt-2 p-3 rounded-lg border border-gray-200 dark:border-gray-600 max-h-32 overflow-y-auto ${
+                          selectedLab.labType === "programming"
+                            ? "bg-gray-900"
+                            : "bg-gray-50 dark:bg-gray-700/30"
+                        }`}>
+                          <p className={`text-xs ${
+                            selectedLab.labType === "programming"
+                              ? "font-mono text-green-400"
+                              : "text-gray-700 dark:text-gray-300"
+                          } whitespace-pre-wrap`}>
+                            {sub.answer.length > 500 ? sub.answer.slice(0, 500) + "..." : sub.answer}
+                          </p>
                         </div>
                       )}
 
+                      {/* PDF link */}
                       {sub.pdfUrl && (
-                        <div className="mt-3">
-                          <button
-                            onClick={() => { setSelectedSubmission(sub); setShowPDFModal(true); }}
-                            className="flex items-center gap-2 text-sm text-blue-600 hover:text-blue-700 bg-blue-50 px-3 py-2 rounded-lg"
-                          >
-                            <span className="material-symbols-outlined text-base">picture_as_pdf</span>
-                            View Submitted PDF
-                          </button>
-                        </div>
+                        <button
+                          onClick={() => { setSelectedSub(sub); setShowPDFModal(true); }}
+                          className="flex items-center gap-2 mt-2 text-sm text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 bg-indigo-50 dark:bg-indigo-900/20 px-3 py-1.5 rounded-lg border border-indigo-200 dark:border-indigo-700 transition-colors"
+                        >
+                          <span className="material-symbols-outlined text-sm">picture_as_pdf</span>
+                          View submitted PDF
+                        </button>
                       )}
 
+                      {/* Existing feedback */}
                       {sub.feedback && (
-                        <div className="mt-3 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-                          <p className="text-xs font-medium text-blue-600 mb-1">Feedback:</p>
-                          <p className="text-sm text-gray-700 dark:text-gray-300">{sub.feedback}</p>
-                          {sub.marks !== null && sub.marks !== undefined && (
-                            <p className="text-sm font-medium text-green-600 mt-2">
-                              Marks: {sub.marks}/{selectedLab.totalMarks}
-                            </p>
-                          )}
+                        <div className="mt-2 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-700">
+                          <p className="text-[10px] font-semibold text-blue-600 mb-0.5">Feedback</p>
+                          <p className="text-xs text-gray-700 dark:text-gray-300">{sub.feedback}</p>
                         </div>
                       )}
                     </div>
 
-                    <button
-                      onClick={() => {
-                        setGradingId(sub._id);
-                        setGradeForm({ marks: sub.marks ?? "", feedback: sub.feedback || "" });
-                      }}
-                      className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-medium transition-all hover:scale-105 self-start"
-                    >
-                      {sub.marks !== null && sub.marks !== undefined ? "Re-grade" : "Grade"}
-                    </button>
+                    {/* Action buttons */}
+                    <div className="flex items-center gap-2 flex-shrink-0 self-start">
+                      <button
+                        onClick={() => handleAiEvaluate(sub._id)}
+                        disabled={!!aiEvaluating}
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-purple-600 bg-purple-50 dark:bg-purple-900/20 dark:text-purple-300 hover:bg-purple-100 dark:hover:bg-purple-900/30 border border-purple-200 dark:border-purple-700 transition-colors disabled:opacity-50"
+                        title="Let AI evaluate this submission"
+                      >
+                        {aiEvaluating === sub._id ? (
+                          <><svg className="animate-spin h-3 w-3" viewBox="0 0 24 24" fill="none"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/></svg>Evaluating...</>
+                        ) : (
+                          <><span className="material-symbols-outlined text-sm">auto_awesome</span>AI Evaluate</>
+                        )}
+                      </button>
+                      <button
+                        onClick={() => {
+                          setGradingId(sub._id);
+                          setAiEvaluation(null);
+                          setGradeForm({
+                            marks:    sub.marks ?? "",
+                            feedback: sub.feedback || "",
+                          });
+                        }}
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-white bg-indigo-600 hover:bg-indigo-700 transition-colors"
+                      >
+                        <span className="material-symbols-outlined text-sm">grade</span>
+                        {sub.marks !== null && sub.marks !== undefined ? "Re-grade" : "Grade"}
+                      </button>
+                    </div>
                   </div>
 
-                  {/* Grade Form */}
-                  {gradingId === sub._id && (
-                    <div className="mt-4 p-5 bg-indigo-50 dark:bg-indigo-900/20 rounded-xl border border-indigo-200 dark:border-indigo-700">
-                      <h4 className="font-semibold text-gray-900 dark:text-white mb-3">Grade Submission</h4>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                  {/* AI Evaluation panel */}
+                  {aiEvaluation?.submissionId === sub._id && (
+                    <div className="mt-3 p-4 bg-purple-50 dark:bg-purple-900/10 rounded-xl border border-purple-200 dark:border-purple-700">
+                      <div className="flex items-center gap-2 mb-3">
+                        <span className="material-symbols-outlined text-purple-600 text-sm">auto_awesome</span>
+                        <p className="text-sm font-semibold text-purple-700 dark:text-purple-300">AI Evaluation</p>
+                        <span className="ml-auto text-sm font-bold text-purple-700 dark:text-purple-300">
+                          Suggested: {aiEvaluation.score} / {selectedLab.totalMarks} pts
+                        </span>
+                      </div>
+                      {aiEvaluation.feedback && (
+                        <p className="text-xs text-gray-700 dark:text-gray-300 mb-2 leading-relaxed">{aiEvaluation.feedback}</p>
+                      )}
+                      {aiEvaluation.mistakes?.length > 0 && (
+                        <div className="mb-2">
+                          <p className="text-[10px] font-semibold text-red-600 mb-1">Issues found</p>
+                          {aiEvaluation.mistakes.map((m, i) => (
+                            <p key={i} className="text-[10px] text-gray-600 dark:text-gray-400">• {m}</p>
+                          ))}
+                        </div>
+                      )}
+                      {aiEvaluation.suggestions?.length > 0 && (
                         <div>
-                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                            Marks (Max: {selectedLab.totalMarks})
+                          <p className="text-[10px] font-semibold text-green-600 mb-1">Suggestions</p>
+                          {aiEvaluation.suggestions.map((s, i) => (
+                            <p key={i} className="text-[10px] text-gray-600 dark:text-gray-400">• {s}</p>
+                          ))}
+                        </div>
+                      )}
+                      <p className="text-[10px] text-gray-400 mt-2 italic">
+                        AI evaluation is pre-filled in the grade form below — review and adjust before saving.
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Grade form */}
+                  {gradingId === sub._id && (
+                    <div className="mt-3 p-4 bg-indigo-50 dark:bg-indigo-900/20 rounded-xl border border-indigo-200 dark:border-indigo-700 space-y-3">
+                      <p className="text-sm font-semibold text-gray-900 dark:text-white">Grade Submission</p>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+                            Marks (max {selectedLab.totalMarks})
                           </label>
                           <input
                             type="number"
                             value={gradeForm.marks}
-                            onChange={e => setGradeForm(p => ({ ...p, marks: Number(e.target.value) }))}
-                            max={selectedLab.totalMarks}
+                            onChange={e => setGradeForm(p => ({ ...p, marks: e.target.value }))}
                             min={0}
-                            className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500"
+                            max={selectedLab.totalMarks}
+                            className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500"
                           />
                         </div>
+                        <div className="flex items-end">
+                          {gradeForm.marks !== "" && (
+                            <p className={`text-2xl font-bold ${
+                              (Number(gradeForm.marks) / selectedLab.totalMarks) >= 0.5
+                                ? "text-green-600"
+                                : "text-amber-600"
+                            }`}>
+                              {Math.round((Number(gradeForm.marks) / selectedLab.totalMarks) * 100)}%
+                            </p>
+                          )}
+                        </div>
                       </div>
-                      <div className="mb-4">
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Feedback</label>
+                      <div>
+                        <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Feedback</label>
                         <textarea
                           value={gradeForm.feedback}
                           onChange={e => setGradeForm(p => ({ ...p, feedback: e.target.value }))}
                           rows={3}
-                          placeholder="Provide feedback to the student..."
-                          className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 resize-none"
+                          placeholder="Provide constructive feedback for the student..."
+                          className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 resize-none"
                         />
                       </div>
-                      <div className="flex gap-3">
+                      <div className="flex gap-2">
                         <button
                           onClick={() => handleGrade(sub._id)}
-                          className="px-6 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-medium transition-all"
+                          className="flex-1 py-2 rounded-lg text-sm font-medium text-white bg-green-600 hover:bg-green-700 transition-colors flex items-center justify-center gap-2"
                         >
+                          <span className="material-symbols-outlined text-sm">save</span>
                           Save Grade
                         </button>
                         <button
-                          onClick={() => setGradingId(null)}
-                          className="px-6 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-all"
+                          onClick={() => { setGradingId(null); setAiEvaluation(null); }}
+                          className="px-4 py-2 rounded-lg text-sm text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
                         >
                           Cancel
                         </button>
@@ -344,30 +501,43 @@ const LabSubmissions = () => {
       )}
 
       {/* PDF Viewer Modal */}
-      {showPDFModal && selectedSubmission && (
+      {showPDFModal && selectedSub && (
         <div
           className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4"
           onClick={() => setShowPDFModal(false)}
         >
           <div
-            className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col"
-            onClick={(e) => e.stopPropagation()}
+            className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-4xl flex flex-col overflow-hidden"
+            style={{ maxHeight: "90vh" }}
+            onClick={e => e.stopPropagation()}
           >
             <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700 bg-gradient-to-r from-indigo-600 to-purple-600">
               <div>
-                <h3 className="text-lg font-bold text-white">Student Submission</h3>
-                <p className="text-indigo-100 text-sm">
-                  {selectedSubmission.student?.fullName} — {selectedSubmission.student?.studentId}
+                <h3 className="text-base font-bold text-white">Student Submission</h3>
+                <p className="text-indigo-100 text-xs">
+                  {selectedSub.student?.fullName} · {selectedSub.student?.studentId}
                 </p>
               </div>
-              <button onClick={() => setShowPDFModal(false)} className="text-white hover:bg-white/20 rounded-lg p-2">
-                <span className="material-symbols-outlined">close</span>
-              </button>
+              <div className="flex items-center gap-2">
+                <a
+                  href={selectedSub.pdfUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium text-indigo-600 bg-white hover:bg-indigo-50"
+                >
+                  <span className="material-symbols-outlined text-sm">open_in_new</span>
+                  Open
+                </a>
+                <button onClick={() => setShowPDFModal(false)} className="text-white hover:bg-white/20 rounded-lg p-1.5">
+                  <span className="material-symbols-outlined">close</span>
+                </button>
+              </div>
             </div>
             <div className="flex-1 p-4">
               <iframe
-                src={`${selectedSubmission.pdfUrl}#toolbar=1`}
-                className="w-full h-[65vh] rounded-lg"
+                src={`${selectedSub.pdfUrl}#toolbar=1`}
+                className="w-full rounded-lg"
+                style={{ height: "65vh" }}
                 title="PDF Viewer"
               />
             </div>

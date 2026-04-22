@@ -7,6 +7,7 @@ const cloudinary     = require("../config/cloudinary");
 const { checkAndUnlockNext } = require("./lessonController");
 const { GoogleGenAI } = require("@google/genai");
 const { notifyLabGraded } = require("../utils/notificationHooks");
+const fs = require("fs");
 
 // ─────────────────────────────────────────────────────────────
 // SHARED: Get lab for a lesson (teacher editor + student view)
@@ -16,12 +17,7 @@ const getLabByLesson = async (req, res) => {
   try {
     const { lessonId } = req.params;
     const lab = await Lab.findOne({ lesson: lessonId });
-
-    if (!lab) {
-      return res.status(200).json({ lab: null });
-    }
-
-    res.status(200).json({ lab });
+    res.status(200).json({ lab: lab || null });
   } catch (err) {
     console.error("getLabByLesson error:", err.message);
     res.status(500).json({ message: "Server error" });
@@ -30,7 +26,6 @@ const getLabByLesson = async (req, res) => {
 
 // ─────────────────────────────────────────────────────────────
 // TEACHER: Create Lab manually
-// POST /api/courses/:courseId/lessons/:lessonId/lab
 // ─────────────────────────────────────────────────────────────
 const createLab = async (req, res) => {
   try {
@@ -50,6 +45,7 @@ const createLab = async (req, res) => {
     if (lesson.course.teacher.toString() !== req.user._id.toString())
       return res.status(403).json({ message: "Not your lesson" });
 
+    // One lab per lesson — replace if exists
     await Lab.deleteOne({ lesson: lessonId });
 
     const lab = await Lab.create({
@@ -80,7 +76,6 @@ const createLab = async (req, res) => {
 
 // ─────────────────────────────────────────────────────────────
 // TEACHER: AI Generate Lab
-// POST /api/courses/:courseId/lessons/:lessonId/lab/ai-generate
 // ─────────────────────────────────────────────────────────────
 const aiGenerateLab = async (req, res) => {
   try {
@@ -211,9 +206,9 @@ Expected Output: ${lab.outputExample}
 Return ONLY valid JSON. No markdown, no explanation outside the JSON.
 
 {
-  "steps": ["step 1 explanation", "step 2 explanation", "..."],
-  "concepts": ["concept 1", "concept 2", "..."],
-  "tips": ["tip 1", "tip 2", "..."]
+  "steps": ["step 1 explanation", "step 2 explanation"],
+  "concepts": ["concept 1", "concept 2"],
+  "tips": ["tip 1", "tip 2"]
 }`;
 
     const response = await ai.models.generateContent({
@@ -327,30 +322,35 @@ const gradeSubmission = async (req, res) => {
         path: "lab",
         populate: { path: "lesson", populate: { path: "course" } },
       })
-      .populate("student", "fullName email");  // ✅ ADDED: Populate student for email
+      .populate("student", "fullName email");
 
     if (!submission)
       return res.status(404).json({ message: "Submission not found" });
     if (submission.lab.lesson.course.teacher.toString() !== req.user._id.toString())
       return res.status(403).json({ message: "Not your lab" });
 
-    submission.marks    = Number(marks);
+    const numMarks = Number(marks);
+    const totalMarks = submission.lab.totalMarks || 100;
+
+    if (numMarks > totalMarks)
+      return res.status(400).json({ message: `Marks cannot exceed ${totalMarks}` });
+
+    submission.marks    = numMarks;
     submission.feedback = feedback?.trim() || "";
     submission.status   = "graded";
     submission.gradedAt = new Date();
     submission.gradedBy = req.user._id;
     await submission.save();
 
-    // ✅ Updated with email support
     await notifyLabGraded({
-      studentId: submission.student._id,
-      labTitle: submission.lab.title,
-      marks: Number(marks),
-      totalMarks: submission.lab.totalMarks || 100,
-      courseId: submission.course,
-      sendEmailNotif: true,                        // ✅ Send email
-      recipientEmail: submission.student.email,    // ✅ Student's email
-      recipientName: submission.student.fullName,  // ✅ Student's name
+      studentId:      submission.student._id,
+      labTitle:       submission.lab.title,
+      marks:          numMarks,
+      totalMarks,
+      courseId:       submission.course,
+      sendEmailNotif: true,
+      recipientEmail: submission.student.email,
+      recipientName:  submission.student.fullName,
     });
 
     res.status(200).json({ message: "Graded successfully", submission });
@@ -436,6 +436,7 @@ Evaluate the student's submission strictly and fairly. Return ONLY valid JSON. N
 
 // ─────────────────────────────────────────────────────────────
 // STUDENT: Submit lab
+// FIX: Properly upload PDF to Cloudinary from /tmp disk path
 // ─────────────────────────────────────────────────────────────
 const submitLab = async (req, res) => {
   try {
@@ -448,26 +449,43 @@ const submitLab = async (req, res) => {
       return res.status(400).json({ message: "Lab is not available" });
 
     const answer = req.body.answer?.trim() || "";
-    let pdfUrl = null;
+    let pdfUrl      = null;
     let pdfFileName = null;
     let pdfPublicId = null;
 
+    // FIX: Upload the disk-stored PDF to Cloudinary using the file path
     if (req.file) {
-      pdfUrl      = req.file.path || req.file.secure_url;
-      pdfFileName = req.file.originalname;
-      pdfPublicId = req.file.filename || req.file.public_id;
+      try {
+        const uploadResult = await cloudinary.uploader.upload(req.file.path, {
+          folder:        `smartacademia/labs/${labId}`,
+          resource_type: "raw",
+          public_id:     `${req.user._id}_${Date.now()}`,
+          use_filename:  false,
+        });
+        pdfUrl      = uploadResult.secure_url;
+        pdfPublicId = uploadResult.public_id;
+        pdfFileName = req.file.originalname;
+      } catch (uploadErr) {
+        console.error("Cloudinary PDF upload error:", uploadErr.message);
+        return res.status(500).json({ message: "Failed to upload PDF. Please try again." });
+      } finally {
+        // Clean up the temp file regardless of success/failure
+        if (req.file.path && fs.existsSync(req.file.path)) {
+          try { fs.unlinkSync(req.file.path); } catch (_) {}
+        }
+      }
     }
 
     if (!answer && !pdfUrl)
       return res.status(400).json({ message: "Please write an answer or upload a PDF" });
 
-    // Delete old PDF from Cloudinary if resubmitting
+    // Delete old PDF from Cloudinary if student is resubmitting with a new PDF
     const existing = await LabSubmission.findOne({ lab: labId, student: req.user._id });
-    if (existing?.pdfPublicId && pdfUrl) {
+    if (existing?.pdfPublicId && pdfUrl && existing.pdfPublicId !== pdfPublicId) {
       try {
         await cloudinary.uploader.destroy(existing.pdfPublicId, { resource_type: "raw" });
       } catch (err) {
-        console.log("Failed to delete old PDF:", err.message);
+        console.warn("Failed to delete old PDF from Cloudinary:", err.message);
       }
     }
 
@@ -476,9 +494,8 @@ const submitLab = async (req, res) => {
       {
         $set: {
           answer,
-          pdfUrl,
-          pdfFileName,
-          pdfPublicId,
+          // Only update PDF fields if a new PDF was uploaded
+          ...(pdfUrl ? { pdfUrl, pdfFileName, pdfPublicId } : {}),
           submittedAt: new Date(),
           marks:       null,
           feedback:    null,
@@ -518,6 +535,7 @@ const submitLab = async (req, res) => {
         _id:         submission._id,
         answer:      submission.answer,
         pdfUrl:      submission.pdfUrl,
+        pdfFileName: submission.pdfFileName,
         status:      submission.status,
         submittedAt: submission.submittedAt,
       },

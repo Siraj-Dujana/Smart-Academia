@@ -8,31 +8,32 @@ const app = express();
 app.use(cors({ origin: ["http://localhost:5173", "http://localhost:3000"] }));
 app.use(express.json());
 
-// Routes
+// ── Core Routes ──────────────────────────────────────────────
 app.use("/api/auth",          require("./routes/auth"));
 app.use("/api/otp",           require("./routes/otp"));
 app.use("/api/quizzes",       require("./routes/quizzes"));
 app.use("/api/admin",         require("./routes/admin"));
 app.use("/api/setup",         require("./setup/setupRoute"));
-// app.use("/api/ai",            require("./ai/aiRoutes"));
-app.use("/api/ai", require("./routes/aiRoutes"));
 app.use("/api/assignments",   require("./routes/assignments"));
 app.use("/api/courses",       require("./routes/courses"));
 app.use("/api/announcements", require("./routes/announcements"));
 app.use("/api/student",       require("./routes/student"));
+app.use("/api/profile",       require("./routes/profile"));
+app.use("/api/notifications", require("./routes/Notifications"));
+
+// ── Lesson routes (nested under courses) ─────────────────────
 app.use("/api/courses/:courseId/lessons", require("./routes/lessons"));
 
-// AI Assistant Routes
-app.use("/api/assistant", require("./routes/aiRoutes"));           // ✅ Single mount
-app.use("/api/assistant/documents", require("./routes/documentRoutes"));
+// ── AI Routes (single mount — no duplicate) ───────────────────
+// Both /api/ai and /api/assistant share the same aiRoutes handler.
+// Document/flashcard/quiz routes are mounted separately under /api/assistant.
+app.use("/api/ai",           require("./routes/aiRoutes"));
+app.use("/api/assistant",    require("./routes/aiRoutes"));
+
+// ── AI Assistant sub-resources ───────────────────────────────
+app.use("/api/assistant/documents",  require("./routes/documentRoutes"));
 app.use("/api/assistant/flashcards", require("./routes/flashcardRoutes"));
-app.use("/api/assistant/quizzes", require("./routes/quizRoutes"));
-
-// Profile
-app.use("/api/profile", require("./routes/profile"));
-
-// Notifications
-app.use("/api/notifications", require("./routes/notifications"));
+app.use("/api/assistant/quizzes",    require("./routes/quizRoutes"));
 
 app.get("/", (req, res) => res.json({ message: "SmartAcademia API running" }));
 

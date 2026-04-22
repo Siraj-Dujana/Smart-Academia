@@ -257,14 +257,23 @@ const QuizSection = ({ quiz, courseId, lessonId, onCompleted }) => {
 // ─────────────────────────────────────────────
 // LAB SECTION (unchanged — lab submit was already correct)
 // ─────────────────────────────────────────────
+
+// LabSection — drop this in place of the existing LabSection in Lessonviewer.jsx
+// It replaces the component definition only; the rest of Lessonviewer.jsx stays the same.
+
 const LabSection = ({ lab, lessonId, courseId, onCompleted }) => {
-  const [answer,     setAnswer]     = useState("");
-  const [submitting, setSubmitting] = useState(false);
-  const [submitted,  setSubmitted]  = useState(false);
-  const [error,      setError]      = useState("");
-  const [success,    setSuccess]    = useState("");
-  const [pdfFile,    setPdfFile]    = useState(null);
-  const [pdfPreview, setPdfPreview] = useState(null);
+  const [answer,       setAnswer]       = useState("");
+  const [submitting,   setSubmitting]   = useState(false);
+  const [submitted,    setSubmitted]    = useState(false);
+  const [submission,   setSubmission]   = useState(null);
+  const [error,        setError]        = useState("");
+  const [success,      setSuccess]      = useState("");
+  const [pdfFile,      setPdfFile]      = useState(null);
+  const [showPdf,      setShowPdf]      = useState(false);
+  const [showExplain,  setShowExplain]  = useState(false);
+  const [explanation,  setExplanation]  = useState(null);
+  const [loadingExpl,  setLoadingExpl]  = useState(false);
+  const [activeTab,    setActiveTab]    = useState("instructions"); // instructions | submit | result
   const fileInputRef = useRef(null);
 
   useEffect(() => { fetchMySubmission(); }, [lab._id]);
@@ -274,12 +283,15 @@ const LabSection = ({ lab, lessonId, courseId, onCompleted }) => {
       const res  = await apiFetch(`/api/courses/${courseId}/lessons/${lessonId}/lab/${lab._id}/my-submission`);
       const data = await res.json();
       if (res.ok && data.submission) {
+        setSubmission(data.submission);
         setAnswer(data.submission.answer || "");
         setSubmitted(true);
-        if (data.submission.pdfUrl) setPdfPreview(data.submission.pdfUrl);
         onCompleted && onCompleted();
-      } else if (lab.starterCode) {
-        setAnswer(lab.starterCode);
+        // Auto-switch to result tab if graded
+        if (data.submission.status === "graded") setActiveTab("result");
+        else setActiveTab("submit");
+      } else {
+        if (lab.starterCode) setAnswer(lab.starterCode);
       }
     } catch {
       if (lab.starterCode) setAnswer(lab.starterCode);
@@ -287,7 +299,10 @@ const LabSection = ({ lab, lessonId, courseId, onCompleted }) => {
   };
 
   const handleSubmit = async () => {
-    if (!answer.trim() && !pdfFile) { setError("Please write an answer or upload a PDF file"); return; }
+    if (!answer.trim() && !pdfFile) {
+      setError("Please write an answer or upload a PDF file");
+      return;
+    }
     setSubmitting(true); setError(""); setSuccess("");
     try {
       const formData = new FormData();
@@ -300,109 +315,473 @@ const LabSection = ({ lab, lessonId, courseId, onCompleted }) => {
       });
       const data = await res.json();
       if (!res.ok) { setError(data.message || "Submission failed"); return; }
-      setSubmitted(true); setPdfFile(null);
+      setSubmitted(true);
+      setPdfFile(null);
       if (fileInputRef.current) fileInputRef.current.value = "";
       onCompleted && onCompleted();
       setSuccess("Lab submitted successfully!");
-      setTimeout(() => setSuccess(""), 3000);
       await fetchMySubmission();
+      setActiveTab("result");
+      setTimeout(() => setSuccess(""), 4000);
     } catch { setError("Cannot connect to server"); }
     finally { setSubmitting(false); }
   };
 
+  const handleAiExplain = async () => {
+    setLoadingExpl(true); setError("");
+    try {
+      const res  = await apiFetch(
+        `/api/courses/${courseId}/lessons/${lessonId}/lab/${lab._id}/explain`,
+        { method: "POST" }
+      );
+      const data = await res.json();
+      if (res.ok) { setExplanation(data.explanation); setShowExplain(true); }
+      else setError(data.message || "AI explanation failed");
+    } catch { setError("Cannot connect to server"); }
+    finally { setLoadingExpl(false); }
+  };
+
   const labCfg = {
-    programming: { icon: "terminal",    color: "text-green-600",  label: "Programming Lab" },
-    dld:         { icon: "schema",      color: "text-blue-600",   label: "DLD Lab"         },
-    networking:  { icon: "hub",         color: "text-purple-600", label: "Networking Lab"  },
-    theory:      { icon: "description", color: "text-amber-600",  label: "Theory Lab"      },
+    programming: { icon: "terminal",    color: "text-green-600",  bg: "bg-green-50 dark:bg-green-900/20",   label: "Programming Lab" },
+    dld:         { icon: "schema",      color: "text-blue-600",   bg: "bg-blue-50 dark:bg-blue-900/20",     label: "DLD Lab"         },
+    networking:  { icon: "hub",         color: "text-purple-600", bg: "bg-purple-50 dark:bg-purple-900/20", label: "Networking Lab"  },
+    theory:      { icon: "description", color: "text-amber-600",  bg: "bg-amber-50 dark:bg-amber-900/20",   label: "Theory Lab"      },
   };
   const cfg = labCfg[lab.labType] || labCfg.theory;
 
+  const diffColor = {
+    easy:   "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300",
+    medium: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300",
+    hard:   "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300",
+  };
+
+  const tabClass = (key) =>
+    `flex-1 flex items-center justify-center gap-1.5 py-2.5 text-xs sm:text-sm font-medium border-b-2 transition-colors ${
+      activeTab === key
+        ? "border-indigo-500 text-indigo-600 dark:text-indigo-400"
+        : "border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700"
+    }`;
+
+  const isOverdue = lab.dueDate && new Date(lab.dueDate) < new Date() && !submitted;
+
   return (
-    <div className="border border-gray-200 dark:border-gray-600 rounded-xl overflow-hidden">
-      <div className="flex flex-wrap items-center justify-between gap-2 px-3 sm:px-4 py-3 bg-gray-50 dark:bg-gray-700/50 border-b border-gray-200 dark:border-gray-700">
-        <div className="flex items-center gap-2 sm:gap-3">
-          <span className={`material-symbols-outlined ${cfg.color} text-lg sm:text-xl`}>{cfg.icon}</span>
-          <div>
-            <p className="font-semibold text-gray-900 dark:text-white text-xs sm:text-sm">{cfg.label}</p>
-            <p className="text-[10px] sm:text-xs text-gray-500">{lab.title}</p>
+    <div className="border border-gray-200 dark:border-gray-700 rounded-2xl overflow-hidden bg-white dark:bg-gray-800">
+      {/* Header */}
+      <div className="px-4 sm:px-5 py-3 sm:py-4 bg-gray-50 dark:bg-gray-700/50 border-b border-gray-200 dark:border-gray-700">
+        <div className="flex flex-wrap items-start justify-between gap-2">
+          <div className="flex items-center gap-2 sm:gap-3">
+            <div className={`flex items-center justify-center w-9 h-9 sm:w-10 sm:h-10 rounded-xl ${cfg.bg}`}>
+              <span className={`material-symbols-outlined ${cfg.color} text-lg sm:text-xl`}>{cfg.icon}</span>
+            </div>
+            <div>
+              <div className="flex flex-wrap items-center gap-1.5">
+                <p className="font-semibold text-gray-900 dark:text-white text-sm sm:text-base">{lab.title}</p>
+                <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${diffColor[lab.difficulty] || diffColor.medium}`}>
+                  {lab.difficulty}
+                </span>
+                {lab.totalMarks && (
+                  <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300 font-medium">
+                    {lab.totalMarks} pts
+                  </span>
+                )}
+              </div>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{cfg.label}</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 flex-wrap">
+            {lab.dueDate && (
+              <span className={`text-xs flex items-center gap-1 ${isOverdue ? "text-red-600 dark:text-red-400" : "text-gray-500"}`}>
+                <span className="material-symbols-outlined text-sm">{isOverdue ? "warning" : "schedule"}</span>
+                {isOverdue ? "Overdue" : "Due"}: {new Date(lab.dueDate).toLocaleDateString()}
+              </span>
+            )}
+            {submitted && (
+              <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+                submission?.status === "graded"
+                  ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300"
+                  : "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300"
+              }`}>
+                {submission?.status === "graded" ? "✓ Graded" : "✓ Submitted"}
+              </span>
+            )}
           </div>
         </div>
+      </div>
+
+      {/* Tabs */}
+      <div className="flex border-b border-gray-200 dark:border-gray-700">
+        <button className={tabClass("instructions")} onClick={() => setActiveTab("instructions")}>
+          <span className="material-symbols-outlined text-sm">info</span>
+          Instructions
+        </button>
+        <button className={tabClass("submit")} onClick={() => setActiveTab("submit")}>
+          <span className="material-symbols-outlined text-sm">upload</span>
+          Submit
+        </button>
         {submitted && (
-          <span className="px-2 py-0.5 rounded-full text-[10px] sm:text-xs font-medium bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300">
-            ✓ Submitted
-          </span>
+          <button className={tabClass("result")} onClick={() => setActiveTab("result")}>
+            <span className="material-symbols-outlined text-sm">
+              {submission?.status === "graded" ? "grade" : "pending"}
+            </span>
+            Result
+          </button>
         )}
       </div>
 
-      <div className="p-3 sm:p-4 space-y-3 sm:space-y-4">
-        <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-          <p className="text-[10px] sm:text-xs font-medium text-blue-700 dark:text-blue-300 mb-1">Instructions</p>
-          <p className="text-xs sm:text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap">{lab.instructions}</p>
-        </div>
+      {/* Tab content */}
+      <div className="p-4 sm:p-5 space-y-3 sm:space-y-4">
 
-        {lab.labType === "programming" && lab.testCases?.length > 0 && (
-          <div className="p-3 bg-gray-900 rounded-lg overflow-x-auto">
-            <p className="text-xs text-gray-400 mb-2 font-medium">Test Cases</p>
-            {lab.testCases.map((tc, i) => (
-              <div key={i} className="flex flex-wrap items-center gap-2 text-xs font-mono mb-1">
-                <span className="text-gray-400">Input:</span>
-                <code className="bg-gray-800 px-2 py-0.5 rounded text-green-400 text-xs">{tc.input}</code>
-                <span className="text-gray-400">→ Expected:</span>
-                <code className="bg-gray-800 px-2 py-0.5 rounded text-blue-400 text-xs">{tc.expectedOutput}</code>
+        {/* INSTRUCTIONS TAB */}
+        {activeTab === "instructions" && (
+          <>
+            {lab.description && (
+              <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed">{lab.description}</p>
+            )}
+
+            <div className="p-3 sm:p-4 bg-blue-50 dark:bg-blue-900/20 rounded-xl border border-blue-200 dark:border-blue-800">
+              <p className="text-xs font-semibold text-blue-700 dark:text-blue-300 mb-2 flex items-center gap-1">
+                <span className="material-symbols-outlined text-sm">list</span>
+                Step-by-step instructions
+              </p>
+              <div className="space-y-1">
+                {lab.instructions.split("\n").filter(Boolean).map((step, i) => (
+                  <p key={i} className="text-xs sm:text-sm text-gray-700 dark:text-gray-300 leading-relaxed">{step}</p>
+                ))}
               </div>
-            ))}
-          </div>
+            </div>
+
+            {lab.outputExample && (
+              <div className="p-3 bg-gray-900 rounded-xl overflow-x-auto">
+                <p className="text-xs text-gray-400 mb-1.5 font-medium">Expected output</p>
+                <pre className="text-xs text-green-400 font-mono whitespace-pre-wrap">{lab.outputExample}</pre>
+              </div>
+            )}
+
+            {lab.labType === "programming" && lab.testCases?.length > 0 && (
+              <div className="p-3 bg-gray-900 rounded-xl overflow-x-auto">
+                <p className="text-xs text-gray-400 mb-2 font-medium">Test cases</p>
+                {lab.testCases.map((tc, i) => (
+                  <div key={i} className="flex flex-wrap items-center gap-2 text-xs font-mono mb-1.5">
+                    <span className="text-gray-500">Input:</span>
+                    <code className="bg-gray-800 px-2 py-0.5 rounded text-green-400">{tc.input}</code>
+                    <span className="text-gray-500">→</span>
+                    <code className="bg-gray-800 px-2 py-0.5 rounded text-blue-400">{tc.expectedOutput}</code>
+                    {tc.description && (
+                      <span className="text-gray-500 italic">{tc.description}</span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* AI Explain button — only shown after submission so students engage with the lab first */}
+            <button
+              onClick={handleAiExplain}
+              disabled={loadingExpl}
+              className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium text-purple-600 bg-purple-50 dark:bg-purple-900/20 dark:text-purple-300 hover:bg-purple-100 dark:hover:bg-purple-900/30 border border-purple-200 dark:border-purple-700 transition-colors disabled:opacity-50"
+            >
+              {loadingExpl ? (
+                <><svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/></svg>Getting AI explanation...</>
+              ) : (
+                <><span className="material-symbols-outlined text-sm">auto_awesome</span>AI Explain this lab</>
+              )}
+            </button>
+
+            {/* AI Explanation panel */}
+            {showExplain && explanation && (
+              <div className="border border-purple-200 dark:border-purple-700 rounded-xl overflow-hidden">
+                <div className="flex items-center justify-between px-4 py-2.5 bg-purple-50 dark:bg-purple-900/20 border-b border-purple-200 dark:border-purple-700">
+                  <p className="text-sm font-semibold text-purple-700 dark:text-purple-300">AI Explanation</p>
+                  <button onClick={() => setShowExplain(false)} className="text-purple-400 hover:text-purple-600">
+                    <span className="material-symbols-outlined text-sm">close</span>
+                  </button>
+                </div>
+                <div className="p-4 space-y-3">
+                  {explanation.steps?.length > 0 && (
+                    <div>
+                      <p className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">Approach</p>
+                      <ol className="space-y-1">
+                        {explanation.steps.map((s, i) => (
+                          <li key={i} className="text-xs text-gray-600 dark:text-gray-400 flex gap-2">
+                            <span className="text-purple-500 font-medium flex-shrink-0">{i + 1}.</span>
+                            <span>{s}</span>
+                          </li>
+                        ))}
+                      </ol>
+                    </div>
+                  )}
+                  {explanation.concepts?.length > 0 && (
+                    <div>
+                      <p className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">Key concepts</p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {explanation.concepts.map((c, i) => (
+                          <span key={i} className="text-[10px] px-2 py-0.5 rounded-full bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300">
+                            {c}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {explanation.tips?.length > 0 && (
+                    <div>
+                      <p className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">Tips</p>
+                      {explanation.tips.map((t, i) => (
+                        <p key={i} className="text-xs text-gray-500 dark:text-gray-400">💡 {t}</p>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            <button
+              onClick={() => setActiveTab("submit")}
+              className="w-full py-2.5 rounded-xl text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 flex items-center justify-center gap-2"
+            >
+              <span className="material-symbols-outlined text-sm">upload</span>
+              Go to submission
+            </button>
+          </>
         )}
 
-        {error   && <p className="text-xs sm:text-sm text-red-600">{error}</p>}
-        {success && <p className="text-xs sm:text-sm text-green-600">{success}</p>}
+        {/* SUBMIT TAB */}
+        {activeTab === "submit" && (
+          <>
+            {error   && <div className="p-3 rounded-xl bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-sm text-red-600 dark:text-red-400 flex items-center gap-2"><span className="material-symbols-outlined text-sm">error</span>{error}</div>}
+            {success && <div className="p-3 rounded-xl bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 text-sm text-green-600 dark:text-green-400 flex items-center gap-2"><span className="material-symbols-outlined text-sm">check_circle</span>{success}</div>}
 
-        <textarea
-          value={answer} onChange={e => setAnswer(e.target.value)}
-          rows={lab.labType === "programming" ? 10 : 6}
-          placeholder={lab.labType === "programming" ? "Write your code here..." : "Write your answer here..."}
-          className={`w-full px-3 py-2.5 text-sm border border-gray-300 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 resize-none ${lab.labType === "programming" ? "font-mono" : ""}`}
-        />
+            {submitted && (
+              <div className="p-3 rounded-xl bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-200 dark:border-indigo-800 flex items-center gap-2 text-sm text-indigo-700 dark:text-indigo-300">
+                <span className="material-symbols-outlined text-base">info</span>
+                Already submitted — you can resubmit to update your answer.
+              </div>
+            )}
 
-        <div className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-xl p-4">
-          <div className="flex flex-col sm:flex-row items-center gap-3">
-            <input ref={fileInputRef} type="file" accept=".pdf" onChange={e => setPdfFile(e.target.files[0])} className="hidden"/>
-            <button type="button" onClick={() => fileInputRef.current?.click()}
-              className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
-              <span className="material-symbols-outlined text-base">upload_file</span>
-              Upload PDF
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+                {lab.labType === "programming" ? "Your code" : "Your answer"}
+              </label>
+              <textarea
+                value={answer}
+                onChange={e => setAnswer(e.target.value)}
+                rows={lab.labType === "programming" ? 12 : 7}
+                placeholder={
+                  lab.labType === "programming"
+                    ? "Write your code solution here..."
+                    : "Write your answer here..."
+                }
+                className={`w-full px-3 py-2.5 text-sm border border-gray-300 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 resize-none leading-relaxed ${
+                  lab.labType === "programming" ? "font-mono" : ""
+                }`}
+              />
+            </div>
+
+            {/* PDF Upload */}
+            <div className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-xl p-4">
+              <div className="flex flex-col sm:flex-row items-center gap-3">
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".pdf,application/pdf"
+                  onChange={e => {
+                    const f = e.target.files[0];
+                    if (!f) return;
+                    if (f.type !== "application/pdf") {
+                      setError("Only PDF files are accepted");
+                      e.target.value = "";
+                      return;
+                    }
+                    if (f.size > 20 * 1024 * 1024) {
+                      setError("PDF must be under 20 MB");
+                      e.target.value = "";
+                      return;
+                    }
+                    setError("");
+                    setPdfFile(f);
+                  }}
+                  className="hidden"
+                />
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                >
+                  <span className="material-symbols-outlined text-base">picture_as_pdf</span>
+                  Upload PDF
+                </button>
+                {pdfFile ? (
+                  <div className="flex items-center gap-2 text-sm text-green-600 dark:text-green-400">
+                    <span className="material-symbols-outlined text-base">check_circle</span>
+                    <span className="max-w-[180px] truncate">{pdfFile.name}</span>
+                    <button
+                      onClick={() => { setPdfFile(null); if (fileInputRef.current) fileInputRef.current.value = ""; }}
+                      className="text-red-400 hover:text-red-600"
+                    >
+                      <span className="material-symbols-outlined text-sm">close</span>
+                    </button>
+                  </div>
+                ) : submission?.pdfUrl ? (
+                  <button
+                    onClick={() => setShowPdf(true)}
+                    className="flex items-center gap-2 text-sm text-indigo-600 dark:text-indigo-400 hover:underline"
+                  >
+                    <span className="material-symbols-outlined text-base">description</span>
+                    View previously submitted PDF
+                  </button>
+                ) : null}
+              </div>
+              <p className="text-[10px] sm:text-xs text-gray-400 mt-2 text-center">
+                PDF only · max 20 MB
+              </p>
+            </div>
+
+            <button
+              onClick={handleSubmit}
+              disabled={submitting}
+              className="w-full py-3 rounded-xl text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 flex items-center justify-center gap-2 shadow-md shadow-indigo-200 dark:shadow-indigo-900/30 transition-all"
+            >
+              {submitting ? (
+                <><svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/></svg>Submitting...</>
+              ) : (
+                <><span className="material-symbols-outlined text-base">upload</span>{submitted ? "Resubmit" : "Submit Lab"}</>
+              )}
             </button>
-            {pdfFile && (
-              <div className="flex items-center gap-2 text-sm text-green-600">
-                <span className="material-symbols-outlined text-base">check_circle</span>
-                {pdfFile.name}
-                <button onClick={() => setPdfFile(null)} className="text-red-500 hover:text-red-700">
-                  <span className="material-symbols-outlined text-sm">close</span>
+          </>
+        )}
+
+        {/* RESULT TAB */}
+        {activeTab === "result" && submission && (
+          <>
+            {submission.status === "graded" ? (
+              <>
+                {/* Score card */}
+                <div className={`p-4 rounded-xl border ${
+                  (submission.marks / (lab.totalMarks || 100)) >= 0.5
+                    ? "bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-700"
+                    : "bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-700"
+                }`}>
+                  <div className="flex items-center gap-3">
+                    <div className={`flex items-center justify-center w-12 h-12 rounded-full text-2xl font-bold ${
+                      (submission.marks / (lab.totalMarks || 100)) >= 0.5
+                        ? "bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-300"
+                        : "bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300"
+                    }`}>
+                      {submission.marks}
+                    </div>
+                    <div>
+                      <p className="text-sm font-bold text-gray-900 dark:text-white">
+                        {submission.marks} / {lab.totalMarks || 100} marks
+                      </p>
+                      <p className="text-xs text-gray-500">
+                        {Math.round((submission.marks / (lab.totalMarks || 100)) * 100)}% score
+                        {submission.gradedAt && ` · Graded ${new Date(submission.gradedAt).toLocaleDateString()}`}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {submission.feedback && (
+                  <div className="p-3 sm:p-4 bg-blue-50 dark:bg-blue-900/20 rounded-xl border border-blue-200 dark:border-blue-700">
+                    <p className="text-xs font-semibold text-blue-700 dark:text-blue-300 mb-1 flex items-center gap-1">
+                      <span className="material-symbols-outlined text-sm">feedback</span>
+                      Instructor feedback
+                    </p>
+                    <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">{submission.feedback}</p>
+                  </div>
+                )}
+              </>
+            ) : (
+              <div className="p-4 rounded-xl bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-200 dark:border-indigo-700 flex items-center gap-3">
+                <span className="material-symbols-outlined text-indigo-600 text-2xl">pending</span>
+                <div>
+                  <p className="text-sm font-semibold text-indigo-700 dark:text-indigo-300">Submitted — awaiting review</p>
+                  <p className="text-xs text-gray-500 mt-0.5">
+                    Submitted {new Date(submission.submittedAt).toLocaleString()}
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* Submitted answer preview */}
+            {submission.answer && (
+              <div>
+                <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1.5">Your submitted answer</p>
+                <pre className={`text-xs sm:text-sm p-3 rounded-xl bg-gray-50 dark:bg-gray-700/50 border border-gray-200 dark:border-gray-600 overflow-x-auto leading-relaxed max-h-40 ${
+                  lab.labType === "programming" ? "font-mono" : "whitespace-pre-wrap font-sans"
+                }`}>
+                  {submission.answer}
+                </pre>
+              </div>
+            )}
+
+            {/* Submitted PDF */}
+            {submission.pdfUrl && (
+              <button
+                onClick={() => setShowPdf(true)}
+                className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/20 hover:bg-indigo-100 transition-colors border border-indigo-200 dark:border-indigo-700"
+              >
+                <span className="material-symbols-outlined text-base">picture_as_pdf</span>
+                View submitted PDF — {submission.pdfFileName || "submission.pdf"}
+              </button>
+            )}
+
+            <button
+              onClick={() => setActiveTab("submit")}
+              className="w-full py-2.5 rounded-xl text-sm font-medium text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-700 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition-colors"
+            >
+              {submission.status === "graded" ? "Resubmit" : "Update submission"}
+            </button>
+          </>
+        )}
+      </div>
+
+      {/* PDF Viewer Modal */}
+      {showPdf && submission?.pdfUrl && (
+        <div
+          className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+          onClick={() => setShowPdf(false)}
+        >
+          <div
+            className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-3xl flex flex-col overflow-hidden"
+            style={{ maxHeight: "90vh" }}
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700 bg-indigo-600">
+              <div>
+                <p className="text-sm font-bold text-white">Lab Submission</p>
+                <p className="text-xs text-indigo-200">{submission.pdfFileName || "submission.pdf"}</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <a
+                  href={submission.pdfUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium text-indigo-600 bg-white hover:bg-indigo-50 transition-colors"
+                >
+                  <span className="material-symbols-outlined text-sm">open_in_new</span>
+                  Open
+                </a>
+                <button onClick={() => setShowPdf(false)} className="text-white hover:bg-white/20 rounded-lg p-1.5">
+                  <span className="material-symbols-outlined">close</span>
                 </button>
               </div>
-            )}
-            {pdfPreview && !pdfFile && (
-              <a href={pdfPreview} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-sm text-blue-600 hover:underline">
-                <span className="material-symbols-outlined text-base">description</span>
-                View submitted PDF
-              </a>
-            )}
+            </div>
+            <div className="flex-1 p-4" style={{ minHeight: "60vh" }}>
+              <iframe
+                src={`${submission.pdfUrl}#toolbar=1`}
+                className="w-full rounded-lg border border-gray-200 dark:border-gray-700"
+                style={{ height: "60vh" }}
+                title="Lab PDF Submission"
+              />
+            </div>
           </div>
-          <p className="text-xs text-gray-500 mt-2 text-center">Upload your solution as a PDF file (optional)</p>
         </div>
-
-        <button onClick={handleSubmit} disabled={submitting}
-          className="w-full py-2.5 rounded-xl text-sm font-medium text-white bg-purple-600 hover:bg-purple-700 disabled:opacity-50 flex items-center justify-center gap-2">
-          {submitting
-            ? <><svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/></svg>Submitting...</>
-            : <><span className="material-symbols-outlined text-base">upload</span>{submitted ? "Resubmit" : "Submit Lab"}</>
-          }
-        </button>
-      </div>
+      )}
     </div>
   );
 };
+
+
 
 // ─────────────────────────────────────────────
 // MAIN LESSON VIEWER
