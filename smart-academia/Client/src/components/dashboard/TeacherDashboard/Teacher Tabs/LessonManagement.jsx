@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import LessonEditor from "./LessonEditor";
+import { useNavigate } from "react-router-dom";  // ✅ ADDED
 
 const API = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
@@ -16,12 +16,11 @@ const apiFetch = (url, opts = {}) => {
 };
 
 const LessonManagement = () => {
+  const navigate = useNavigate();  // ✅ ADDED
   const [courses, setCourses] = useState([]);
   const [selectedCourse, setSelectedCourse] = useState("");
   const [lessons, setLessons] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [showEditor, setShowEditor] = useState(false);
-  const [editingLesson, setEditingLesson] = useState(null);
   const [error, setError] = useState("");
   const [successMsg, setSuccessMsg] = useState("");
 
@@ -83,26 +82,16 @@ const LessonManagement = () => {
     setTimeout(() => setSuccessMsg(""), 3000);
   };
 
-  const openCreate = () => {
-    if (!selectedCourse) return;
-    setEditingLesson(null);
-    setShowEditor(true);
-  };
+  // ✅ UPDATED: Navigate to full page editor
+ const openCreate = () => {
+  if (!selectedCourse) return;
+  navigate(`/teacher/lessons/${selectedCourse}/create`);
+};
 
-  const openEdit = (lesson) => {
-    setEditingLesson(lesson);
-    setShowEditor(true);
-  };
-
-  const handleEditorSaved = () => {
-    fetchLessons();
-  };
-
-  const handleEditorClose = () => {
-    setShowEditor(false);
-    setEditingLesson(null);
-    fetchLessons();
-  };
+  // ✅ UPDATED: Navigate to full page editor with lesson ID
+ const openEdit = (lesson) => {
+  navigate(`/teacher/lessons/${selectedCourse}/edit/${lesson._id}`);
+};
 
   const getFormatIcon = (format) => {
     if (format === "video") return "play_circle";
@@ -278,7 +267,7 @@ const LessonManagement = () => {
                     {lesson.isPublished ? "Published" : "Draft"}
                   </button>
 
-                  {/* Edit button */}
+                  {/* Edit button - ✅ UPDATED */}
                   <button onClick={() => openEdit(lesson)}
                     className="flex items-center gap-1 px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg text-xs font-medium text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors">
                     <span className="material-symbols-outlined text-sm">edit</span>
@@ -295,16 +284,6 @@ const LessonManagement = () => {
             </div>
           ))}
         </div>
-      )}
-
-      {/* Lesson Editor Modal */}
-      {showEditor && (
-        <LessonEditor
-          courseId={selectedCourse}
-          editLesson={editingLesson}
-          onClose={handleEditorClose}
-          onSaved={handleEditorSaved}
-        />
       )}
     </div>
   );

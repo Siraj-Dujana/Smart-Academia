@@ -12,6 +12,7 @@ import TeacherDashboard from './pages/TeacherDashboard';
 import Lessons from './components/dashboard/StudentDashboard/Student Tabs/Lessonviewer';
 import ProtectedRoute from './components/ProtectedRoute';
 import Setup from './pages/Setup';
+import LessonEditor from "./components/dashboard/TeacherDashboard/Teacher Tabs/LessonEditor";
 
 // =============================================
 // Smart home route — checks token and redirects
@@ -82,12 +83,25 @@ function App() {
             </ProtectedRoute>
           } />
 
+
           {/* ===== PROTECTED TEACHER ROUTES ===== */}
           <Route path="/teacher/dashboard" element={
             <ProtectedRoute role="teacher">
               <TeacherDashboard />
             </ProtectedRoute>
           } />
+
+    <Route path="/teacher/lessons/:courseId/create" element={
+  <ProtectedRoute role="teacher">
+    <LessonEditor />
+  </ProtectedRoute>
+} />
+<Route path="/teacher/lessons/:courseId/edit/:lessonId" element={
+  <ProtectedRoute role="teacher">
+    <LessonEditor />
+  </ProtectedRoute>
+} />
+          
 
           {/* ===== PROTECTED ADMIN ROUTES ===== */}
           <Route path="/admin/dashboard" element={
