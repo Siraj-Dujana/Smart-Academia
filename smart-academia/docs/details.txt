@@ -4,7 +4,7 @@ Fix: Hide tabs based on checkbox settings
 
 🎯 Problem 2: Unlock on SUBMIT (Not PASS)
 Current: Student must pass quiz/lab to unlock next lesson
-Fix: Change condition from quizCompleted to quizSubmitted
+Fix: Change condition from quizCompleted to quizSubmitted and lab submitted
 
 🎯 Problem 3: PDF Not Viewed Properly
 Current: PDF doesn't display in the browser

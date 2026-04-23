@@ -562,6 +562,79 @@ const getMySubmission = async (req, res) => {
   }
 };
 
+// ─────────────────────────────────────────────────────────────
+// TEACHER/STUDENT: Get PDF file through backend proxy
+// ─────────────────────────────────────────────────────────────
+const getSubmissionPDF = async (req, res) => {
+  try {
+
+    // ✅ DEBUG: Log all possible token sources
+    console.log('📄 PDF Request Debug:');
+    console.log('  Query token:', req.query.token ? 'YES' : 'NO');
+    console.log('  Auth header:', req.headers.authorization ? 'YES' : 'NO');
+    console.log('  Full query:', JSON.stringify(req.query));
+    console.log('  All headers:', JSON.stringify(req.headers));
+    
+    // ✅ Get token from query parameter OR from Authorization header
+    let token = req.query.token;
+    
+    // If no query token, check Authorization header
+    if (!token) {
+      const authHeader = req.headers.authorization;
+      if (authHeader && authHeader.startsWith("Bearer ")) {
+        token = authHeader.split(" ")[1];
+      }
+    }
+
+    if (!token) {
+      return res.status(401).json({ message: "Not authorized, no token" });
+    }
+
+    // Verify the token
+    const jwt = require("jsonwebtoken");
+    let decoded;
+    try {
+      decoded = jwt.verify(token, process.env.JWT_SECRET);
+    } catch (err) {
+      return res.status(401).json({ message: "Invalid or expired token" });
+    }
+
+    const userId = decoded.id;
+
+    const submission = await LabSubmission.findById(req.params.submissionId)
+      .populate("student", "fullName");
+
+    if (!submission) {
+      return res.status(404).json({ message: "Submission not found" });
+    }
+
+    const lab = await Lab.findById(submission.lab).populate({
+      path: "lesson",
+      populate: { path: "course", select: "teacher" }
+    });
+
+    if (!lab) {
+      return res.status(404).json({ message: "Lab not found" });
+    }
+
+    const isTeacher = lab.lesson.course.teacher.toString() === userId.toString();
+    const isStudent = submission.student._id.toString() === userId.toString();
+
+    if (!isTeacher && !isStudent) {
+      return res.status(403).json({ message: "Not authorized to view this PDF" });
+    }
+
+    if (!submission.pdfUrl) {
+      return res.status(404).json({ message: "No PDF submitted" });
+    }
+
+    // ✅ Redirect to Cloudinary PDF URL
+    res.redirect(submission.pdfUrl);
+  } catch (err) {
+    console.error("getSubmissionPDF error:", err.message);
+    res.status(500).json({ message: "Server error" });
+  }
+};
 module.exports = {
   getLabByLesson,
   createLab,
@@ -574,4 +647,5 @@ module.exports = {
   aiEvaluateSubmission,
   submitLab,
   getMySubmission,
+  getSubmissionPDF,  // ✅ ADD THIS
 };

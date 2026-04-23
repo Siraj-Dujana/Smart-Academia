@@ -98,6 +98,7 @@ Guidelines:
   }
 };
 
+
 // =============================================
 // POST /api/ai/generate-quiz — Teacher AI Quiz Generator
 // =============================================
@@ -118,13 +119,9 @@ Difficulty level: ${difficulty || "easy"}
 Return ONLY a valid JSON array with this exact structure, no markdown, no extra text:
 [
   {
-    "text": "Question text here?",
-    "options": [
-      { "text": "Option A", "isCorrect": false },
-      { "text": "Option B", "isCorrect": true },
-      { "text": "Option C", "isCorrect": false },
-      { "text": "Option D", "isCorrect": false }
-    ],
+    "questionText": "Question text here?",
+    "options": ["Option A", "Option B", "Option C", "Option D"],
+    "correctAnswer": "Option B",
     "explanation": "Brief explanation of why the correct answer is right",
     "difficulty": "${difficulty || "easy"}",
     "points": 10
@@ -133,7 +130,7 @@ Return ONLY a valid JSON array with this exact structure, no markdown, no extra 
 
 Rules:
 - Each question must have exactly 4 options
-- Exactly one option must have isCorrect: true
+- correctAnswer must be the exact TEXT of the correct option, not a letter (A, B, C, D)
 - Questions should test understanding not just memorization
 - Make distractors (wrong options) plausible
 - Explanation should be clear and educational
@@ -158,7 +155,8 @@ Rules:
         .replace(/```\n?/g, "")
         .trim();
       questions = JSON.parse(cleaned);
-    } catch {
+    } catch (err) {
+      console.error("JSON parse error:", err.message);
       return res.status(500).json({ message: "AI returned invalid format. Please try again." });
     }
 
@@ -166,27 +164,60 @@ Rules:
       return res.status(500).json({ message: "AI returned no questions. Please try again." });
     }
 
-    // Validate and clean each question
+    // ✅ FIXED: Convert to database format
     const validatedQuestions = questions
-      .map(q => ({
-        text: q.text || "",
-        options: (q.options || []).map(o => ({
-          text: o.text || "",
-          isCorrect: Boolean(o.isCorrect),
-        })),
-        explanation: q.explanation || "",
-        difficulty: q.difficulty || difficulty || "easy",
-        points: q.points || 10,
-      }))
+      .map(q => {
+        // Handle both formats: {text, options: [{text, isCorrect}]} OR {questionText, options: string[], correctAnswer}
+        let questionText = q.questionText || q.text || "";
+        let optionStrings = [];
+        let correctAnswerText = q.correctAnswer || "";
+        
+        if (Array.isArray(q.options)) {
+          // Check if options are objects with {text, isCorrect}
+          if (q.options.length > 0 && typeof q.options[0] === 'object') {
+            const correctOpt = q.options.find(o => o.isCorrect === true);
+            if (correctOpt) {
+              correctAnswerText = correctOpt.text || correctAnswerText;
+            }
+            optionStrings = q.options.map(o => o.text || "").filter(Boolean);
+          } else {
+            // Options are already strings
+            optionStrings = q.options.map(o => o?.toString().trim()).filter(Boolean);
+            
+            // If correctAnswer is a letter (A, B, C, D), convert to text
+            if (correctAnswerText && correctAnswerText.length === 1 && /[A-D]/.test(correctAnswerText)) {
+              const letterMap = { 'A': 0, 'B': 1, 'C': 2, 'D': 3 };
+              const idx = letterMap[correctAnswerText];
+              if (idx !== undefined && idx < optionStrings.length) {
+                correctAnswerText = optionStrings[idx];
+              }
+            }
+          }
+        }
+        
+        return {
+          questionText: questionText,
+          questionType: "mcq",
+          options: optionStrings,
+          correctAnswer: correctAnswerText,
+          explanation: q.explanation || "",
+          points: q.points || 10,
+        };
+      })
       .filter(q =>
-        q.text &&
-        q.options.length === 4 &&
-        q.options.filter(o => o.isCorrect).length === 1
+        q.questionText &&
+        q.options.length >= 2 &&
+        q.correctAnswer
       );
 
     if (validatedQuestions.length === 0) {
       return res.status(500).json({ message: "AI returned invalid questions. Please try again." });
     }
+
+    console.log('✅ Generated questions:', validatedQuestions.map(q => ({
+      question: q.questionText.substring(0, 30),
+      correctAnswer: q.correctAnswer
+    })));
 
     res.status(200).json({
       questions: validatedQuestions,

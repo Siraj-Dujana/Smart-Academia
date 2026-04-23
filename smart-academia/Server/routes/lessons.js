@@ -26,7 +26,8 @@ const {
   aiEvaluateSubmission,
   submitLab,
   getMySubmission,
-  getLabByLesson,       // ✅ NEW
+  getLabByLesson,
+  getSubmissionPDF,       // ✅ ADDED
 } = require("../controllers/labController");
 
 const { protect, authorize } = require("../middleware/authMiddleware");
@@ -82,54 +83,45 @@ router.get(   "/:id/content", protect, authorize("student"), getLessonContent);
 // LAB routes — TEACHER
 // ════════════════════════════════════════════════════════════
 
-// ✅ GET lab for a lesson (used by teacher editor & student lab view)
-router.get("/:lessonId/lab",
-  protect, getLabByLesson);
+// ✅ GET lab for a lesson
+router.get("/:lessonId/lab", protect, getLabByLesson);
 
 // Create lab manually
-router.post("/:lessonId/lab",
-  protect, authorize("teacher"), createLab);
+router.post("/:lessonId/lab", protect, authorize("teacher"), createLab);
 
 // AI generate lab
-router.post("/:lessonId/lab/ai-generate",
-  protect, authorize("teacher"), aiGenerateLab);
+router.post("/:lessonId/lab/ai-generate", protect, authorize("teacher"), aiGenerateLab);
 
 // AI explain lab
-router.post("/:lessonId/lab/:labId/explain",
-  protect, authorize("teacher"), aiExplainLab);
+router.post("/:lessonId/lab/:labId/explain", protect, authorize("teacher"), aiExplainLab);
 
 // Update lab
-router.put("/:lessonId/lab/:labId",
-  protect, authorize("teacher"), updateLab);
+router.put("/:lessonId/lab/:labId", protect, authorize("teacher"), updateLab);
 
 // Delete lab
-router.delete("/:lessonId/lab/:labId",
-  protect, authorize("teacher"), deleteLab);
+router.delete("/:lessonId/lab/:labId", protect, authorize("teacher"), deleteLab);
 
 // Get all student submissions for a lab
-router.get("/:lessonId/lab/:labId/submissions",
-  protect, authorize("teacher"), getLabSubmissions);
+router.get("/:lessonId/lab/:labId/submissions", protect, authorize("teacher"), getLabSubmissions);
+
+// ✅ PDF proxy route - Get submission PDF with auth check
+router.get("/:lessonId/lab/:labId/submissions/:submissionId/pdf", protect, getSubmissionPDF);
 
 // Grade a submission manually
-router.put("/:lessonId/lab/:labId/submissions/:submissionId/grade",
-  protect, authorize("teacher"), gradeSubmission);
+router.put("/:lessonId/lab/:labId/submissions/:submissionId/grade", protect, authorize("teacher"), gradeSubmission);
 
 // AI evaluate a submission
-router.post("/:lessonId/lab/:labId/submissions/:submissionId/ai-evaluate",
-  protect, authorize("teacher"), aiEvaluateSubmission);
+router.post("/:lessonId/lab/:labId/submissions/:submissionId/ai-evaluate", protect, authorize("teacher"), aiEvaluateSubmission);
 
 // ════════════════════════════════════════════════════════════
 // LAB routes — STUDENT
 // ════════════════════════════════════════════════════════════
 
 // Submit lab (text answer + optional PDF)
-router.post("/:lessonId/lab/:labId/submit",
-  protect, authorize("student"),
-  pdfUpload.single("pdf"), handlePdfUploadError,
-  submitLab);
+router.post("/:lessonId/lab/:labId/submit", protect, authorize("student"),
+  pdfUpload.single("pdf"), handlePdfUploadError, submitLab);
 
 // Get own submission
-router.get("/:lessonId/lab/:labId/my-submission",
-  protect, authorize("student"), getMySubmission);
+router.get("/:lessonId/lab/:labId/my-submission", protect, authorize("student"), getMySubmission);
 
 module.exports = router;

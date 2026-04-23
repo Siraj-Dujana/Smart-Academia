@@ -501,49 +501,74 @@ const LabSubmissions = () => {
       )}
 
       {/* PDF Viewer Modal */}
-      {showPDFModal && selectedSub && (
-        <div
-          className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4"
-          onClick={() => setShowPDFModal(false)}
-        >
-          <div
-            className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-4xl flex flex-col overflow-hidden"
-            style={{ maxHeight: "90vh" }}
-            onClick={e => e.stopPropagation()}
-          >
-            <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700 bg-gradient-to-r from-indigo-600 to-purple-600">
-              <div>
-                <h3 className="text-base font-bold text-white">Student Submission</h3>
-                <p className="text-indigo-100 text-xs">
-                  {selectedSub.student?.fullName} · {selectedSub.student?.studentId}
-                </p>
-              </div>
-              <div className="flex items-center gap-2">
-                <a
-                  href={selectedSub.pdfUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium text-indigo-600 bg-white hover:bg-indigo-50"
-                >
-                  <span className="material-symbols-outlined text-sm">open_in_new</span>
-                  Open
-                </a>
-                <button onClick={() => setShowPDFModal(false)} className="text-white hover:bg-white/20 rounded-lg p-1.5">
-                  <span className="material-symbols-outlined">close</span>
-                </button>
-              </div>
-            </div>
-            <div className="flex-1 p-4">
-              <iframe
-                src={`${selectedSub.pdfUrl}#toolbar=1`}
-                className="w-full rounded-lg"
-                style={{ height: "65vh" }}
-                title="PDF Viewer"
-              />
-            </div>
-          </div>
+{/* PDF Viewer Modal */}
+{showPDFModal && selectedSub && (
+  <div
+    className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+    onClick={() => setShowPDFModal(false)}
+  >
+    <div
+      className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-5xl flex flex-col overflow-hidden"
+      style={{ maxHeight: "95vh" }}
+      onClick={e => e.stopPropagation()}
+    >
+      {/* Header */}
+      <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700 bg-gradient-to-r from-indigo-600 to-purple-600">
+        <div>
+          <h3 className="text-base sm:text-lg font-bold text-white">Student Submission</h3>
+          <p className="text-indigo-100 text-xs sm:text-sm">
+            {selectedSub.student?.fullName} · {selectedSub.student?.studentId}
+          </p>
         </div>
-      )}
+        <div className="flex items-center gap-2">
+          <a
+            href={selectedSub.pdfUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            download
+            className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium text-indigo-600 bg-white hover:bg-indigo-50 transition-colors"
+          >
+            <span className="material-symbols-outlined text-sm">download</span>
+            Download
+          </a>
+          <button onClick={() => setShowPDFModal(false)} className="text-white hover:bg-white/20 rounded-lg p-1.5 transition-colors">
+            <span className="material-symbols-outlined">close</span>
+          </button>
+        </div>
+      </div>
+
+      {/* ✅ PDF Viewer - token passed as query parameter */}
+      <div className="flex-1 bg-gray-100 dark:bg-gray-900" style={{ minHeight: "70vh" }}>
+        {selectedSub.pdfUrl ? (
+          <iframe
+            src={`${API}/api/courses/${selectedCourse}/lessons/${selectedLesson}/lab/${selectedLab._id}/submissions/${selectedSub._id}/pdf?token=${encodeURIComponent(token)}`}
+            className="w-full h-full"
+            style={{ minHeight: "70vh", border: "none" }}
+            title="PDF Viewer"
+          />
+        ) : (
+          <div className="flex flex-col items-center justify-center h-full">
+            <span className="material-symbols-outlined text-5xl text-gray-400 mb-4">broken_image</span>
+            <p className="text-gray-500 text-sm">PDF file not available</p>
+          </div>
+        )}
+      </div>
+
+      {/* Bottom bar */}
+      <div className="flex items-center justify-between px-4 py-3 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
+        <p className="text-xs text-gray-500">
+          Submitted: {new Date(selectedSub.submittedAt).toLocaleString()}
+        </p>
+        <button
+          onClick={() => setShowPDFModal(false)}
+          className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-medium transition-colors"
+        >
+          Close
+        </button>
+      </div>
+    </div>
+  </div>
+)}
     </div>
   );
 };

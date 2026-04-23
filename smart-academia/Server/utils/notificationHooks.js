@@ -4,7 +4,7 @@
 const { createNotification, broadcastToCourse } = require("../controllers/notificationController");
 
 // ✅ Base URL for email links
-const BASE_URL = process.env.CLIENT_URL || "http://localhost:5173";
+// const BASE_URL = process.env.CLIENT_URL || "http://localhost:5173";
 
 // ─── STUDENT: Course enrolled ────────────────────────────────
 const notifyEnrollment = async ({ 
@@ -17,7 +17,7 @@ const notifyEnrollment = async ({
       type: "enrollment",
       title: `Enrolled in ${courseTitle}`,
       message: `You've successfully enrolled in "${courseTitle}". Start learning now!`,
-      link: `${BASE_URL}/lessons/${courseId}`,
+      link: `/lessons/${courseId}`,
       courseId,
       priority: "normal",
       sendEmailNotif, recipientEmail, recipientName,
@@ -38,7 +38,7 @@ const notifyUnenrollment = async ({
       type: "system",
       title: `Unenrolled from ${courseTitle}`,
       message: `You have been unenrolled from "${courseTitle}". You can re-enroll anytime from the courses page.`,
-      link: `${BASE_URL}/student/dashboard?tab=courses`,
+      link: `/student/dashboard?tab=courses`,
       courseId,
       priority: "normal",
       sendEmailNotif, recipientEmail, recipientName,
@@ -59,7 +59,7 @@ const notifyLessonUnlocked = async ({
       type: "lesson_unlocked",
       title: "Next Lesson Unlocked! 🔓",
       message: `"${lessonTitle}" is now available. Keep up the great work!`,
-      link: `${BASE_URL}/lessons/${courseId}`,
+      link: `/lessons/${courseId}`,
       courseId,
       priority: "normal",
       sendEmailNotif, recipientEmail, recipientName,
@@ -80,7 +80,7 @@ const notifyQuizPassed = async ({
       type: "quiz_passed",
       title: `Quiz Passed! 🏆`,
       message: `Congratulations! You passed "${quizTitle}" with ${score}%.`,
-      link: `${BASE_URL}/lessons/${courseId}`,
+      link: `/lessons/${courseId}`,
       courseId,
       priority: "normal",
       sendEmailNotif, recipientEmail, recipientName,
@@ -101,7 +101,7 @@ const notifyCourseCompleted = async ({
       type: "course_completed",
       title: `Course Completed! 🎉`,
       message: `Amazing! You've completed "${courseTitle}". Well done!`,
-      link: `${BASE_URL}/student/dashboard?tab=progress`,
+      link: `/student/dashboard?tab=progress`,
       courseId,
       priority: "high",
       sendEmailNotif, recipientEmail, recipientName,
@@ -122,7 +122,7 @@ const notifyLabGraded = async ({
       type: "lab_graded",
       title: "Lab Submission Graded 📊",
       message: `Your submission for "${labTitle}" has been graded: ${marks}/${totalMarks} marks.`,
-      link: `${BASE_URL}/lessons/${courseId}`,
+      link: `/lessons/${courseId}`,
       courseId,
       priority: "high",
       sendEmailNotif, recipientEmail, recipientName,
@@ -143,7 +143,7 @@ const notifyAssignmentGraded = async ({
       type: "assignment_graded",
       title: "Assignment Graded 📝",
       message: `"${assignmentTitle}" has been reviewed: ${marks}/${totalMarks} marks.`,
-      link: `${BASE_URL}/student/dashboard?tab=dashboard`,
+      link: `/student/dashboard?tab=dashboard`,
       courseId,
       priority: "high",
       sendEmailNotif, recipientEmail, recipientName,
@@ -160,7 +160,7 @@ const notifyCoursePublished = async ({ courseId, courseTitle, sendEmailNotif = f
       type: "course_published",
       title: `${courseTitle} is now available!`,
       message: `New content has been published in "${courseTitle}". Check it out now!`,
-      link: `${BASE_URL}/lessons/${courseId}`,
+      link: `/lessons/${courseId}`,
       priority: "normal",
       sendEmailNotif,
     });
@@ -177,7 +177,7 @@ const notifyAnnouncement = async ({ courseId, senderId, title, content, sendEmai
       type: "announcement",
       title,
       message: content,
-      link: `${BASE_URL}/student/dashboard?tab=dashboard`,
+      link: `/student/dashboard?tab=dashboard`,
       priority: "normal",
       sendEmailNotif,
     });

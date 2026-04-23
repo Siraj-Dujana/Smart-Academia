@@ -2,10 +2,10 @@ const Quiz           = require("../models/Quiz");
 const Question       = require("../models/Question");
 const QuizAttempt    = require("../models/QuizAttempt");
 const LessonProgress = require("../models/LessonProgress");
-const User           = require("../models/User");  // ✅ ADDED
+const User           = require("../models/User");
 const { checkAndUnlockNext } = require("./lessonController");
 const { GoogleGenAI } = require("@google/genai");
-const { notifyQuizPassed } = require("../utils/notificationHooks");  // ✅ ADDED
+const { notifyQuizPassed } = require("../utils/notificationHooks");
 
 // ── TEACHER: Create quiz ────────────────────────────────────
 const createQuiz = async (req, res) => {
@@ -149,6 +149,7 @@ const deleteQuestion = async (req, res) => {
 };
 
 // ── TEACHER: AI generate questions ─────────────────────────
+// ✅ FIXED: Converts AI letter answers (A,B,C,D) to actual option text
 const aiGenerateQuestions = async (req, res) => {
   try {
     const quiz = await Quiz.findById(req.params.quizId);
@@ -169,7 +170,8 @@ const aiGenerateQuestions = async (req, res) => {
 
     const prompt = `Generate exactly ${numQ} multiple choice questions about "${topic}" at ${diff} difficulty.
 Return ONLY a valid JSON array. No explanation. No markdown. No code blocks. Just raw JSON.
-Format: [{"questionText":"...","options":["A","B","C","D"],"correctAnswer":"A","explanation":"..."}]`;
+Format: [{"questionText":"...","options":["Option A","Option B","Option C","Option D"],"correctAnswer":"Option B","explanation":"..."}]
+IMPORTANT: "correctAnswer" MUST be the exact text of the correct option, NOT a letter.`;
 
     const response = await genAI.models.generateContent({
       model:    "gemini-2.5-flash-lite",
@@ -191,14 +193,30 @@ Format: [{"questionText":"...","options":["A","B","C","D"],"correctAnswer":"A","
     const savedQuestions = [];
     for (const q of generated) {
       if (!q.questionText || !q.correctAnswer || !Array.isArray(q.options)) continue;
+      
       const cleanOptions = q.options.map(o => o.toString().trim()).filter(Boolean);
+      
+      // ✅ FIX: Convert "A"/"B"/"C"/"D" to actual option text
+      let finalCorrectAnswer = q.correctAnswer.trim();
+      const letterMap = { 'A': 0, 'B': 1, 'C': 2, 'D': 3 };
+      
+      if (letterMap[finalCorrectAnswer] !== undefined && cleanOptions.length > letterMap[finalCorrectAnswer]) {
+        const idx = letterMap[finalCorrectAnswer];
+        finalCorrectAnswer = cleanOptions[idx];
+      }
+      
+      console.log('🤖 AI Question saved:', {
+        question: q.questionText.substring(0, 30),
+        correctAnswer: finalCorrectAnswer
+      });
+      
       try {
         const question = await Question.create({
           quiz:          quiz._id,
           questionText:  q.questionText.trim(),
           questionType:  "mcq",
           options:       cleanOptions,
-          correctAnswer: q.correctAnswer.trim(),
+          correctAnswer: finalCorrectAnswer,  // ✅ Now saves TEXT, not letter!
           explanation:   q.explanation || "",
           points:        1,
         });
@@ -297,12 +315,13 @@ const startQuizAttempt = async (req, res) => {
       passed:        false,
     });
 
-    let questions = await Question.find({ quiz: quiz._id });
+    let dbQuestions = await Question.find({ quiz: quiz._id });
+    
     if (quiz.shuffleQuestions) {
-      questions = questions.sort(() => Math.random() - 0.5);
+      dbQuestions = dbQuestions.sort(() => Math.random() - 0.5);
     }
 
-    const safeQuestions = questions.map(q => ({
+    const safeQuestions = dbQuestions.map(q => ({
       _id:          q._id,
       text:         q.questionText,
       questionType: q.questionType,
@@ -343,28 +362,37 @@ const submitQuiz = async (req, res) => {
     if (questions.length === 0)
       return res.status(400).json({ message: "No questions in this quiz" });
 
-    // Grade answers — answers is { [questionId]: optionIndex }
     let correctCount = 0;
     let totalPoints  = 0;
     let earnedPoints = 0;
 
     const gradedAnswers = questions.map(q => {
-      const givenIndex = answers?.[q._id.toString()];
-      const givenText  = givenIndex !== undefined && givenIndex !== null
-        ? q.options[givenIndex] || null
+      const qIdStr = q._id.toString();
+      
+      const givenIndex = (answers && answers[qIdStr] !== undefined && answers[qIdStr] !== null)
+        ? Number(answers[qIdStr])
         : null;
-      const correct    = q.correctAnswer;
-      const isCorrect  = givenText !== null &&
-        givenText.toString().toLowerCase().trim() === correct.toString().toLowerCase().trim();
 
-      if (isCorrect) { correctCount++; earnedPoints += q.points || 1; }
-      totalPoints += q.points || 1;
+      const givenText = (givenIndex !== null && givenIndex >= 0 && givenIndex < q.options.length)
+        ? q.options[givenIndex]
+        : null;
+
+      const correctAnswerText = q.correctAnswer;
+
+      const isCorrect = givenText !== null &&
+        givenText.toString().toLowerCase().trim() === correctAnswerText.toString().toLowerCase().trim();
+
+      if (isCorrect) {
+        correctCount++;
+        earnedPoints += (q.points || 1);
+      }
+      totalPoints += (q.points || 1);
 
       return {
         questionId:    q._id,
         questionText:  q.questionText,
         givenAnswer:   givenText,
-        correctAnswer: correct,
+        correctAnswer: correctAnswerText,
         isCorrect,
         points:        q.points || 1,
       };
@@ -373,19 +401,21 @@ const submitQuiz = async (req, res) => {
     const score  = questions.length > 0 ? Math.round((correctCount / questions.length) * 100) : 0;
     const passed = score >= quiz.passingScore;
 
-    // ✅ NOTIFICATION: Quiz Passed with email support
     if (passed) {
-      const student = await User.findById(req.user._id).select("fullName email");
-      
-      await notifyQuizPassed({
-        studentId: req.user._id,
-        quizTitle: quiz.title,
-        score,
-        courseId: quiz.course,
-        sendEmailNotif: true,              // ✅ Send email
-        recipientEmail: student?.email,    // ✅ Student's email
-        recipientName: student?.fullName,  // ✅ Student's name
-      });
+      try {
+        const student = await User.findById(req.user._id).select("fullName email");
+        await notifyQuizPassed({
+          studentId: req.user._id,
+          quizTitle: quiz.title,
+          score,
+          courseId: quiz.course,
+          sendEmailNotif: true,
+          recipientEmail: student?.email,
+          recipientName: student?.fullName,
+        });
+      } catch (notifErr) {
+        console.error("notifyQuizPassed error:", notifErr.message);
+      }
     }
 
     attempt.answers            = gradedAnswers;
@@ -398,17 +428,19 @@ const submitQuiz = async (req, res) => {
 
     const results = gradedAnswers.map(ga => {
       const question = questions.find(q => q._id.toString() === ga.questionId.toString());
+      const correctIndex = question ? question.options.findIndex(
+        opt => opt.toString().toLowerCase().trim() === question.correctAnswer.toString().toLowerCase().trim()
+      ) : 0;
       return {
         questionText: ga.questionText,
         isCorrect:    ga.isCorrect,
-        correctIndex: question ? question.options.indexOf(question.correctAnswer) : 0,
+        correctIndex,
         options:      question ? question.options.map(o => ({ text: o })) : [],
         explanation:  question?.explanation || "",
         points:       ga.points,
       };
     });
 
-    // Update LessonProgress if quiz is linked to a lesson
     if (quiz.lesson && passed) {
       await LessonProgress.findOneAndUpdate(
         { student: req.user._id, lesson: quiz.lesson },
