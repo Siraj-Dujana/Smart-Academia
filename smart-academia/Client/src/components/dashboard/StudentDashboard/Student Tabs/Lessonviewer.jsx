@@ -768,11 +768,11 @@ const LabSection = ({ lab, lessonId, courseId, onCompleted }) => {
             </div>
             <div className="flex-1 p-4" style={{ minHeight: "60vh" }}>
               <iframe
-  src={`${API}/api/courses/${courseId}/lessons/${lessonId}/lab/${lab._id}/submissions/${submission._id}/pdf`}
-  className="w-full rounded-lg border border-gray-200 dark:border-gray-700"
-  style={{ height: "60vh" }}
-  title="Lab PDF Submission"
-/>
+                src={`${submission.pdfUrl}#toolbar=1`}
+                className="w-full rounded-lg border border-gray-200 dark:border-gray-700"
+                style={{ height: "60vh" }}
+                title="Lab PDF Submission"
+              />
             </div>
           </div>
         </div>
