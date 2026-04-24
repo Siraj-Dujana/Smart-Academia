@@ -18,7 +18,10 @@ Fix: Extract text from PDF and evaluate against lab requirements
 Current: AI explainer fails or returns errors
 Fix: Check API endpoint and Gemini integration
 
-🎯 Problem 6: Quiz Always Gives 0 Score
-Current: Even correct answers marked wrong
-Fix: This is the most critical bug! The answer comparison is broken.
 
+
+dude I have mande some changes through the deepseek so look at the files first and then please help me to solve these problems:
+
+1. pdf viewer is not working(but I made some changes through deepseek then it is not showing and gives authentication token error)
+2. AI lab explainer is not working
+3. I want some chanes in AI lab evalulation(I want that score should be based on what is written inside the pdf) example: if lab was about initliaze a name variable with siraj name and student has submitted the pdf with this code name="siraj" so it should give him full marks

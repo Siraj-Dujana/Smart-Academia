@@ -22,6 +22,7 @@ const LabSubmissions = () => {
   const [aiEvaluation,      setAiEvaluation]      = useState(null); // { score, mistakes, feedback, suggestions }
   const [filter,            setFilter]            = useState("all"); // all | submitted | graded
   const [searchTerm,        setSearchTerm]        = useState("");
+  const [grading, setGrading] = useState(false);
 
   useEffect(() => { fetchCourses(); }, []);
   useEffect(() => { if (selectedCourse) { setSelectedLesson(""); setSelectedLab(null); setSubmissions([]); fetchLessons(); } }, [selectedCourse]);
@@ -85,6 +86,7 @@ const LabSubmissions = () => {
     if (numMarks > (selectedLab.totalMarks || 100)) { setError(`Marks cannot exceed ${selectedLab.totalMarks || 100}`); return; }
 
     setError("");
+    setGrading(true); 
     try {
       const res  = await apiFetch(
         `/api/courses/${selectedCourse}/lessons/${selectedLesson}/lab/${selectedLab._id}/submissions/${submissionId}/grade`,
@@ -98,6 +100,7 @@ const LabSubmissions = () => {
       fetchSubmissions();
       setTimeout(() => setSuccess(""), 3000);
     } catch { setError("Cannot connect to server"); }
+    finally { setGrading(false); }
   };
 
   const handleAiEvaluate = async (submissionId) => {
@@ -478,12 +481,25 @@ const LabSubmissions = () => {
                       </div>
                       <div className="flex gap-2">
                         <button
-                          onClick={() => handleGrade(sub._id)}
-                          className="flex-1 py-2 rounded-lg text-sm font-medium text-white bg-green-600 hover:bg-green-700 transition-colors flex items-center justify-center gap-2"
-                        >
-                          <span className="material-symbols-outlined text-sm">save</span>
-                          Save Grade
-                        </button>
+  onClick={() => handleGrade(sub._id)}
+  disabled={grading}
+  className="flex-1 py-2 rounded-lg text-sm font-medium text-white bg-green-600 hover:bg-green-700 disabled:opacity-50 transition-colors flex items-center justify-center gap-2"
+>
+  {grading ? (
+    <>
+      <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none">
+        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
+      </svg>
+      Saving...
+    </>
+  ) : (
+    <>
+      <span className="material-symbols-outlined text-sm">save</span>
+      Save Grade
+    </>
+  )}
+</button>
                         <button
                           onClick={() => { setGradingId(null); setAiEvaluation(null); }}
                           className="px-4 py-2 rounded-lg text-sm text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
@@ -500,20 +516,21 @@ const LabSubmissions = () => {
         </div>
       )}
 
-      {/* PDF Viewer Modal */}
+{/* PDF Viewer Modal */}
+
 {/* PDF Viewer Modal */}
 {showPDFModal && selectedSub && (
   <div
-    className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+    className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-2"
     onClick={() => setShowPDFModal(false)}
   >
     <div
-      className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-5xl flex flex-col overflow-hidden"
-      style={{ maxHeight: "95vh" }}
+      className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full flex flex-col overflow-hidden"
+      style={{ maxWidth: "95vw", height: "95vh" }}
       onClick={e => e.stopPropagation()}
     >
       {/* Header */}
-      <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700 bg-gradient-to-r from-indigo-600 to-purple-600">
+      <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700 bg-gradient-to-r from-indigo-600 to-purple-600 flex-shrink-0">
         <div>
           <h3 className="text-base sm:text-lg font-bold text-white">Student Submission</h3>
           <p className="text-indigo-100 text-xs sm:text-sm">
@@ -537,13 +554,13 @@ const LabSubmissions = () => {
         </div>
       </div>
 
-      {/* ✅ PDF Viewer - token passed as query parameter */}
-      <div className="flex-1 bg-gray-100 dark:bg-gray-900" style={{ minHeight: "70vh" }}>
+      {/* PDF Viewer */}
+      <div className="flex-1 bg-gray-100 dark:bg-gray-900" style={{ minHeight: 0 }}>
         {selectedSub.pdfUrl ? (
           <iframe
-            src={`${API}/api/courses/${selectedCourse}/lessons/${selectedLesson}/lab/${selectedLab._id}/submissions/${selectedSub._id}/pdf?token=${encodeURIComponent(token)}`}
+            src={selectedSub.pdfUrl}
             className="w-full h-full"
-            style={{ minHeight: "70vh", border: "none" }}
+            style={{ border: "none" }}
             title="PDF Viewer"
           />
         ) : (
@@ -555,7 +572,7 @@ const LabSubmissions = () => {
       </div>
 
       {/* Bottom bar */}
-      <div className="flex items-center justify-between px-4 py-3 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
+      <div className="flex items-center justify-between px-4 py-3 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 flex-shrink-0">
         <p className="text-xs text-gray-500">
           Submitted: {new Date(selectedSub.submittedAt).toLocaleString()}
         </p>
@@ -569,6 +586,8 @@ const LabSubmissions = () => {
     </div>
   </div>
 )}
+
+
     </div>
   );
 };

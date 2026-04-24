@@ -736,47 +736,47 @@ const LabSection = ({ lab, lessonId, courseId, onCompleted }) => {
       </div>
 
       {/* PDF Viewer Modal */}
-      {showPdf && submission?.pdfUrl && (
-        <div
-          className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4"
-          onClick={() => setShowPdf(false)}
-        >
-          <div
-            className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-3xl flex flex-col overflow-hidden"
-            style={{ maxHeight: "90vh" }}
-            onClick={e => e.stopPropagation()}
-          >
-            <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700 bg-indigo-600">
-              <div>
-                <p className="text-sm font-bold text-white">Lab Submission</p>
-                <p className="text-xs text-indigo-200">{submission.pdfFileName || "submission.pdf"}</p>
-              </div>
-              <div className="flex items-center gap-2">
-                <a
-                  href={submission.pdfUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium text-indigo-600 bg-white hover:bg-indigo-50 transition-colors"
-                >
-                  <span className="material-symbols-outlined text-sm">open_in_new</span>
-                  Open
-                </a>
-                <button onClick={() => setShowPdf(false)} className="text-white hover:bg-white/20 rounded-lg p-1.5">
-                  <span className="material-symbols-outlined">close</span>
-                </button>
-              </div>
-            </div>
-            <div className="flex-1 p-4" style={{ minHeight: "60vh" }}>
-              <iframe
-                src={`${submission.pdfUrl}#toolbar=1`}
-                className="w-full rounded-lg border border-gray-200 dark:border-gray-700"
-                style={{ height: "60vh" }}
-                title="Lab PDF Submission"
-              />
-            </div>
-          </div>
+{showPdf && submission?.pdfUrl && (
+  <div
+    className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-2"
+    onClick={() => setShowPdf(false)}
+  >
+    <div
+      className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full flex flex-col overflow-hidden"
+      style={{ maxWidth: "95vw", height: "95vh" }}
+      onClick={e => e.stopPropagation()}
+    >
+      <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700 bg-indigo-600 flex-shrink-0">
+        <div>
+          <p className="text-sm font-bold text-white">Lab Submission</p>
+          <p className="text-xs text-indigo-200">{submission.pdfFileName || "submission.pdf"}</p>
         </div>
-      )}
+        <div className="flex items-center gap-2">
+          <a
+            href={submission.pdfUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium text-indigo-600 bg-white hover:bg-indigo-50 transition-colors"
+          >
+            <span className="material-symbols-outlined text-sm">open_in_new</span>
+            Open
+          </a>
+          <button onClick={() => setShowPdf(false)} className="text-white hover:bg-white/20 rounded-lg p-1.5">
+            <span className="material-symbols-outlined">close</span>
+          </button>
+        </div>
+      </div>
+      <div className="flex-1 bg-gray-100 dark:bg-gray-900" style={{ minHeight: 0 }}>
+        <iframe
+          src={submission.pdfUrl}
+          className="w-full h-full"
+          style={{ border: "none" }}
+          title="Lab PDF Submission"
+        />
+      </div>
+    </div>
+  </div>
+)}
     </div>
   );
 };

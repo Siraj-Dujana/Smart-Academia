@@ -7,7 +7,42 @@ const cloudinary     = require("../config/cloudinary");
 const { checkAndUnlockNext } = require("./lessonController");
 const { GoogleGenAI } = require("@google/genai");
 const { notifyLabGraded } = require("../utils/notificationHooks");
-const fs = require("fs");
+const fs   = require("fs");
+const path = require("path");
+const https = require("https");
+const http  = require("http");
+
+// ─────────────────────────────────────────────────────────────
+// HELPER: Fetch a PDF from a URL and return a Buffer
+// ─────────────────────────────────────────────────────────────
+const fetchPdfBuffer = (url) => {
+  return new Promise((resolve, reject) => {
+    const protocol = url.startsWith("https") ? https : http;
+    protocol.get(url, (res) => {
+      if (res.statusCode !== 200) {
+        return reject(new Error(`Failed to fetch PDF: HTTP ${res.statusCode}`));
+      }
+      const chunks = [];
+      res.on("data", (chunk) => chunks.push(chunk));
+      res.on("end",  () => resolve(Buffer.concat(chunks)));
+      res.on("error", reject);
+    }).on("error", reject);
+  });
+};
+
+// ─────────────────────────────────────────────────────────────
+// HELPER: Extract text from a PDF Buffer using pdf-parse
+// ─────────────────────────────────────────────────────────────
+const extractPdfText = async (buffer) => {
+  try {
+    const pdfParse = require("pdf-parse");
+    const data = await pdfParse(buffer);
+    return (data.text || "").trim();
+  } catch (err) {
+    console.error("pdf-parse error:", err.message);
+    return "";
+  }
+};
 
 // ─────────────────────────────────────────────────────────────
 // SHARED: Get lab for a lesson (teacher editor + student view)
@@ -45,7 +80,6 @@ const createLab = async (req, res) => {
     if (lesson.course.teacher.toString() !== req.user._id.toString())
       return res.status(403).json({ message: "Not your lesson" });
 
-    // One lab per lesson — replace if exists
     await Lab.deleteOne({ lesson: lessonId });
 
     const lab = await Lab.create({
@@ -143,12 +177,8 @@ Return ONLY a valid JSON object. No markdown, no explanation, no code blocks. Ju
       return res.status(500).json({ message: "AI response incomplete. Try again." });
 
     let instructions = generated.instructions || "";
-    if (Array.isArray(instructions)) {
-      instructions = instructions.join("\n");
-    }
-    if (typeof instructions !== "string") {
-      instructions = String(instructions);
-    }
+    if (Array.isArray(instructions)) instructions = instructions.join("\n");
+    if (typeof instructions !== "string") instructions = String(instructions);
 
     await Lab.deleteOne({ lesson: lessonId });
 
@@ -178,7 +208,9 @@ Return ONLY a valid JSON object. No markdown, no explanation, no code blocks. Ju
 };
 
 // ─────────────────────────────────────────────────────────────
-// TEACHER: AI Explain Lab
+// AI Explain Lab
+// FIX: accessible to both teachers AND students (route no longer has authorize("teacher"))
+// This lets students click "AI Explain this lab" from inside the lesson viewer.
 // ─────────────────────────────────────────────────────────────
 const aiExplainLab = async (req, res) => {
   try {
@@ -186,29 +218,32 @@ const aiExplainLab = async (req, res) => {
       .populate({ path: "lesson", populate: { path: "course" } });
 
     if (!lab) return res.status(404).json({ message: "Lab not found" });
-    if (lab.lesson.course.teacher.toString() !== req.user._id.toString())
-      return res.status(403).json({ message: "Not your lab" });
+
+    // Authorization: teacher must own it, student must be enrolled
+    const isTeacher = lab.lesson.course.teacher.toString() === req.user._id.toString();
+    const isStudent = req.user.role === "student";
+    if (!isTeacher && !isStudent)
+      return res.status(403).json({ message: "Not authorized" });
 
     if (!process.env.GEMINI_API_KEY)
       return res.status(400).json({ message: "GEMINI_API_KEY not set in .env" });
 
     const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
-    const prompt = `You are a helpful teaching assistant.
-
-Explain the following lab assignment in simple steps for students:
+    const prompt = `You are a helpful teaching assistant explaining a lab assignment to a university student.
 
 Lab Title: ${lab.title}
 Description: ${lab.description}
 Instructions: ${lab.instructions}
 Expected Output: ${lab.outputExample}
 
+Explain this lab in simple, clear steps so the student knows exactly what to do.
 Return ONLY valid JSON. No markdown, no explanation outside the JSON.
 
 {
-  "steps": ["step 1 explanation", "step 2 explanation"],
-  "concepts": ["concept 1", "concept 2"],
-  "tips": ["tip 1", "tip 2"]
+  "steps": ["clear step 1 for the student", "clear step 2", "clear step 3"],
+  "concepts": ["concept 1 they need to know", "concept 2"],
+  "tips": ["helpful tip 1", "helpful tip 2"]
 }`;
 
     const response = await ai.models.generateContent({
@@ -329,7 +364,7 @@ const gradeSubmission = async (req, res) => {
     if (submission.lab.lesson.course.teacher.toString() !== req.user._id.toString())
       return res.status(403).json({ message: "Not your lab" });
 
-    const numMarks = Number(marks);
+    const numMarks  = Number(marks);
     const totalMarks = submission.lab.totalMarks || 100;
 
     if (numMarks > totalMarks)
@@ -362,6 +397,17 @@ const gradeSubmission = async (req, res) => {
 
 // ─────────────────────────────────────────────────────────────
 // TEACHER: AI Evaluate a submission
+//
+// FIX: Now reads PDF content when the student submitted a PDF.
+// It fetches the PDF from Cloudinary, extracts the text with
+// pdf-parse, and passes that text to Gemini for evaluation.
+// This means a student submitting name="siraj" inside a PDF
+// will be evaluated on that actual code — not on an empty string.
+//
+// Priority order for submission content:
+//   1. PDF text (if pdfUrl exists and text can be extracted)
+//   2. Text answer (if no PDF or PDF has no extractable text)
+//   3. Error message if neither has content
 // ─────────────────────────────────────────────────────────────
 const aiEvaluateSubmission = async (req, res) => {
   try {
@@ -380,29 +426,79 @@ const aiEvaluateSubmission = async (req, res) => {
       return res.status(400).json({ message: "GEMINI_API_KEY not set in .env" });
 
     const lab = submission.lab;
-    const submittedContent = submission.answer || "(No text answer — student uploaded a PDF)";
+    const totalMarks = lab.totalMarks || 100;
 
+    // ── Step 1: Determine what the student actually submitted ──
+    let submittedContent = "";
+    let contentSource    = "none";
+
+    // Try to extract text from the PDF first
+    if (submission.pdfUrl) {
+      try {
+        console.log("🔍 Fetching PDF for AI evaluation:", submission.pdfUrl);
+        const pdfBuffer = await fetchPdfBuffer(submission.pdfUrl);
+        const pdfText   = await extractPdfText(pdfBuffer);
+
+        if (pdfText && pdfText.length > 10) {
+          submittedContent = pdfText;
+          contentSource    = "pdf";
+          console.log(`✅ Extracted ${pdfText.length} chars from PDF`);
+        } else {
+          console.warn("⚠️  PDF extracted but text is empty — falling back to text answer");
+        }
+      } catch (pdfErr) {
+        console.error("⚠️  PDF fetch/parse failed:", pdfErr.message);
+        // Fall through to text answer
+      }
+    }
+
+    // Fall back to text answer if PDF had no extractable text
+    if (!submittedContent && submission.answer && submission.answer.trim()) {
+      submittedContent = submission.answer.trim();
+      contentSource    = "text";
+    }
+
+    // Nothing to evaluate
+    if (!submittedContent) {
+      return res.status(400).json({
+        message: "No evaluatable content found. The student's PDF has no extractable text and no text answer was provided.",
+      });
+    }
+
+    console.log(`📝 Evaluating submission from source: ${contentSource}`);
+
+    // ── Step 2: Build the Gemini prompt ──────────────────────
     const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
-    const prompt = `You are an expert university lab evaluator.
+    const prompt = `You are an expert university lab evaluator grading a student's submission.
 
-LAB DETAILS:
+LAB REQUIREMENTS:
 Title: ${lab.title}
 Description: ${lab.description}
 Instructions: ${lab.instructions}
-Expected Output: ${lab.outputExample}
-Total Marks: ${lab.totalMarks || 100}
+Expected Output / Expected Result: ${lab.outputExample || "Not specified"}
+Total Marks Available: ${totalMarks}
 
-STUDENT SUBMISSION:
+STUDENT'S SUBMISSION (extracted from ${contentSource === "pdf" ? "their uploaded PDF" : "their text answer"}):
+---
 ${submittedContent}
+---
 
-Evaluate the student's submission strictly and fairly. Return ONLY valid JSON. No markdown, no explanation outside the JSON.
+GRADING INSTRUCTIONS:
+- Award marks based strictly on how well the student's submission satisfies the lab requirements.
+- If the lab asked to initialize a variable with a specific value and the student did exactly that, award full marks.
+- Be precise: partial fulfillment → partial marks. Full fulfillment → full marks. No fulfillment → 0.
+- The score must be between 0 and ${totalMarks}.
+- Do NOT penalise for code style unless the instructions specifically require it.
+- Provide specific, constructive feedback mentioning what was correct and what was missing.
+
+Return ONLY valid JSON. No markdown, no explanation outside the JSON.
 
 {
-  "score": <number between 0 and ${lab.totalMarks || 100}>,
-  "mistakes": ["mistake 1", "mistake 2"],
-  "feedback": "overall feedback paragraph for the student",
-  "suggestions": ["suggestion 1", "suggestion 2"]
+  "score": <integer between 0 and ${totalMarks}>,
+  "mistakes": ["specific thing that was wrong or missing", "..."],
+  "feedback": "2-4 sentence overall feedback paragraph addressed to the student",
+  "suggestions": ["concrete suggestion to improve", "..."]
 }`;
 
     const response = await ai.models.generateContent({
@@ -427,6 +523,14 @@ Evaluate the student's submission strictly and fairly. Return ONLY valid JSON. N
       return res.status(500).json({ message: "AI returned invalid format. Try again." });
     }
 
+    // Clamp score to valid range
+    if (typeof evaluation.score === "number") {
+      evaluation.score = Math.max(0, Math.min(totalMarks, Math.round(evaluation.score)));
+    }
+
+    // Include the content source so the teacher UI can show what was evaluated
+    evaluation.evaluatedFrom = contentSource;
+
     res.status(200).json({ evaluation });
   } catch (err) {
     console.error("aiEvaluateSubmission error:", err.message);
@@ -436,7 +540,6 @@ Evaluate the student's submission strictly and fairly. Return ONLY valid JSON. N
 
 // ─────────────────────────────────────────────────────────────
 // STUDENT: Submit lab
-// FIX: Properly upload PDF to Cloudinary from /tmp disk path
 // ─────────────────────────────────────────────────────────────
 const submitLab = async (req, res) => {
   try {
@@ -453,7 +556,6 @@ const submitLab = async (req, res) => {
     let pdfFileName = null;
     let pdfPublicId = null;
 
-    // FIX: Upload the disk-stored PDF to Cloudinary using the file path
     if (req.file) {
       try {
         const uploadResult = await cloudinary.uploader.upload(req.file.path, {
@@ -469,7 +571,6 @@ const submitLab = async (req, res) => {
         console.error("Cloudinary PDF upload error:", uploadErr.message);
         return res.status(500).json({ message: "Failed to upload PDF. Please try again." });
       } finally {
-        // Clean up the temp file regardless of success/failure
         if (req.file.path && fs.existsSync(req.file.path)) {
           try { fs.unlinkSync(req.file.path); } catch (_) {}
         }
@@ -494,7 +595,6 @@ const submitLab = async (req, res) => {
       {
         $set: {
           answer,
-          // Only update PDF fields if a new PDF was uploaded
           ...(pdfUrl ? { pdfUrl, pdfFileName, pdfPublicId } : {}),
           submittedAt: new Date(),
           marks:       null,
@@ -513,7 +613,6 @@ const submitLab = async (req, res) => {
       { upsert: true, new: true }
     );
 
-    // Mark lab as completed in lesson progress
     await LessonProgress.findOneAndUpdate(
       { student: req.user._id, lesson: lessonId },
       {
@@ -567,18 +666,7 @@ const getMySubmission = async (req, res) => {
 // ─────────────────────────────────────────────────────────────
 const getSubmissionPDF = async (req, res) => {
   try {
-
-    // ✅ DEBUG: Log all possible token sources
-    console.log('📄 PDF Request Debug:');
-    console.log('  Query token:', req.query.token ? 'YES' : 'NO');
-    console.log('  Auth header:', req.headers.authorization ? 'YES' : 'NO');
-    console.log('  Full query:', JSON.stringify(req.query));
-    console.log('  All headers:', JSON.stringify(req.headers));
-    
-    // ✅ Get token from query parameter OR from Authorization header
     let token = req.query.token;
-    
-    // If no query token, check Authorization header
     if (!token) {
       const authHeader = req.headers.authorization;
       if (authHeader && authHeader.startsWith("Bearer ")) {
@@ -590,7 +678,6 @@ const getSubmissionPDF = async (req, res) => {
       return res.status(401).json({ message: "Not authorized, no token" });
     }
 
-    // Verify the token
     const jwt = require("jsonwebtoken");
     let decoded;
     try {
@@ -628,13 +715,31 @@ const getSubmissionPDF = async (req, res) => {
       return res.status(404).json({ message: "No PDF submitted" });
     }
 
-    // ✅ Redirect to Cloudinary PDF URL
-    res.redirect(submission.pdfUrl);
+    const protocol = submission.pdfUrl.startsWith("https") ? https : http;
+    
+    protocol.get(submission.pdfUrl, (pdfRes) => {
+      if (pdfRes.statusCode !== 200) {
+        return res.status(502).json({ message: `Failed to fetch PDF from storage` });
+      }
+      
+      res.setHeader("Content-Type", "application/pdf");
+      res.setHeader("Content-Disposition", `inline; filename="${submission.pdfFileName || 'submission.pdf'}"`);
+      res.setHeader("Cache-Control", "public, max-age=3600");
+      
+      pdfRes.pipe(res);
+    }).on("error", (err) => {
+      console.error("Error proxying PDF:", err.message);
+      res.status(502).json({ message: "Failed to load PDF" });
+    });
+
   } catch (err) {
     console.error("getSubmissionPDF error:", err.message);
     res.status(500).json({ message: "Server error" });
   }
 };
+
+
+
 module.exports = {
   getLabByLesson,
   createLab,
@@ -647,5 +752,5 @@ module.exports = {
   aiEvaluateSubmission,
   submitLab,
   getMySubmission,
-  getSubmissionPDF,  // ✅ ADD THIS
+  getSubmissionPDF,
 };

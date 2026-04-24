@@ -93,7 +93,7 @@ router.post("/:lessonId/lab", protect, authorize("teacher"), createLab);
 router.post("/:lessonId/lab/ai-generate", protect, authorize("teacher"), aiGenerateLab);
 
 // AI explain lab
-router.post("/:lessonId/lab/:labId/explain", protect, authorize("teacher"), aiExplainLab);
+router.post("/:lessonId/lab/:labId/explain", protect, aiExplainLab);
 
 // Update lab
 router.put("/:lessonId/lab/:labId", protect, authorize("teacher"), updateLab);
@@ -105,7 +105,7 @@ router.delete("/:lessonId/lab/:labId", protect, authorize("teacher"), deleteLab)
 router.get("/:lessonId/lab/:labId/submissions", protect, authorize("teacher"), getLabSubmissions);
 
 // ✅ PDF proxy route - Get submission PDF with auth check
-router.get("/:lessonId/lab/:labId/submissions/:submissionId/pdf", protect, getSubmissionPDF);
+router.get("/:lessonId/lab/:labId/submissions/:submissionId/pdf",  getSubmissionPDF);
 
 // Grade a submission manually
 router.put("/:lessonId/lab/:labId/submissions/:submissionId/grade", protect, authorize("teacher"), gradeSubmission);
