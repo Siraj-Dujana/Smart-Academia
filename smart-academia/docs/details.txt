@@ -1,3 +1,5 @@
+Problem:
+
 🎯 Problem 1: Quiz and Lab Should Be OPTIONAL
 Current: Every lesson has both tabs
 Fix: Hide tabs based on checkbox settings
@@ -6,22 +8,6 @@ Fix: Hide tabs based on checkbox settings
 Current: Student must pass quiz/lab to unlock next lesson
 Fix: Change condition from quizCompleted to quizSubmitted and lab submitted
 
-🎯 Problem 3: PDF Not Viewed Properly
-Current: PDF doesn't display in the browser
-Fix: Add proper PDF viewer component
-
-🎯 Problem 4: AI Evaluation on PDF Submissions
-Current: AI evaluation only works on text answers
-Fix: Extract text from PDF and evaluate against lab requirements
-
-🎯 Problem 5: AI Explainer Not Working
-Current: AI explainer fails or returns errors
-Fix: Check API endpoint and Gemini integration
 
 
 
-dude I have mande some changes through the deepseek so look at the files first and then please help me to solve these problems:
-
-1. pdf viewer is not working(but I made some changes through deepseek then it is not showing and gives authentication token error)
-2. AI lab explainer is not working
-3. I want some chanes in AI lab evalulation(I want that score should be based on what is written inside the pdf) example: if lab was about initliaze a name variable with siraj name and student has submitted the pdf with this code name="siraj" so it should give him full marks
