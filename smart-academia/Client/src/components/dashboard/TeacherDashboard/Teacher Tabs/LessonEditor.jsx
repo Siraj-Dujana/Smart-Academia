@@ -450,6 +450,17 @@ const LessonEditor = () => {
                 {/* QUIZ TAB */}
                 {tab === "quiz" && (
                   <div className="space-y-5 max-w-4xl">
+
+                    {/* NEW: warn if requiresQuiz is off */}
+    {!lesson.requiresQuiz && (
+      <div className="p-3 rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 flex items-center gap-2">
+        <span className="material-symbols-outlined text-amber-500 text-sm">warning</span>
+        <p className="text-sm text-amber-700 dark:text-amber-300">
+          Quiz requirement is <strong>disabled</strong> in Settings. Students won't see this quiz.
+          Enable "Requires Quiz" in the Settings tab to make it visible and required.
+        </p>
+      </div>
+    )}
                     {!savedLessonId && <div className="p-3 rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200 text-amber-700 text-sm">Save lesson content first.</div>}
                     <div className="grid grid-cols-2 gap-4">
                       <div><label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Time Limit (min)</label><input type="number" value={quizForm.timeLimit} min={5} onChange={e => setQuizForm(p => ({ ...p, timeLimit: Number(e.target.value) }))} className="w-full px-4 py-2.5 text-sm border border-gray-300 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500" /></div>
@@ -505,6 +516,16 @@ const LessonEditor = () => {
                 {/* LAB TAB */}
                 {tab === "lab" && (
                   <div className="space-y-5 max-w-4xl">
+                    {/* NEW: warn if requiresLab is off */}
+    {!lesson.requiresLab && (
+      <div className="p-3 rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 flex items-center gap-2">
+        <span className="material-symbols-outlined text-amber-500 text-sm">warning</span>
+        <p className="text-sm text-amber-700 dark:text-amber-300">
+          Lab requirement is <strong>disabled</strong> in Settings. Students won't see this lab.
+          Enable "Requires Lab" in the Settings tab to make it visible and required.
+        </p>
+      </div>
+    )}
                     {!savedLessonId && <div className="p-3 rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200 text-amber-700 text-sm">Save lesson first.</div>}
                     {savedLessonId && (
                       <div className="flex justify-end"><button onClick={() => setShowAIGenerator(true)} className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-xl text-sm font-medium shadow-md"><span className="material-symbols-outlined">auto_awesome</span>AI Generate Lab</button></div>

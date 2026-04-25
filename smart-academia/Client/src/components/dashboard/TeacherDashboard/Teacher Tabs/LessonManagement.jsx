@@ -234,18 +234,30 @@ const LessonManagement = () => {
                   <div className="flex flex-wrap items-center gap-2 sm:gap-3 mt-1">
                     <span className="text-[10px] sm:text-xs text-gray-500">{lesson.duration}</span>
                     <span className="text-[10px] sm:text-xs text-gray-500">{lesson.points} pts</span>
-                    {lesson.requiresQuiz && (
-                      <span className="flex items-center gap-0.5 sm:gap-1 text-[10px] sm:text-xs text-amber-600 dark:text-amber-400">
-                        <span className="material-symbols-outlined text-xs">quiz</span>
-                        Quiz
-                      </span>
-                    )}
-                    {lesson.requiresLab && (
-                      <span className="flex items-center gap-0.5 sm:gap-1 text-[10px] sm:text-xs text-purple-600 dark:text-purple-400">
-                        <span className="material-symbols-outlined text-xs">science</span>
-                        Lab
-                      </span>
-                    )}
+                    
+                    
+                  {lesson.requiresQuiz && (
+  <span className={`flex items-center gap-0.5 sm:gap-1 text-[10px] sm:text-xs ${
+    lesson.content 
+      ? "text-amber-600 dark:text-amber-400" 
+      : "text-amber-400 dark:text-amber-600 opacity-60"
+  }`}>
+    <span className="material-symbols-outlined text-xs">quiz</span>
+    Quiz
+  </span>
+)}
+{lesson.requiresLab && (
+  <span className={`flex items-center gap-0.5 sm:gap-1 text-[10px] sm:text-xs ${
+    lesson.content
+      ? "text-purple-600 dark:text-purple-400"
+      : "text-purple-400 dark:text-purple-600 opacity-60"
+  }`}>
+    <span className="material-symbols-outlined text-xs">science</span>
+    Lab
+  </span>
+)}
+
+
                     {lesson.content && (
                       <span className="flex items-center gap-0.5 sm:gap-1 text-[10px] sm:text-xs text-green-600 dark:text-green-400">
                         <span className="material-symbols-outlined text-xs">check_circle</span>

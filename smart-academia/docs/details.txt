@@ -4,6 +4,7 @@ Problem:
 Current: Every lesson has both tabs
 Fix: Hide tabs based on checkbox settings
 
+
 🎯 Problem 2: Unlock on SUBMIT (Not PASS)
 Current: Student must pass quiz/lab to unlock next lesson
 Fix: Change condition from quizCompleted to quizSubmitted and lab submitted
