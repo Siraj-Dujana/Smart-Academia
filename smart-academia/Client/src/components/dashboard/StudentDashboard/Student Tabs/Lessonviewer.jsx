@@ -16,8 +16,6 @@ const apiFetch = (url, opts = {}) => {
 
 // ─────────────────────────────────────────────
 // QUIZ SECTION
-// FIX: submitQuiz now calls POST /api/quizzes/submit (not /:id/submit)
-// FIX: tab detection uses warningRef correctly
 // ─────────────────────────────────────────────
 const QuizSection = ({ quiz, courseId, lessonId, onCompleted }) => {
   const [questions, setQuestions] = useState([]);
@@ -33,13 +31,28 @@ const QuizSection = ({ quiz, courseId, lessonId, onCompleted }) => {
   const [warning, setWarning] = useState("");
   const timerRef = useRef(null);
   const warningRef = useRef(0);
-  // FIX: Store the current attempt ID so submitQuiz can send it
   const attemptIdRef = useRef(null);
 
   useEffect(() => {
     fetchInit();
     return () => clearInterval(timerRef.current);
   }, [quiz._id]);
+
+
+  useEffect(() => {
+  if (attempts >= quiz.maxAttempts && !result?.passed) {
+    markQuizExhausted();
+  }
+}, [attempts, quiz.maxAttempts]);
+
+
+  const markQuizExhausted = async () => {
+  try {
+    await apiFetch(`/api/quizzes/${quiz._id}/mark-exhausted`, { method: "POST" });
+    onCompleted && onCompleted();
+  } catch { /* silent */ }
+};
+  
 
   const fetchInit = async () => {
     try {
@@ -53,10 +66,11 @@ const QuizSection = ({ quiz, courseId, lessonId, onCompleted }) => {
       if (aRes.ok) {
         const att = aData.attempts || [];
         setAttempts(att.length);
-        const passed = att.find((a) => a.passed);
-        if (passed) {
+        // Mark as submitted if they have ANY attempt (pass or fail)
+        if (att.length > 0) {
+          const best = att.reduce((a, b) => (a.score > b.score ? a : b));
           setSubmitted(true);
-          setResult({ score: passed.score, passed: true, alreadyDone: true });
+          setResult({ score: best.score, passed: best.passed, alreadyDone: true });
           onCompleted && onCompleted();
         }
       }
@@ -102,8 +116,10 @@ const QuizSection = ({ quiz, courseId, lessonId, onCompleted }) => {
     }, 1000);
   };
 
-  // FIX: handleStart now calls the proper startQuizAttempt endpoint
-  // and stores the attemptId for submission
+
+
+
+
   const handleStart = async () => {
     setAnswers({});
     setResult(null);
@@ -122,7 +138,6 @@ const QuizSection = ({ quiz, courseId, lessonId, onCompleted }) => {
         return;
       }
       attemptIdRef.current = data.attempt._id;
-      // Use questions from the attempt start response (already shuffled)
       setQuestions(data.questions || []);
     } catch {
       setError("Cannot connect to server");
@@ -135,7 +150,6 @@ const QuizSection = ({ quiz, courseId, lessonId, onCompleted }) => {
 
   const handleAnswer = (qId, val) => setAnswers((p) => ({ ...p, [qId]: val }));
 
-  // FIX: submitQuiz calls POST /api/quizzes/submit with attemptId in body
   const handleSubmit = async (flagCheating = false) => {
     clearInterval(timerRef.current);
     setSubmitting(true);
@@ -145,7 +159,7 @@ const QuizSection = ({ quiz, courseId, lessonId, onCompleted }) => {
       const payload = {
         attemptId: attemptIdRef.current,
         answers: Object.fromEntries(
-          questions.map((q, idx) => [q._id, answers[q._id] ?? null]),
+          questions.map((q) => [q._id, answers[q._id] ?? null]),
         ),
         timeTaken: quiz.timeLimit * 60 - (timeLeft || 0),
         flaggedForCheating: flagCheating || warningRef.current >= 2,
@@ -162,7 +176,8 @@ const QuizSection = ({ quiz, courseId, lessonId, onCompleted }) => {
       setResult(data);
       setSubmitted(true);
       setAttempts((p) => p + 1);
-      if (data.passed) onCompleted && onCompleted();
+      // Notify parent that quiz was submitted (pass or fail)
+      onCompleted && onCompleted();
     } catch {
       setError("Cannot connect to server");
     } finally {
@@ -172,8 +187,11 @@ const QuizSection = ({ quiz, courseId, lessonId, onCompleted }) => {
 
   const fmt = (s) =>
     `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
-
+  
   if (attempts >= quiz.maxAttempts && !result?.passed) {
+      
+
+    
     return (
       <div className="p-4 rounded-xl bg-red-50 dark:bg-red-900/20 border border-red-200">
         <p className="text-sm font-medium text-red-700 dark:text-red-300 flex items-center gap-2">
@@ -188,9 +206,7 @@ const QuizSection = ({ quiz, courseId, lessonId, onCompleted }) => {
     return (
       <div className="p-4 sm:p-5 rounded-xl border border-gray-200 dark:border-gray-600 space-y-3">
         <div className="flex items-center gap-3">
-          <span className="material-symbols-outlined text-amber-500 text-2xl">
-            quiz
-          </span>
+          <span className="material-symbols-outlined text-amber-500 text-2xl">quiz</span>
           <div>
             <p className="font-semibold text-gray-900 dark:text-white text-sm sm:text-base">
               {quiz.title || "Lesson Quiz"}
@@ -202,8 +218,7 @@ const QuizSection = ({ quiz, courseId, lessonId, onCompleted }) => {
           </div>
         </div>
         <div className="p-3 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 text-xs text-amber-700 dark:text-amber-300">
-          ⚠️ Tab switching is monitored. 1st switch = warning. 2nd switch =
-          auto-submit.
+          ⚠️ Tab switching is monitored. 1st switch = warning. 2nd switch = auto-submit.
         </div>
         {attempts > 0 && (
           <p className="text-xs text-amber-600">
@@ -214,9 +229,7 @@ const QuizSection = ({ quiz, courseId, lessonId, onCompleted }) => {
           onClick={handleStart}
           className="w-full py-2.5 rounded-xl text-sm font-medium text-white bg-amber-600 hover:bg-amber-700 flex items-center justify-center gap-2"
         >
-          <span className="material-symbols-outlined text-base">
-            play_arrow
-          </span>
+          <span className="material-symbols-outlined text-base">play_arrow</span>
           {attempts > 0 ? "Retake Quiz" : "Start Quiz"}
         </button>
         {error && <p className="text-xs text-red-600">{error}</p>}
@@ -227,33 +240,29 @@ const QuizSection = ({ quiz, courseId, lessonId, onCompleted }) => {
   if (submitted && result) {
     return (
       <div
-        className={`p-4 sm:p-5 rounded-xl border ${result.passed ? "border-green-300 bg-green-50 dark:bg-green-900/20" : "border-red-300 bg-red-50 dark:bg-red-900/20"}`}
+        className={`p-4 sm:p-5 rounded-xl border ${result.passed ? "border-green-300 bg-green-50 dark:bg-green-900/20" : "border-amber-300 bg-amber-50 dark:bg-amber-900/20"}`}
       >
         <div className="flex items-center gap-3 mb-3">
           <span
-            className={`material-symbols-outlined text-2xl ${result.passed ? "text-green-600" : "text-red-500"}`}
+            className={`material-symbols-outlined text-2xl ${result.passed ? "text-green-600" : "text-amber-500"}`}
           >
-            {result.passed ? "check_circle" : "cancel"}
+            {result.passed ? "check_circle" : "task_alt"}
           </span>
           <div>
             <p
-              className={`font-bold ${result.passed ? "text-green-700 dark:text-green-300" : "text-red-700 dark:text-red-300"} text-sm sm:text-base`}
+              className={`font-bold text-sm sm:text-base ${result.passed ? "text-green-700 dark:text-green-300" : "text-amber-700 dark:text-amber-300"}`}
             >
               {result.alreadyDone
-                ? "Already Passed ✓"
+                ? result.passed ? "Already Passed ✓" : `Previously attempted — ${result.score}%`
                 : result.passed
                   ? `Passed! ${result.score}%`
-                  : `Failed — ${result.score}%`}
+                  : `Submitted — ${result.score}% (need ${quiz.passingScore}% to pass)`}
             </p>
-            {!result.passed && (
-              <p className="text-xs text-gray-500">
-                Need {quiz.passingScore}% to pass
-              </p>
-            )}
+            <p className="text-xs text-gray-500 mt-0.5">
+              Quiz submitted ✓ — this counts toward lesson completion
+            </p>
             {result.flaggedForCheating && (
-              <p className="text-xs text-red-600 mt-1">
-                ⚠️ Flagged for tab switching
-              </p>
+              <p className="text-xs text-red-600 mt-1">⚠️ Flagged for tab switching</p>
             )}
           </div>
         </div>
@@ -300,7 +309,6 @@ const QuizSection = ({ quiz, courseId, lessonId, onCompleted }) => {
             <p className="text-sm font-medium text-gray-900 dark:text-white mb-2">
               {i + 1}. {q.text || q.questionText}
             </p>
-            {/* FIX: Handle both { text, index } format from startAttempt and plain string options */}
             {(q.options || []).map((opt, j) => {
               const optText = typeof opt === "object" ? opt.text : opt;
               const optIndex = typeof opt === "object" ? opt.index : j;
@@ -321,9 +329,7 @@ const QuizSection = ({ quiz, courseId, lessonId, onCompleted }) => {
                     onChange={() => handleAnswer(q._id, optIndex)}
                     className="text-blue-600"
                   />
-                  <span className="text-sm text-gray-800 dark:text-gray-200">
-                    {optText}
-                  </span>
+                  <span className="text-sm text-gray-800 dark:text-gray-200">{optText}</span>
                 </label>
               );
             })}
@@ -339,24 +345,9 @@ const QuizSection = ({ quiz, courseId, lessonId, onCompleted }) => {
         >
           {submitting ? (
             <>
-              <svg
-                className="animate-spin h-4 w-4"
-                viewBox="0 0 24 24"
-                fill="none"
-              >
-                <circle
-                  className="opacity-25"
-                  cx="12"
-                  cy="12"
-                  r="10"
-                  stroke="currentColor"
-                  strokeWidth="4"
-                />
-                <path
-                  className="opacity-75"
-                  fill="currentColor"
-                  d="M4 12a8 8 0 018-8v8z"
-                />
+              <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
               </svg>
               Grading...
             </>
@@ -373,12 +364,8 @@ const QuizSection = ({ quiz, courseId, lessonId, onCompleted }) => {
 };
 
 // ─────────────────────────────────────────────
-// LAB SECTION (unchanged — lab submit was already correct)
+// LAB SECTION
 // ─────────────────────────────────────────────
-
-// LabSection — drop this in place of the existing LabSection in Lessonviewer.jsx
-// It replaces the component definition only; the rest of Lessonviewer.jsx stays the same.
-
 const LabSection = ({ lab, lessonId, courseId, onCompleted }) => {
   const [answer, setAnswer] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -391,7 +378,7 @@ const LabSection = ({ lab, lessonId, courseId, onCompleted }) => {
   const [showExplain, setShowExplain] = useState(false);
   const [explanation, setExplanation] = useState(null);
   const [loadingExpl, setLoadingExpl] = useState(false);
-  const [activeTab, setActiveTab] = useState("instructions"); // instructions | submit | result
+  const [activeTab, setActiveTab] = useState("instructions");
   const fileInputRef = useRef(null);
 
   useEffect(() => {
@@ -409,7 +396,6 @@ const LabSection = ({ lab, lessonId, courseId, onCompleted }) => {
         setAnswer(data.submission.answer || "");
         setSubmitted(true);
         onCompleted && onCompleted();
-        // Auto-switch to result tab if graded
         if (data.submission.status === "graded") setActiveTab("result");
         else setActiveTab("submit");
       } else {
@@ -482,37 +468,16 @@ const LabSection = ({ lab, lessonId, courseId, onCompleted }) => {
   };
 
   const labCfg = {
-    programming: {
-      icon: "terminal",
-      color: "text-green-600",
-      bg: "bg-green-50 dark:bg-green-900/20",
-      label: "Programming Lab",
-    },
-    dld: {
-      icon: "schema",
-      color: "text-blue-600",
-      bg: "bg-blue-50 dark:bg-blue-900/20",
-      label: "DLD Lab",
-    },
-    networking: {
-      icon: "hub",
-      color: "text-purple-600",
-      bg: "bg-purple-50 dark:bg-purple-900/20",
-      label: "Networking Lab",
-    },
-    theory: {
-      icon: "description",
-      color: "text-amber-600",
-      bg: "bg-amber-50 dark:bg-amber-900/20",
-      label: "Theory Lab",
-    },
+    programming: { icon: "terminal", color: "text-green-600", bg: "bg-green-50 dark:bg-green-900/20", label: "Programming Lab" },
+    dld: { icon: "schema", color: "text-blue-600", bg: "bg-blue-50 dark:bg-blue-900/20", label: "DLD Lab" },
+    networking: { icon: "hub", color: "text-purple-600", bg: "bg-purple-50 dark:bg-purple-900/20", label: "Networking Lab" },
+    theory: { icon: "description", color: "text-amber-600", bg: "bg-amber-50 dark:bg-amber-900/20", label: "Theory Lab" },
   };
   const cfg = labCfg[lab.labType] || labCfg.theory;
 
   const diffColor = {
     easy: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300",
-    medium:
-      "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300",
+    medium: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300",
     hard: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300",
   };
 
@@ -523,8 +488,7 @@ const LabSection = ({ lab, lessonId, courseId, onCompleted }) => {
         : "border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700"
     }`;
 
-  const isOverdue =
-    lab.dueDate && new Date(lab.dueDate) < new Date() && !submitted;
+  const isOverdue = lab.dueDate && new Date(lab.dueDate) < new Date() && !submitted;
 
   return (
     <div className="border border-gray-200 dark:border-gray-700 rounded-2xl overflow-hidden bg-white dark:bg-gray-800">
@@ -532,23 +496,13 @@ const LabSection = ({ lab, lessonId, courseId, onCompleted }) => {
       <div className="px-4 sm:px-5 py-3 sm:py-4 bg-gray-50 dark:bg-gray-700/50 border-b border-gray-200 dark:border-gray-700">
         <div className="flex flex-wrap items-start justify-between gap-2">
           <div className="flex items-center gap-2 sm:gap-3">
-            <div
-              className={`flex items-center justify-center w-9 h-9 sm:w-10 sm:h-10 rounded-xl ${cfg.bg}`}
-            >
-              <span
-                className={`material-symbols-outlined ${cfg.color} text-lg sm:text-xl`}
-              >
-                {cfg.icon}
-              </span>
+            <div className={`flex items-center justify-center w-9 h-9 sm:w-10 sm:h-10 rounded-xl ${cfg.bg}`}>
+              <span className={`material-symbols-outlined ${cfg.color} text-lg sm:text-xl`}>{cfg.icon}</span>
             </div>
             <div>
               <div className="flex flex-wrap items-center gap-1.5">
-                <p className="font-semibold text-gray-900 dark:text-white text-sm sm:text-base">
-                  {lab.title}
-                </p>
-                <span
-                  className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${diffColor[lab.difficulty] || diffColor.medium}`}
-                >
+                <p className="font-semibold text-gray-900 dark:text-white text-sm sm:text-base">{lab.title}</p>
+                <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${diffColor[lab.difficulty] || diffColor.medium}`}>
                   {lab.difficulty}
                 </span>
                 {lab.totalMarks && (
@@ -557,31 +511,22 @@ const LabSection = ({ lab, lessonId, courseId, onCompleted }) => {
                   </span>
                 )}
               </div>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                {cfg.label}
-              </p>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{cfg.label}</p>
             </div>
           </div>
           <div className="flex items-center gap-2 flex-wrap">
             {lab.dueDate && (
-              <span
-                className={`text-xs flex items-center gap-1 ${isOverdue ? "text-red-600 dark:text-red-400" : "text-gray-500"}`}
-              >
-                <span className="material-symbols-outlined text-sm">
-                  {isOverdue ? "warning" : "schedule"}
-                </span>
-                {isOverdue ? "Overdue" : "Due"}:{" "}
-                {new Date(lab.dueDate).toLocaleDateString()}
+              <span className={`text-xs flex items-center gap-1 ${isOverdue ? "text-red-600 dark:text-red-400" : "text-gray-500"}`}>
+                <span className="material-symbols-outlined text-sm">{isOverdue ? "warning" : "schedule"}</span>
+                {isOverdue ? "Overdue" : "Due"}: {new Date(lab.dueDate).toLocaleDateString()}
               </span>
             )}
             {submitted && (
-              <span
-                className={`px-2 py-0.5 rounded-full text-xs font-medium ${
-                  submission?.status === "graded"
-                    ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300"
-                    : "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300"
-                }`}
-              >
+              <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+                submission?.status === "graded"
+                  ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300"
+                  : "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300"
+              }`}>
                 {submission?.status === "graded" ? "✓ Graded" : "✓ Submitted"}
               </span>
             )}
@@ -591,25 +536,16 @@ const LabSection = ({ lab, lessonId, courseId, onCompleted }) => {
 
       {/* Tabs */}
       <div className="flex border-b border-gray-200 dark:border-gray-700">
-        <button
-          className={tabClass("instructions")}
-          onClick={() => setActiveTab("instructions")}
-        >
+        <button className={tabClass("instructions")} onClick={() => setActiveTab("instructions")}>
           <span className="material-symbols-outlined text-sm">info</span>
           Instructions
         </button>
-        <button
-          className={tabClass("submit")}
-          onClick={() => setActiveTab("submit")}
-        >
+        <button className={tabClass("submit")} onClick={() => setActiveTab("submit")}>
           <span className="material-symbols-outlined text-sm">upload</span>
           Submit
         </button>
         {submitted && (
-          <button
-            className={tabClass("result")}
-            onClick={() => setActiveTab("result")}
-          >
+          <button className={tabClass("result")} onClick={() => setActiveTab("result")}>
             <span className="material-symbols-outlined text-sm">
               {submission?.status === "graded" ? "grade" : "pending"}
             </span>
@@ -624,71 +560,42 @@ const LabSection = ({ lab, lessonId, courseId, onCompleted }) => {
         {activeTab === "instructions" && (
           <>
             {lab.description && (
-              <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed">
-                {lab.description}
-              </p>
+              <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed">{lab.description}</p>
             )}
-
             <div className="p-3 sm:p-4 bg-blue-50 dark:bg-blue-900/20 rounded-xl border border-blue-200 dark:border-blue-800">
               <p className="text-xs font-semibold text-blue-700 dark:text-blue-300 mb-2 flex items-center gap-1">
                 <span className="material-symbols-outlined text-sm">list</span>
                 Step-by-step instructions
               </p>
               <div className="space-y-1">
-                {lab.instructions
-                  .split("\n")
-                  .filter(Boolean)
-                  .map((step, i) => (
-                    <p
-                      key={i}
-                      className="text-xs sm:text-sm text-gray-700 dark:text-gray-300 leading-relaxed"
-                    >
-                      {step}
-                    </p>
-                  ))}
+                {lab.instructions.split("\n").filter(Boolean).map((step, i) => (
+                  <p key={i} className="text-xs sm:text-sm text-gray-700 dark:text-gray-300 leading-relaxed">{step}</p>
+                ))}
               </div>
             </div>
 
             {lab.outputExample && (
               <div className="p-3 bg-gray-900 rounded-xl overflow-x-auto">
-                <p className="text-xs text-gray-400 mb-1.5 font-medium">
-                  Expected output
-                </p>
-                <pre className="text-xs text-green-400 font-mono whitespace-pre-wrap">
-                  {lab.outputExample}
-                </pre>
+                <p className="text-xs text-gray-400 mb-1.5 font-medium">Expected output</p>
+                <pre className="text-xs text-green-400 font-mono whitespace-pre-wrap">{lab.outputExample}</pre>
               </div>
             )}
 
             {lab.labType === "programming" && lab.testCases?.length > 0 && (
               <div className="p-3 bg-gray-900 rounded-xl overflow-x-auto">
-                <p className="text-xs text-gray-400 mb-2 font-medium">
-                  Test cases
-                </p>
+                <p className="text-xs text-gray-400 mb-2 font-medium">Test cases</p>
                 {lab.testCases.map((tc, i) => (
-                  <div
-                    key={i}
-                    className="flex flex-wrap items-center gap-2 text-xs font-mono mb-1.5"
-                  >
+                  <div key={i} className="flex flex-wrap items-center gap-2 text-xs font-mono mb-1.5">
                     <span className="text-gray-500">Input:</span>
-                    <code className="bg-gray-800 px-2 py-0.5 rounded text-green-400">
-                      {tc.input}
-                    </code>
+                    <code className="bg-gray-800 px-2 py-0.5 rounded text-green-400">{tc.input}</code>
                     <span className="text-gray-500">→</span>
-                    <code className="bg-gray-800 px-2 py-0.5 rounded text-blue-400">
-                      {tc.expectedOutput}
-                    </code>
-                    {tc.description && (
-                      <span className="text-gray-500 italic">
-                        {tc.description}
-                      </span>
-                    )}
+                    <code className="bg-gray-800 px-2 py-0.5 rounded text-blue-400">{tc.expectedOutput}</code>
+                    {tc.description && <span className="text-gray-500 italic">{tc.description}</span>}
                   </div>
                 ))}
               </div>
             )}
 
-            {/* AI Explain button — only shown after submission so students engage with the lab first */}
             <button
               onClick={handleAiExplain}
               disabled={loadingExpl}
@@ -696,103 +603,67 @@ const LabSection = ({ lab, lessonId, courseId, onCompleted }) => {
             >
               {loadingExpl ? (
                 <>
-                  <svg
-                    className="animate-spin h-4 w-4"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                  >
-                    <circle
-                      className="opacity-25"
-                      cx="12"
-                      cy="12"
-                      r="10"
-                      stroke="currentColor"
-                      strokeWidth="4"
-                    />
-                    <path
-                      className="opacity-75"
-                      fill="currentColor"
-                      d="M4 12a8 8 0 018-8v8z"
-                    />
+                  <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
                   </svg>
                   Getting AI explanation...
                 </>
               ) : (
                 <>
-                  <span className="material-symbols-outlined text-sm">
-                    auto_awesome
-                  </span>
+                  <span className="material-symbols-outlined text-sm">auto_awesome</span>
                   AI Explain this lab
                 </>
               )}
             </button>
 
-            {/* AI Explanation panel */}
             {showExplain && explanation && (
               <div className="border border-purple-200 dark:border-purple-700 rounded-xl overflow-hidden">
                 <div className="flex items-center justify-between px-4 py-2.5 bg-purple-50 dark:bg-purple-900/20 border-b border-purple-200 dark:border-purple-700">
-                  <p className="text-sm font-semibold text-purple-700 dark:text-purple-300">
-                    AI Explanation
-                  </p>
-                  <button
-                    onClick={() => setShowExplain(false)}
-                    className="text-purple-400 hover:text-purple-600"
-                  >
-                    <span className="material-symbols-outlined text-sm">
-                      close
-                    </span>
+                  <p className="text-sm font-semibold text-purple-700 dark:text-purple-300">AI Explanation</p>
+                  <button onClick={() => setShowExplain(false)} className="text-purple-400 hover:text-purple-600">
+                    <span className="material-symbols-outlined text-sm">close</span>
                   </button>
                 </div>
                 <div className="p-4 space-y-3">
-                  {explanation.steps?.length > 0 && (
-                    <div>
-                      <p className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">
-                        Approach
-                      </p>
-                      <ol className="space-y-1">
-                        {explanation.steps.map((s, i) => (
-                          <li
-                            key={i}
-                            className="text-xs text-gray-600 dark:text-gray-400 flex gap-2"
-                          >
-                            <span className="text-purple-500 font-medium flex-shrink-0">
-                              {i + 1}.
-                            </span>
-                            <span>{s}</span>
-                          </li>
-                        ))}
-                      </ol>
-                    </div>
-                  )}
+                 
+{explanation.steps?.length > 0 && (
+  <div>
+    <p className="text-sm font-semibold text-gray-800 dark:text-gray-200 mb-3 flex items-center gap-1.5">
+      <span className="material-symbols-outlined text-purple-500 text-base">strategy</span>
+      Approach
+    </p>
+    <ol className="space-y-2">
+      {explanation.steps.map((s, i) => (
+        <li key={i} className="flex gap-3 p-3 rounded-lg bg-purple-50/50 dark:bg-purple-900/10 border border-purple-100 dark:border-purple-800/50">
+          <span className="flex items-center justify-center w-6 h-6 rounded-full bg-purple-200 dark:bg-purple-800 text-purple-700 dark:text-purple-300 text-sm font-bold flex-shrink-0 mt-0.5">
+            {i + 1}
+          </span>
+          <span className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">
+            {typeof s === "object" ? (s.instruction || s.step || s.text || JSON.stringify(s)) : s}
+          </span>
+        </li>
+      ))}
+    </ol>
+  </div>
+)}
+
+
                   {explanation.concepts?.length > 0 && (
                     <div>
-                      <p className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">
-                        Key concepts
-                      </p>
+                      <p className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">Key concepts</p>
                       <div className="flex flex-wrap gap-1.5">
                         {explanation.concepts.map((c, i) => (
-                          <span
-                            key={i}
-                            className="text-[10px] px-2 py-0.5 rounded-full bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300"
-                          >
-                            {c}
-                          </span>
+                          <span key={i} className="text-[10px] px-2 py-0.5 rounded-full bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300">{c}</span>
                         ))}
                       </div>
                     </div>
                   )}
                   {explanation.tips?.length > 0 && (
                     <div>
-                      <p className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">
-                        Tips
-                      </p>
+                      <p className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">Tips</p>
                       {explanation.tips.map((t, i) => (
-                        <p
-                          key={i}
-                          className="text-xs text-gray-500 dark:text-gray-400"
-                        >
-                          💡 {t}
-                        </p>
+                        <p key={i} className="text-xs text-gray-500 dark:text-gray-400">💡 {t}</p>
                       ))}
                     </div>
                   )}
@@ -821,18 +692,14 @@ const LabSection = ({ lab, lessonId, courseId, onCompleted }) => {
             )}
             {success && (
               <div className="p-3 rounded-xl bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 text-sm text-green-600 dark:text-green-400 flex items-center gap-2">
-                <span className="material-symbols-outlined text-sm">
-                  check_circle
-                </span>
+                <span className="material-symbols-outlined text-sm">check_circle</span>
                 {success}
               </div>
             )}
 
             {submitted && (
               <div className="p-3 rounded-xl bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-200 dark:border-indigo-800 flex items-center gap-2 text-sm text-indigo-700 dark:text-indigo-300">
-                <span className="material-symbols-outlined text-base">
-                  info
-                </span>
+                <span className="material-symbols-outlined text-base">info</span>
                 Already submitted — you can resubmit to update your answer.
               </div>
             )}
@@ -845,18 +712,11 @@ const LabSection = ({ lab, lessonId, courseId, onCompleted }) => {
                 value={answer}
                 onChange={(e) => setAnswer(e.target.value)}
                 rows={lab.labType === "programming" ? 12 : 7}
-                placeholder={
-                  lab.labType === "programming"
-                    ? "Write your code solution here..."
-                    : "Write your answer here..."
-                }
-                className={`w-full px-3 py-2.5 text-sm border border-gray-300 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 resize-none leading-relaxed ${
-                  lab.labType === "programming" ? "font-mono" : ""
-                }`}
+                placeholder={lab.labType === "programming" ? "Write your code solution here..." : "Write your answer here..."}
+                className={`w-full px-3 py-2.5 text-sm border border-gray-300 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 resize-none leading-relaxed ${lab.labType === "programming" ? "font-mono" : ""}`}
               />
             </div>
 
-            {/* PDF Upload */}
             <div className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-xl p-4">
               <div className="flex flex-col sm:flex-row items-center gap-3">
                 <input
@@ -866,16 +726,8 @@ const LabSection = ({ lab, lessonId, courseId, onCompleted }) => {
                   onChange={(e) => {
                     const f = e.target.files[0];
                     if (!f) return;
-                    if (f.type !== "application/pdf") {
-                      setError("Only PDF files are accepted");
-                      e.target.value = "";
-                      return;
-                    }
-                    if (f.size > 20 * 1024 * 1024) {
-                      setError("PDF must be under 20 MB");
-                      e.target.value = "";
-                      return;
-                    }
+                    if (f.type !== "application/pdf") { setError("Only PDF files are accepted"); e.target.value = ""; return; }
+                    if (f.size > 20 * 1024 * 1024) { setError("PDF must be under 20 MB"); e.target.value = ""; return; }
                     setError("");
                     setPdfFile(f);
                   }}
@@ -886,47 +738,25 @@ const LabSection = ({ lab, lessonId, courseId, onCompleted }) => {
                   onClick={() => fileInputRef.current?.click()}
                   className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
                 >
-                  <span className="material-symbols-outlined text-base">
-                    picture_as_pdf
-                  </span>
+                  <span className="material-symbols-outlined text-base">picture_as_pdf</span>
                   Upload PDF
                 </button>
                 {pdfFile ? (
                   <div className="flex items-center gap-2 text-sm text-green-600 dark:text-green-400">
-                    <span className="material-symbols-outlined text-base">
-                      check_circle
-                    </span>
-                    <span className="max-w-[180px] truncate">
-                      {pdfFile.name}
-                    </span>
-                    <button
-                      onClick={() => {
-                        setPdfFile(null);
-                        if (fileInputRef.current)
-                          fileInputRef.current.value = "";
-                      }}
-                      className="text-red-400 hover:text-red-600"
-                    >
-                      <span className="material-symbols-outlined text-sm">
-                        close
-                      </span>
+                    <span className="material-symbols-outlined text-base">check_circle</span>
+                    <span className="max-w-[180px] truncate">{pdfFile.name}</span>
+                    <button onClick={() => { setPdfFile(null); if (fileInputRef.current) fileInputRef.current.value = ""; }} className="text-red-400 hover:text-red-600">
+                      <span className="material-symbols-outlined text-sm">close</span>
                     </button>
                   </div>
                 ) : submission?.pdfUrl ? (
-                  <button
-                    onClick={() => setShowPdf(true)}
-                    className="flex items-center gap-2 text-sm text-indigo-600 dark:text-indigo-400 hover:underline"
-                  >
-                    <span className="material-symbols-outlined text-base">
-                      description
-                    </span>
+                  <button onClick={() => setShowPdf(true)} className="flex items-center gap-2 text-sm text-indigo-600 dark:text-indigo-400 hover:underline">
+                    <span className="material-symbols-outlined text-base">description</span>
                     View previously submitted PDF
                   </button>
                 ) : null}
               </div>
-              <p className="text-[10px] sm:text-xs text-gray-400 mt-2 text-center">
-                PDF only · max 20 MB
-              </p>
+              <p className="text-[10px] sm:text-xs text-gray-400 mt-2 text-center">PDF only · max 20 MB</p>
             </div>
 
             <button
@@ -936,32 +766,15 @@ const LabSection = ({ lab, lessonId, courseId, onCompleted }) => {
             >
               {submitting ? (
                 <>
-                  <svg
-                    className="animate-spin h-4 w-4"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                  >
-                    <circle
-                      className="opacity-25"
-                      cx="12"
-                      cy="12"
-                      r="10"
-                      stroke="currentColor"
-                      strokeWidth="4"
-                    />
-                    <path
-                      className="opacity-75"
-                      fill="currentColor"
-                      d="M4 12a8 8 0 018-8v8z"
-                    />
+                  <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
                   </svg>
                   Submitting...
                 </>
               ) : (
                 <>
-                  <span className="material-symbols-outlined text-base">
-                    upload
-                  </span>
+                  <span className="material-symbols-outlined text-base">upload</span>
                   {submitted ? "Resubmit" : "Submit Lab"}
                 </>
               )}
@@ -974,22 +787,17 @@ const LabSection = ({ lab, lessonId, courseId, onCompleted }) => {
           <>
             {submission.status === "graded" ? (
               <>
-                {/* Score card */}
-                <div
-                  className={`p-4 rounded-xl border ${
-                    submission.marks / (lab.totalMarks || 100) >= 0.5
-                      ? "bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-700"
-                      : "bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-700"
-                  }`}
-                >
+                <div className={`p-4 rounded-xl border ${
+                  submission.marks / (lab.totalMarks || 100) >= 0.5
+                    ? "bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-700"
+                    : "bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-700"
+                }`}>
                   <div className="flex items-center gap-3">
-                    <div
-                      className={`flex items-center justify-center w-12 h-12 rounded-full text-2xl font-bold ${
-                        submission.marks / (lab.totalMarks || 100) >= 0.5
-                          ? "bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-300"
-                          : "bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300"
-                      }`}
-                    >
+                    <div className={`flex items-center justify-center w-12 h-12 rounded-full text-2xl font-bold ${
+                      submission.marks / (lab.totalMarks || 100) >= 0.5
+                        ? "bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-300"
+                        : "bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300"
+                    }`}>
                       {submission.marks}
                     </div>
                     <div>
@@ -997,12 +805,8 @@ const LabSection = ({ lab, lessonId, courseId, onCompleted }) => {
                         {submission.marks} / {lab.totalMarks || 100} marks
                       </p>
                       <p className="text-xs text-gray-500">
-                        {Math.round(
-                          (submission.marks / (lab.totalMarks || 100)) * 100,
-                        )}
-                        % score
-                        {submission.gradedAt &&
-                          ` · Graded ${new Date(submission.gradedAt).toLocaleDateString()}`}
+                        {Math.round((submission.marks / (lab.totalMarks || 100)) * 100)}% score
+                        {submission.gradedAt && ` · Graded ${new Date(submission.gradedAt).toLocaleDateString()}`}
                       </p>
                     </div>
                   </div>
@@ -1011,63 +815,39 @@ const LabSection = ({ lab, lessonId, courseId, onCompleted }) => {
                 {submission.feedback && (
                   <div className="p-3 sm:p-4 bg-blue-50 dark:bg-blue-900/20 rounded-xl border border-blue-200 dark:border-blue-700">
                     <p className="text-xs font-semibold text-blue-700 dark:text-blue-300 mb-1 flex items-center gap-1">
-                      <span className="material-symbols-outlined text-sm">
-                        feedback
-                      </span>
+                      <span className="material-symbols-outlined text-sm">feedback</span>
                       Instructor feedback
                     </p>
-                    <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">
-                      {submission.feedback}
-                    </p>
+                    <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">{submission.feedback}</p>
                   </div>
                 )}
               </>
             ) : (
               <div className="p-4 rounded-xl bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-200 dark:border-indigo-700 flex items-center gap-3">
-                <span className="material-symbols-outlined text-indigo-600 text-2xl">
-                  pending
-                </span>
+                <span className="material-symbols-outlined text-indigo-600 text-2xl">pending</span>
                 <div>
-                  <p className="text-sm font-semibold text-indigo-700 dark:text-indigo-300">
-                    Submitted — awaiting review
-                  </p>
-                  <p className="text-xs text-gray-500 mt-0.5">
-                    Submitted{" "}
-                    {new Date(submission.submittedAt).toLocaleString()}
-                  </p>
+                  <p className="text-sm font-semibold text-indigo-700 dark:text-indigo-300">Submitted — awaiting review</p>
+                  <p className="text-xs text-gray-500 mt-0.5">Submitted {new Date(submission.submittedAt).toLocaleString()}</p>
                 </div>
               </div>
             )}
 
-            {/* Submitted answer preview */}
             {submission.answer && (
               <div>
-                <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1.5">
-                  Your submitted answer
-                </p>
-                <pre
-                  className={`text-xs sm:text-sm p-3 rounded-xl bg-gray-50 dark:bg-gray-700/50 border border-gray-200 dark:border-gray-600 overflow-x-auto leading-relaxed max-h-40 ${
-                    lab.labType === "programming"
-                      ? "font-mono"
-                      : "whitespace-pre-wrap font-sans"
-                  }`}
-                >
+                <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1.5">Your submitted answer</p>
+                <pre className={`text-xs sm:text-sm p-3 rounded-xl bg-gray-50 dark:bg-gray-700/50 border border-gray-200 dark:border-gray-600 overflow-x-auto leading-relaxed max-h-40 ${lab.labType === "programming" ? "font-mono" : "whitespace-pre-wrap font-sans"}`}>
                   {submission.answer}
                 </pre>
               </div>
             )}
 
-            {/* Submitted PDF */}
             {submission.pdfUrl && (
               <button
                 onClick={() => setShowPdf(true)}
                 className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/20 hover:bg-indigo-100 transition-colors border border-indigo-200 dark:border-indigo-700"
               >
-                <span className="material-symbols-outlined text-base">
-                  picture_as_pdf
-                </span>
-                View submitted PDF —{" "}
-                {submission.pdfFileName || "submission.pdf"}
+                <span className="material-symbols-outlined text-base">picture_as_pdf</span>
+                View submitted PDF — {submission.pdfFileName || "submission.pdf"}
               </button>
             )}
 
@@ -1075,9 +855,7 @@ const LabSection = ({ lab, lessonId, courseId, onCompleted }) => {
               onClick={() => setActiveTab("submit")}
               className="w-full py-2.5 rounded-xl text-sm font-medium text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-700 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition-colors"
             >
-              {submission.status === "graded"
-                ? "Resubmit"
-                : "Update submission"}
+              {submission.status === "graded" ? "Resubmit" : "Update submission"}
             </button>
           </>
         )}
@@ -1085,52 +863,25 @@ const LabSection = ({ lab, lessonId, courseId, onCompleted }) => {
 
       {/* PDF Viewer Modal */}
       {showPdf && submission?.pdfUrl && (
-        <div
-          className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-2"
-          onClick={() => setShowPdf(false)}
-        >
-          <div
-            className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full flex flex-col overflow-hidden"
-            style={{ maxWidth: "95vw", height: "95vh" }}
-            onClick={(e) => e.stopPropagation()}
-          >
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-2" onClick={() => setShowPdf(false)}>
+          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full flex flex-col overflow-hidden" style={{ maxWidth: "95vw", height: "95vh" }} onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700 bg-indigo-600 flex-shrink-0">
               <div>
                 <p className="text-sm font-bold text-white">Lab Submission</p>
-                <p className="text-xs text-indigo-200">
-                  {submission.pdfFileName || "submission.pdf"}
-                </p>
+                <p className="text-xs text-indigo-200">{submission.pdfFileName || "submission.pdf"}</p>
               </div>
               <div className="flex items-center gap-2">
-                <a
-                  href={submission.pdfUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium text-indigo-600 bg-white hover:bg-indigo-50 transition-colors"
-                >
-                  <span className="material-symbols-outlined text-sm">
-                    open_in_new
-                  </span>
+                <a href={submission.pdfUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium text-indigo-600 bg-white hover:bg-indigo-50 transition-colors">
+                  <span className="material-symbols-outlined text-sm">open_in_new</span>
                   Open
                 </a>
-                <button
-                  onClick={() => setShowPdf(false)}
-                  className="text-white hover:bg-white/20 rounded-lg p-1.5"
-                >
+                <button onClick={() => setShowPdf(false)} className="text-white hover:bg-white/20 rounded-lg p-1.5">
                   <span className="material-symbols-outlined">close</span>
                 </button>
               </div>
             </div>
-            <div
-              className="flex-1 bg-gray-100 dark:bg-gray-900"
-              style={{ minHeight: 0 }}
-            >
-              <iframe
-                src={submission.pdfUrl}
-                className="w-full h-full"
-                style={{ border: "none" }}
-                title="Lab PDF Submission"
-              />
+            <div className="flex-1 bg-gray-100 dark:bg-gray-900" style={{ minHeight: 0 }}>
+              <iframe src={submission.pdfUrl} className="w-full h-full" style={{ border: "none" }} title="Lab PDF Submission" />
             </div>
           </div>
         </div>
@@ -1141,9 +892,6 @@ const LabSection = ({ lab, lessonId, courseId, onCompleted }) => {
 
 // ─────────────────────────────────────────────
 // MAIN LESSON VIEWER
-// FIX: Tab switching now works even when clicking the same lesson
-// FIX: refreshAfterStep refreshes lesson list and progress WITHOUT changing the active lesson
-// FIX: Sidebar lesson list re-renders with correct lock states after completion
 // ─────────────────────────────────────────────
 const LessonViewer = () => {
   const { courseId } = useParams();
@@ -1151,8 +899,6 @@ const LessonViewer = () => {
 
   const [lessons, setLessons] = useState([]);
   const [activeLesson, setActiveLesson] = useState(null);
-  // FIX: Separate loading trigger from activeLesson identity
-  // so clicking the same lesson still reloads content
   const [loadTrigger, setLoadTrigger] = useState(0);
   const [lessonData, setLessonData] = useState(null);
   const [loadingList, setLoadingList] = useState(true);
@@ -1162,16 +908,11 @@ const LessonViewer = () => {
   const [labDone, setLabDone] = useState(false);
   const [error, setError] = useState("");
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  // Track if next-lesson navigation is in progress
+  const [navigatingNext, setNavigatingNext] = useState(false);
 
-  // FIX: Initial load
-  useEffect(() => {
-    fetchAll();
-  }, [courseId]);
-
-  // FIX: Load lesson content whenever loadTrigger changes OR activeLesson changes
-  useEffect(() => {
-    if (activeLesson?._id) openLesson(activeLesson._id);
-  }, [activeLesson?._id, loadTrigger]);
+  useEffect(() => { fetchAll(); }, [courseId]);
+  useEffect(() => { if (activeLesson?._id) openLesson(activeLesson._id); }, [activeLesson?._id, loadTrigger]);
 
   const fetchAll = async () => {
     setLoadingList(true);
@@ -1185,7 +926,6 @@ const LessonViewer = () => {
       if (cRes.ok) setCourse(cData.course);
       if (lRes.ok && lData.lessons?.length > 0) {
         setLessons(lData.lessons);
-        // Auto-select first unlocked+incomplete lesson, or first unlocked lesson
         const target =
           lData.lessons.find((l) => !l.isLocked && !l.isCompleted) ||
           lData.lessons.find((l) => !l.isLocked);
@@ -1201,10 +941,10 @@ const LessonViewer = () => {
   const openLesson = async (lessonId) => {
     setLoadingLesson(true);
     setError("");
+    setQuizDone(false);
+    setLabDone(false);
     try {
-      const res = await apiFetch(
-        `/api/courses/${courseId}/lessons/${lessonId}/content`,
-      );
+      const res = await apiFetch(`/api/courses/${courseId}/lessons/${lessonId}/content`);
       const data = await res.json();
       if (!res.ok) {
         setError(data.message);
@@ -1212,12 +952,9 @@ const LessonViewer = () => {
         return;
       }
       setLessonData(data);
-      setQuizDone(
-  (data.progress?.quizCompleted || false) && !!data.quiz && !!lessonData?.lesson?.requiresQuiz
-);
-setLabDone(
-  (data.progress?.labCompleted || false) && !!data.lab && !!lessonData?.lesson?.requiresLab
-);
+      // Set initial states from progress
+      setQuizDone(data.progress?.quizCompleted || false);
+      setLabDone(data.progress?.labCompleted || false);
     } catch {
       setError("Cannot connect to server");
     } finally {
@@ -1225,75 +962,122 @@ setLabDone(
     }
   };
 
-  // FIX: refreshAfterStep only refreshes the sidebar lesson list and re-fetches
-  // current lesson progress WITHOUT changing which lesson is active or triggering
-  // a full re-render cascade. This prevents the "switching tab resets everything" bug.
   const refreshAfterStep = async () => {
     try {
-      // Refresh lesson list (to update lock/completion states in sidebar)
       const lRes = await apiFetch(`/api/courses/${courseId}/lessons`);
       const lData = await lRes.json();
       if (lRes.ok) setLessons(lData.lessons);
 
-      // Refresh current lesson progress only
       if (activeLesson?._id) {
-        const ldRes = await apiFetch(
-          `/api/courses/${courseId}/lessons/${activeLesson._id}/content`,
-        );
+        const ldRes = await apiFetch(`/api/courses/${courseId}/lessons/${activeLesson._id}/content`);
         const ldData = await ldRes.json();
         if (ldRes.ok) {
           setLessonData(ldData);
-         setQuizDone((ldData.progress?.quizCompleted || false) && !!ldData.quiz && !!ldData.lesson?.requiresQuiz);
-setLabDone((ldData.progress?.labCompleted || false) && !!ldData.lab && !!ldData.lesson?.requiresLab);
+          setQuizDone(ldData.progress?.quizCompleted || false);
+          setLabDone(ldData.progress?.labCompleted || false);
         }
       }
     } catch {
-      /* silent — user already sees success message from quiz/lab */
+      /* silent */
     }
   };
 
-  // FIX: Clicking a lesson in sidebar always loads it, even if it's the same lesson
   const handleLessonClick = (lesson) => {
     setSidebarOpen(false);
     if (lesson._id === activeLesson?._id) {
-      // Same lesson clicked — force a reload by bumping the trigger
       setLoadTrigger((t) => t + 1);
     } else {
       setActiveLesson(lesson);
     }
   };
 
+  // Navigate to the next lesson in order
+  const handleNextLesson = async () => {
+    if (!lessonData?.lesson || navigatingNext) return;
+    setNavigatingNext(true);
+
+    try {
+      // Refresh lesson list to get latest lock states
+      const lRes = await apiFetch(`/api/courses/${courseId}/lessons`);
+      const lData = await lRes.json();
+      if (lRes.ok) {
+        setLessons(lData.lessons);
+        const nextLesson = lData.lessons.find(
+          (l) => l.order === lessonData.lesson.order + 1 && !l.isLocked
+        );
+        if (nextLesson) {
+          setActiveLesson(nextLesson);
+          setSidebarOpen(false);
+        }
+      }
+    } catch {
+      /* silent */
+    } finally {
+      setNavigatingNext(false);
+    }
+  };
+
+  // Compute whether the "Next Lesson" button should be shown
+  // Rules:
+  //   - Not the last lesson
+  //   - Lesson content has been viewed (lessonData.progress.lessonViewed)
+  //   - If requiresQuiz AND quiz exists → quiz must be submitted (quizDone)
+  //   - If requiresLab AND lab exists   → lab must be submitted (labDone)
+  //   - If no quiz and no lab (or requirements disabled) → view alone is enough
+  const computeCanGoNext = () => {
+    if (!lessonData?.lesson || !lessons.length) return false;
+
+    const nextExists = lessons.some((l) => l.order === lessonData.lesson.order + 1);
+    if (!nextExists) return false;
+
+    const viewed = lessonData.progress?.lessonViewed || false;
+    if (!viewed) return false;
+
+    const quizRequired = lessonData.lesson.requiresQuiz && !!lessonData.quiz;
+    const labRequired  = lessonData.lesson.requiresLab  && !!lessonData.lab;
+
+    if (quizRequired && !quizDone) return false;
+    if (labRequired  && !labDone)  return false;
+
+    return true;
+  };
+
+  const canGoNext = computeCanGoNext();
+
+  // Compute checklist items for the progress strip
+  const getProgressItems = () => {
+    if (!lessonData?.lesson) return [];
+    const items = [];
+    items.push({
+      label: "Read lesson",
+      done: lessonData.progress?.lessonViewed || false,
+      icon: "menu_book",
+    });
+    if (lessonData.lesson.requiresQuiz && lessonData.quiz) {
+      items.push({ label: "Submit quiz", done: quizDone, icon: "quiz" });
+    }
+    if (lessonData.lesson.requiresLab && lessonData.lab) {
+      items.push({ label: "Submit lab", done: labDone, icon: "science" });
+    }
+    return items;
+  };
+
   const progress =
     lessons.length > 0
-      ? Math.round(
-          (lessons.filter((l) => l.isCompleted).length / lessons.length) * 100,
-        )
+      ? Math.round((lessons.filter((l) => l.isCompleted).length / lessons.length) * 100)
       : 0;
 
   if (loadingList)
     return (
       <div className="flex items-center justify-center min-h-screen bg-gray-50 dark:bg-gray-900">
-        <svg
-          className="animate-spin h-8 w-8 sm:h-10 sm:w-10 text-blue-600"
-          viewBox="0 0 24 24"
-          fill="none"
-        >
-          <circle
-            className="opacity-25"
-            cx="12"
-            cy="12"
-            r="10"
-            stroke="currentColor"
-            strokeWidth="4"
-          />
-          <path
-            className="opacity-75"
-            fill="currentColor"
-            d="M4 12a8 8 0 018-8v8z"
-          />
+        <svg className="animate-spin h-8 w-8 sm:h-10 sm:w-10 text-blue-600" viewBox="0 0 24 24" fill="none">
+          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
         </svg>
       </div>
     );
+
+  const progressItems = getProgressItems();
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 font-sans">
@@ -1304,17 +1088,13 @@ setLabDone((ldData.progress?.labCompleted || false) && !!ldData.lab && !!ldData.
             onClick={() => navigate("/student/dashboard")}
             className="flex items-center justify-center w-8 h-8 sm:w-9 sm:h-9 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
           >
-            <span className="material-symbols-outlined text-gray-600 dark:text-gray-400 text-xl sm:text-2xl">
-              arrow_back
-            </span>
+            <span className="material-symbols-outlined text-gray-600 dark:text-gray-400 text-xl sm:text-2xl">arrow_back</span>
           </button>
           <button
             onClick={() => setSidebarOpen(!sidebarOpen)}
             className="lg:hidden flex items-center justify-center w-8 h-8 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
           >
-            <span className="material-symbols-outlined text-gray-600 dark:text-gray-400">
-              menu
-            </span>
+            <span className="material-symbols-outlined text-gray-600 dark:text-gray-400">menu</span>
           </button>
           <h1 className="flex-1 font-bold text-gray-900 dark:text-white truncate text-sm sm:text-base">
             {course?.title}
@@ -1324,54 +1104,32 @@ setLabDone((ldData.progress?.labCompleted || false) && !!ldData.lab && !!ldData.
               {lessons.filter((l) => l.isCompleted).length}/{lessons.length}
             </span>
             <div className="w-16 sm:w-24 h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
-              <div
-                className="h-full bg-blue-600 rounded-full transition-all"
-                style={{ width: `${progress}%` }}
-              />
+              <div className="h-full bg-blue-600 rounded-full transition-all" style={{ width: `${progress}%` }} />
             </div>
-            <span className="text-[10px] sm:text-xs font-bold text-gray-700 dark:text-gray-300">
-              {progress}%
-            </span>
+            <span className="text-[10px] sm:text-xs font-bold text-gray-700 dark:text-gray-300">{progress}%</span>
           </div>
         </div>
       </div>
 
-      <div
-        className="max-w-7xl mx-auto flex flex-col lg:flex-row"
-        style={{ height: "calc(100vh - 53px)" }}
-      >
+      <div className="max-w-7xl mx-auto flex flex-col lg:flex-row" style={{ height: "calc(100vh - 53px)" }}>
         {/* Mobile overlay */}
         {sidebarOpen && (
-          <div
-            className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden"
-            onClick={() => setSidebarOpen(false)}
-          />
+          <div className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden" onClick={() => setSidebarOpen(false)} />
         )}
 
         {/* Sidebar */}
-        <aside
-          className={`
+        <aside className={`
           fixed lg:static inset-y-0 left-0 z-50 w-64 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 flex flex-col flex-shrink-0 overflow-hidden transition-transform duration-300 transform
           ${sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}
-        `}
-        >
+        `}>
           <div className="p-3 sm:p-4 border-b border-gray-200 dark:border-gray-700">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-semibold text-gray-900 dark:text-white">
-                  Lessons
-                </p>
-                <p className="text-xs text-gray-500">
-                  {lessons.filter((l) => !l.isLocked).length} unlocked
-                </p>
+                <p className="text-sm font-semibold text-gray-900 dark:text-white">Lessons</p>
+                <p className="text-xs text-gray-500">{lessons.filter((l) => !l.isLocked).length} unlocked</p>
               </div>
-              <button
-                onClick={() => setSidebarOpen(false)}
-                className="lg:hidden p-1 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700"
-              >
-                <span className="material-symbols-outlined text-gray-500 text-lg">
-                  close
-                </span>
+              <button onClick={() => setSidebarOpen(false)} className="lg:hidden p-1 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700">
+                <span className="material-symbols-outlined text-gray-500 text-lg">close</span>
               </button>
             </div>
           </div>
@@ -1391,28 +1149,18 @@ setLabDone((ldData.progress?.labCompleted || false) && !!ldData.lab && !!ldData.
                 }`}
               >
                 <div className="flex items-center gap-2">
-                  <div
-                    className={`flex items-center justify-center w-6 h-6 sm:w-7 sm:h-7 rounded-full flex-shrink-0 text-xs font-bold ${
-                      lesson.isCompleted
-                        ? "bg-green-100 dark:bg-green-900/30 text-green-700"
-                        : lesson.isLocked
-                          ? "bg-gray-100 dark:bg-gray-700 text-gray-400"
-                          : "bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300"
-                    }`}
-                  >
-                    {lesson.isCompleted
-                      ? "✓"
+                  <div className={`flex items-center justify-center w-6 h-6 sm:w-7 sm:h-7 rounded-full flex-shrink-0 text-xs font-bold ${
+                    lesson.isCompleted
+                      ? "bg-green-100 dark:bg-green-900/30 text-green-700"
                       : lesson.isLocked
-                        ? "🔒"
-                        : lesson.order}
+                        ? "bg-gray-100 dark:bg-gray-700 text-gray-400"
+                        : "bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300"
+                  }`}>
+                    {lesson.isCompleted ? "✓" : lesson.isLocked ? "🔒" : lesson.order}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-xs font-medium text-gray-900 dark:text-white truncate">
-                      {lesson.title}
-                    </p>
-                    <p className="text-[10px] text-gray-400 mt-0.5">
-                      {lesson.duration}
-                    </p>
+                    <p className="text-xs font-medium text-gray-900 dark:text-white truncate">{lesson.title}</p>
+                    <p className="text-[10px] text-gray-400 mt-0.5">{lesson.duration}</p>
                   </div>
                 </div>
               </button>
@@ -1424,48 +1172,27 @@ setLabDone((ldData.progress?.labCompleted || false) && !!ldData.lab && !!ldData.
         <main className="flex-1 overflow-y-auto">
           {loadingLesson ? (
             <div className="flex items-center justify-center h-full">
-              <svg
-                className="animate-spin h-8 w-8 text-blue-600"
-                viewBox="0 0 24 24"
-                fill="none"
-              >
-                <circle
-                  className="opacity-25"
-                  cx="12"
-                  cy="12"
-                  r="10"
-                  stroke="currentColor"
-                  strokeWidth="4"
-                />
-                <path
-                  className="opacity-75"
-                  fill="currentColor"
-                  d="M4 12a8 8 0 018-8v8z"
-                />
+              <svg className="animate-spin h-8 w-8 text-blue-600" viewBox="0 0 24 24" fill="none">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
               </svg>
             </div>
           ) : error ? (
             <div className="flex items-center justify-center h-full">
               <div className="text-center p-6 sm:p-8">
-                <span className="material-symbols-outlined text-4xl sm:text-5xl text-red-300 mb-3">
-                  error
-                </span>
-                <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400">
-                  {error}
-                </p>
+                <span className="material-symbols-outlined text-4xl sm:text-5xl text-red-300 mb-3">error</span>
+                <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400">{error}</p>
               </div>
             </div>
           ) : lessonData ? (
-            <div className="p-4 sm:p-5 md:p-6 max-w-3xl mx-auto space-y-4 sm:space-y-6">
+            <div className="p-4 sm:p-5 md:p-6 max-w-3xl mx-auto space-y-4 sm:space-y-6 pb-10">
               {/* Lesson header */}
               <div>
                 <div className="flex flex-wrap items-center gap-2 mb-2">
                   <span className="text-[10px] sm:text-xs font-medium text-blue-600 bg-blue-50 dark:bg-blue-900/20 dark:text-blue-400 px-2 py-0.5 rounded-full">
                     Lesson {lessonData.lesson.order}
                   </span>
-                  <span className="text-[10px] sm:text-xs text-gray-500">
-                    {lessonData.lesson.duration}
-                  </span>
+                  <span className="text-[10px] sm:text-xs text-gray-500">{lessonData.lesson.duration}</span>
                   {lessonData.progress?.isCompleted && (
                     <span className="text-[10px] sm:text-xs font-medium text-green-600 bg-green-50 dark:bg-green-900/20 dark:text-green-400 px-2 py-0.5 rounded-full">
                       ✓ Completed
@@ -1476,50 +1203,32 @@ setLabDone((ldData.progress?.labCompleted || false) && !!ldData.lab && !!ldData.
                   {lessonData.lesson.title}
                 </h2>
                 {lessonData.lesson.description && (
-                  <p className="text-sm text-gray-500 mt-1">
-                    {lessonData.lesson.description}
-                  </p>
+                  <p className="text-sm text-gray-500 mt-1">{lessonData.lesson.description}</p>
                 )}
               </div>
 
               {/* Video */}
               {lessonData.lesson.videoUrl && (
                 <div className="rounded-xl overflow-hidden bg-black aspect-video">
-                  {lessonData.lesson.videoUrl.includes("youtube.com") ||
-                  lessonData.lesson.videoUrl.includes("youtu.be") ? (
+                  {lessonData.lesson.videoUrl.includes("youtube.com") || lessonData.lesson.videoUrl.includes("youtu.be") ? (
                     <iframe
-                      src={lessonData.lesson.videoUrl
-                        .replace("watch?v=", "embed/")
-                        .replace("youtu.be/", "www.youtube.com/embed/")}
+                      src={lessonData.lesson.videoUrl.replace("watch?v=", "embed/").replace("youtu.be/", "www.youtube.com/embed/")}
                       className="w-full h-full"
                       allowFullScreen
                       title={lessonData.lesson.title}
                     />
                   ) : (
-                    <video
-                      controls
-                      className="w-full h-full"
-                      src={lessonData.lesson.videoUrl}
-                    />
+                    <video controls className="w-full h-full" src={lessonData.lesson.videoUrl} />
                   )}
                 </div>
               )}
 
               {/* Images */}
               {lessonData.lesson.images?.length > 0 && (
-                <div
-                  className={`grid gap-3 sm:gap-4 ${lessonData.lesson.images.length === 1 ? "grid-cols-1" : "grid-cols-2"}`}
-                >
+                <div className={`grid gap-3 sm:gap-4 ${lessonData.lesson.images.length === 1 ? "grid-cols-1" : "grid-cols-2"}`}>
                   {lessonData.lesson.images.map((img, i) => (
-                    <figure
-                      key={i}
-                      className="rounded-xl overflow-hidden border border-gray-200 dark:border-gray-700"
-                    >
-                      <img
-                        src={img.url}
-                        alt={img.caption || `Image ${i + 1}`}
-                        className="w-full object-cover max-h-48 sm:max-h-64"
-                      />
+                    <figure key={i} className="rounded-xl overflow-hidden border border-gray-200 dark:border-gray-700">
+                      <img src={img.url} alt={img.caption || `Image ${i + 1}`} className="w-full object-cover max-h-48 sm:max-h-64" />
                       {img.caption && (
                         <figcaption className="px-2 sm:px-3 py-1.5 sm:py-2 text-[10px] sm:text-xs text-gray-500 text-center bg-gray-50 dark:bg-gray-700/50">
                           {img.caption}
@@ -1535,61 +1244,33 @@ setLabDone((ldData.progress?.labCompleted || false) && !!ldData.lab && !!ldData.
                 <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-4 sm:p-6">
                   <div
                     className="prose prose-sm sm:prose dark:prose-invert max-w-none text-gray-700 dark:text-gray-300"
-                    dangerouslySetInnerHTML={{
-                      __html: lessonData.lesson.content,
-                    }}
+                    dangerouslySetInnerHTML={{ __html: lessonData.lesson.content }}
                   />
                 </div>
               )}
 
-              {/* Progress steps — only shown for requirements that are both enabled AND have data */}
-              {(() => {
-                const quizRequired =
-                  lessonData.lesson.requiresQuiz && !!lessonData.quiz;
-                const labRequired =
-                  lessonData.lesson.requiresLab && !!lessonData.lab;
-                if (
-                  !lessonData.progress?.isCompleted &&
-                  (quizRequired || labRequired)
-                ) {
-                  return (
-                    <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-3 sm:p-4">
-                      <p className="text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
-                        Complete to unlock next lesson:
-                      </p>
-                      <div className="flex flex-wrap gap-4 sm:gap-6">
-                        {quizRequired && (
-                          <div
-                            className={`flex items-center gap-2 text-xs sm:text-sm ${quizDone ? "text-green-600 dark:text-green-400" : "text-gray-500"}`}
-                          >
-                            <span className="material-symbols-outlined text-base">
-                              {quizDone
-                                ? "check_circle"
-                                : "radio_button_unchecked"}
-                            </span>
-                            Pass Quiz
-                          </div>
-                        )}
-                        {labRequired && (
-                          <div
-                            className={`flex items-center gap-2 text-xs sm:text-sm ${labDone ? "text-green-600 dark:text-green-400" : "text-gray-500"}`}
-                          >
-                            <span className="material-symbols-outlined text-base">
-                              {labDone
-                                ? "check_circle"
-                                : "radio_button_unchecked"}
-                            </span>
-                            Submit Lab
-                          </div>
-                        )}
+              {/* ── PROGRESS CHECKLIST ─────────────────────────────────── */}
+              {progressItems.length > 0 && (
+                <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-3 sm:p-4">
+                  <p className="text-xs sm:text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3 flex items-center gap-1.5">
+                    <span className="material-symbols-outlined text-base text-blue-500">checklist</span>
+                    Lesson Progress
+                  </p>
+                  <div className="flex flex-wrap gap-3 sm:gap-5">
+                    {progressItems.map((item, i) => (
+                      <div key={i} className={`flex items-center gap-2 text-xs sm:text-sm font-medium ${item.done ? "text-green-600 dark:text-green-400" : "text-gray-400 dark:text-gray-500"}`}>
+                        <span className={`material-symbols-outlined text-base ${item.done ? "text-green-500" : "text-gray-300"}`}>
+                          {item.done ? "check_circle" : "radio_button_unchecked"}
+                        </span>
+                        <span className="material-symbols-outlined text-sm">{item.icon}</span>
+                        {item.label}
                       </div>
-                    </div>
-                  );
-                }
-                return null;
-              })()}
+                    ))}
+                  </div>
+                </div>
+              )}
 
-              {/* Quiz — only shown if requiresQuiz is enabled AND quiz data exists */}
+              {/* Quiz — shown only if requiresQuiz AND quiz exists */}
               {lessonData.lesson.requiresQuiz && lessonData.quiz ? (
                 <QuizSection
                   quiz={lessonData.quiz}
@@ -1602,16 +1283,14 @@ setLabDone((ldData.progress?.labCompleted || false) && !!ldData.lab && !!ldData.
                 />
               ) : lessonData.lesson.requiresQuiz && !lessonData.quiz ? (
                 <div className="p-3 sm:p-4 rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 flex items-center gap-2">
-                  <span className="material-symbols-outlined text-amber-500 text-base">
-                    info
-                  </span>
+                  <span className="material-symbols-outlined text-amber-500 text-base">info</span>
                   <p className="text-xs sm:text-sm text-amber-700 dark:text-amber-300">
                     Quiz required but not yet published by the instructor.
                   </p>
                 </div>
               ) : null}
 
-              {/* Lab — only shown if requiresLab is enabled AND lab data exists */}
+              {/* Lab — shown only if requiresLab AND lab exists */}
               {lessonData.lesson.requiresLab && lessonData.lab ? (
                 <LabSection
                   lab={lessonData.lab}
@@ -1624,46 +1303,69 @@ setLabDone((ldData.progress?.labCompleted || false) && !!ldData.lab && !!ldData.
                 />
               ) : lessonData.lesson.requiresLab && !lessonData.lab ? (
                 <div className="p-3 sm:p-4 rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 flex items-center gap-2">
-                  <span className="material-symbols-outlined text-amber-500 text-base">
-                    info
-                  </span>
+                  <span className="material-symbols-outlined text-amber-500 text-base">info</span>
                   <p className="text-xs sm:text-sm text-amber-700 dark:text-amber-300">
                     Lab required but not yet published by the instructor.
                   </p>
                 </div>
               ) : null}
 
-              {/* Completion banner */}
-              {lessonData.progress?.isCompleted && (
-                <div className="p-3 sm:p-4 rounded-xl bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-700 flex items-center gap-2 sm:gap-3">
-                  <span className="material-symbols-outlined text-green-600 text-xl sm:text-2xl">
-                    celebration
-                  </span>
-                  <div>
-                    <p className="font-medium text-green-700 dark:text-green-300 text-sm sm:text-base">
-                      Lesson Complete!
-                    </p>
-                    <p className="text-[10px] sm:text-xs text-green-600 dark:text-green-400">
-                      {lessons.find(
-                        (l) => l.order === lessonData.lesson.order + 1,
-                      )
-                        ? "Next lesson is now unlocked 🎉"
-                        : "You have completed all lessons in this course! 🎓"}
-                    </p>
+              {/* ── NEXT LESSON BUTTON ─────────────────────────────────── */}
+              {canGoNext ? (
+                <div className="mt-2 p-4 sm:p-5 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border border-blue-200 dark:border-blue-700 rounded-2xl">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                    <div>
+                      <p className="font-semibold text-blue-900 dark:text-blue-200 text-sm sm:text-base flex items-center gap-2">
+                        <span className="material-symbols-outlined text-blue-600 text-lg">celebration</span>
+                        Lesson complete — ready for the next one!
+                      </p>
+                      <p className="text-xs text-blue-700 dark:text-blue-400 mt-0.5">
+                        {lessons.find((l) => l.order === lessonData.lesson.order + 1)?.title || "Next lesson"}
+                      </p>
+                    </div>
+                    <button
+                      onClick={handleNextLesson}
+                      disabled={navigatingNext}
+                      className="flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-60 transition-all shadow-md shadow-blue-200 dark:shadow-blue-900/30 flex-shrink-0"
+                    >
+                      {navigatingNext ? (
+                        <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
+                        </svg>
+                      ) : (
+                        <span className="material-symbols-outlined text-base">arrow_forward</span>
+                      )}
+                      Next Lesson
+                    </button>
                   </div>
                 </div>
-              )}
+              ) : lessonData.progress?.isCompleted &&
+                !lessons.some((l) => l.order === lessonData.lesson.order + 1) ? (
+                // Last lesson completed
+                <div className="mt-2 p-4 sm:p-5 bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 border border-green-200 dark:border-green-700 rounded-2xl text-center">
+                  <span className="material-symbols-outlined text-green-600 text-4xl mb-2 block">school</span>
+                  <p className="font-bold text-green-800 dark:text-green-300 text-base sm:text-lg">
+                    🎓 Course Complete!
+                  </p>
+                  <p className="text-sm text-green-700 dark:text-green-400 mt-1">
+                    You have finished all lessons in this course. Well done!
+                  </p>
+                  <button
+                    onClick={() => navigate("/student/dashboard")}
+                    className="mt-4 px-5 py-2 rounded-xl text-sm font-medium text-white bg-green-600 hover:bg-green-700 transition-colors"
+                  >
+                    Back to Dashboard
+                  </button>
+                </div>
+              ) : null}
             </div>
           ) : (
             <div className="flex items-center justify-center h-full">
               <div className="text-center p-6 sm:p-8">
-                <span className="material-symbols-outlined text-5xl sm:text-6xl text-gray-300 dark:text-gray-600">
-                  menu_book
-                </span>
+                <span className="material-symbols-outlined text-5xl sm:text-6xl text-gray-300 dark:text-gray-600">menu_book</span>
                 <p className="text-sm text-gray-500 mt-3">
-                  {lessons.length === 0
-                    ? "No lessons added yet"
-                    : "Select a lesson to start"}
+                  {lessons.length === 0 ? "No lessons added yet" : "Select a lesson to start"}
                 </p>
               </div>
             </div>

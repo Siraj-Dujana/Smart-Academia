@@ -349,8 +349,8 @@ const LessonEditor = () => {
           </div>
           <div className="flex-1 overflow-y-auto py-3 sm:py-4">
             <div className="flex flex-col gap-0.5 px-2 sm:px-3">
-              <button onClick={() => navigate("/teacher/dashboard")} className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700">
-                <span className="material-symbols-outlined text-xl">arrow_back</span><span className="text-sm font-medium">Back to Dashboard</span>
+              <button onClick={() => navigate("/teacher/dashboard?tab=lessons")} className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700">
+                <span className="material-symbols-outlined text-xl">arrow_back</span><span className="text-sm font-medium">Back to Lesson</span>
               </button>
             </div>
           </div>

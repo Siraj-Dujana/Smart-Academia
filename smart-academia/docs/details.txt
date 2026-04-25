@@ -9,6 +9,6 @@ Fix: Hide tabs based on checkbox settings
 Current: Student must pass quiz/lab to unlock next lesson
 Fix: Change condition from quizCompleted to quizSubmitted and lab submitted
 
-
+i want that for example if a student has submitted the both quiz and the lab then there would be a button called complete lesson then it should move to the next question it is not neccessary that both of them should be pass they can be failed as well but the next lesson would be unlocked when both of them are submitted if they are avialble in the lesson cause there can be lessons in which there is just theory and there is no quiz and there is no lab
 
 

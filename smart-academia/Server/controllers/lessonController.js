@@ -31,15 +31,19 @@ const checkAndUnlockNext = async (studentId, lessonId, courseId) => {
     const lesson = await Lesson.findById(lessonId);
     if (!lesson) return;
 
-    const progress = await LessonProgress.findOne({ student: studentId, lesson: lessonId });
-    if (!progress) return;
+     const progress = await LessonProgress.findOne({ student: studentId, lesson: lessonId });
+    if (!progress || progress.isCompleted) return;
 
-    // Already completed — nothing to do
-    if (progress.isCompleted) return;
+    // Check if quiz/lab actually exist
+    const quizExists = !!(await Quiz.findOne({ lesson: lessonId, isPublished: true }));
+    const labExists  = !!(await Lab.findOne({  lesson: lessonId, isPublished: true }));
 
-    // Only require what the lesson actually requires
-    const quizOk = !lesson.requiresQuiz || progress.quizCompleted;
-const labOk  = !lesson.requiresLab  || progress.labCompleted;
+   // A requirement is satisfied if:
+    // - The lesson doesn't require it, OR
+    // - The requirement exists and the student completed it, OR
+    // - The lesson requires it but it doesn't exist (treat as satisfied)
+    const quizOk = !lesson.requiresQuiz || progress.quizCompleted || (lesson.requiresQuiz && !quizExists);
+    const labOk  = !lesson.requiresLab  || progress.labCompleted  || (lesson.requiresLab  && !labExists);
     const viewOk = progress.lessonViewed;
 
     if (viewOk && quizOk && labOk) {

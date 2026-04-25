@@ -205,10 +205,8 @@ IMPORTANT: "correctAnswer" MUST be the exact text of the correct option, NOT a l
         finalCorrectAnswer = cleanOptions[idx];
       }
       
-      console.log('🤖 AI Question saved:', {
-        question: q.questionText.substring(0, 30),
-        correctAnswer: finalCorrectAnswer
-      });
+      
+      
       
       try {
         const question = await Question.create({
