@@ -3,21 +3,79 @@ import { useNavigate } from "react-router-dom";
 
 const API = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
+// ── Mini Bar ──────────────────────────────────────────────────
+const MiniBar = ({ value = 0, color = "#6366f1", height = 3 }) => (
+  <div className="w-full rounded-full overflow-hidden" style={{ height, background: "#1e293b" }}>
+    <div
+      className="h-full rounded-full"
+      style={{
+        width: `${Math.min(value, 100)}%`,
+        background: `linear-gradient(90deg, ${color}cc, ${color})`,
+        boxShadow: `0 0 8px ${color}66`,
+        transition: "width 1s cubic-bezier(.4,0,.2,1)"
+      }}
+    />
+  </div>
+);
+
+// ── Stat Glow Card ────────────────────────────────────────────
+const GlowCard = ({ icon, label, value, color, sub }) => (
+  <div className="relative rounded-2xl overflow-hidden p-4 flex flex-col gap-2 group" style={{ background: "#0f1629", border: `1px solid ${color}33` }}>
+    <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500" style={{ background: `radial-gradient(ellipse at 50% 0%, ${color}15 0%, transparent 70%)` }} />
+    <div className="flex items-start justify-between">
+      <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: `${color}22`, border: `1px solid ${color}44` }}>
+        <span className="material-symbols-outlined text-lg" style={{ color }}>{icon}</span>
+      </div>
+      {sub && <span className="text-[10px] text-gray-500 font-medium px-2 py-0.5 rounded-full" style={{ background: "#1e293b" }}>{sub}</span>}
+    </div>
+    <div>
+      <p className="text-2xl font-black text-white tracking-tight" style={{ textShadow: `0 0 20px ${color}66` }}>{value}</p>
+      <p className="text-[10px] text-gray-400 font-medium mt-0.5">{label}</p>
+    </div>
+    <MiniBar value={typeof value === "string" && value.endsWith("%") ? parseFloat(value) : 75} color={color} />
+  </div>
+);
+
+// ── Section Header ────────────────────────────────────────────
+const SectionHeader = ({ icon, title, color = "#6366f1" }) => (
+  <div className="flex items-center gap-3 mb-4">
+    <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: `${color}22`, border: `1px solid ${color}44` }}>
+      <span className="material-symbols-outlined text-sm" style={{ color }}>{icon}</span>
+    </div>
+    <h3 className="text-xs font-bold text-white tracking-wide uppercase">{title}</h3>
+    <div className="flex-1 h-px" style={{ background: `linear-gradient(90deg, ${color}44, transparent)` }} />
+  </div>
+);
+
+// ── Loading State ─────────────────────────────────────────────
+const LoadingState = () => (
+  <div className="flex items-center justify-center py-24">
+    <div className="text-center">
+      <div className="relative w-16 h-16 mx-auto mb-5">
+        <div className="absolute inset-0 rounded-full border-4 border-indigo-900" />
+        <div className="absolute inset-0 rounded-full border-4 border-transparent border-t-indigo-500 animate-spin" />
+        <div className="absolute inset-2 rounded-full border-4 border-transparent border-t-purple-500 animate-spin" style={{ animationDirection: "reverse", animationDuration: "0.8s" }} />
+      </div>
+      <p className="text-sm font-medium text-gray-500">Loading labs...</p>
+    </div>
+  </div>
+);
+
 const Labs = () => {
   const navigate = useNavigate();
   const token = localStorage.getItem("token");
 
-  const [labs,           setLabs]           = useState([]);
-  const [isLoading,      setIsLoading]      = useState(true);
-  const [error,          setError]          = useState("");
+  const [labs, setLabs] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState("");
   const [selectedCourse, setSelectedCourse] = useState("");
-  const [courses,        setCourses]        = useState([]);
+  const [courses, setCourses] = useState([]);
 
   useEffect(() => { fetchEnrolledCourses(); }, []);
 
   const fetchEnrolledCourses = async () => {
     try {
-      const res  = await fetch(`${API}/api/courses/enrolled`, {
+      const res = await fetch(`${API}/api/courses/enrolled`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       const data = await res.json();
@@ -58,17 +116,16 @@ const Labs = () => {
 
       const labsPromises = lessons.map(async (lesson) => {
         try {
-          const labRes  = await fetch(
+          const labRes = await fetch(
             `${API}/api/courses/${courseId}/lessons/${lesson._id}/lab`,
             { headers: { Authorization: `Bearer ${token}` } }
           );
           const labData = await labRes.json();
 
           if (labRes.ok && labData.lab) {
-            // Fetch student's own submission status
             let submissionData = null;
             try {
-              const subRes  = await fetch(
+              const subRes = await fetch(
                 `${API}/api/courses/${courseId}/lessons/${lesson._id}/lab/${labData.lab._id}/my-submission`,
                 { headers: { Authorization: `Bearer ${token}` } }
               );
@@ -80,14 +137,14 @@ const Labs = () => {
 
             return {
               ...labData.lab,
-              lessonTitle:  lesson.title,
-              lessonOrder:  lesson.order,
-              lessonId:     lesson._id,
+              lessonTitle: lesson.title,
+              lessonOrder: lesson.order,
+              lessonId: lesson._id,
               courseId,
-              // Include full submission data so we can show marks/feedback
-              submission:   submissionData,
-              status:       submissionData?.status || null,
-              marks:        submissionData?.marks ?? null,
+              submission: submissionData,
+              status: submissionData?.status || null,
+              marks: submissionData?.marks ?? null,
+              feedback: submissionData?.feedback || null,
             };
           }
           return null;
@@ -95,7 +152,6 @@ const Labs = () => {
       });
 
       const results = await Promise.all(labsPromises);
-      // Sort by lesson order
       setLabs(results.filter(Boolean).sort((a, b) => (a.lessonOrder || 0) - (b.lessonOrder || 0)));
     } catch {
       setError("Cannot connect to server");
@@ -112,218 +168,205 @@ const Labs = () => {
 
   const getStatusConfig = (status, dueDate) => {
     const isOverdue = dueDate && new Date(dueDate) < new Date();
-    if (status === "graded")    return { color: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300",   icon: "grade",        text: "Graded"     };
-    if (status === "submitted") return { color: "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300", icon: "check_circle", text: "Submitted"  };
-    if (isOverdue)              return { color: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300",             icon: "warning",      text: "Overdue"    };
-    return                             { color: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300",         icon: "play_circle",  text: "Not started" };
+    if (status === "graded") return { color: "#22c55e", bg: "#22c55e22", border: "#22c55e", icon: "verified", text: "Graded" };
+    if (status === "submitted") return { color: "#f59e0b", bg: "#f59e0b22", border: "#f59e0b", icon: "pending", text: "Submitted" };
+    if (isOverdue) return { color: "#ef4444", bg: "#ef444422", border: "#ef4444", icon: "warning", text: "Overdue" };
+    return { color: "#6366f1", bg: "#6366f122", border: "#6366f1", icon: "play_arrow", text: "Not Started" };
   };
 
   const getDifficultyColor = (diff) => ({
-    easy:   "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300",
-    medium: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300",
-    hard:   "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300",
-  }[diff] || "bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400");
+    easy: { color: "#4ade80", bg: "#22c55e22" },
+    medium: { color: "#fbbf24", bg: "#f59e0b22" },
+    hard: { color: "#f87171", bg: "#ef444422" },
+  }[diff] || { color: "#94a3b8", bg: "#1e293b" });
 
   const labTypeIcon = {
     programming: "terminal",
-    dld:         "schema",
-    networking:  "hub",
-    theory:      "description",
+    dld: "schema",
+    networking: "hub",
+    theory: "description",
   };
 
   const stats = {
-    total:     labs.length,
+    total: labs.length,
     completed: labs.filter(l => l.status === "submitted" || l.status === "graded").length,
-    graded:    labs.filter(l => l.status === "graded").length,
-    rate:      labs.length > 0
+    graded: labs.filter(l => l.status === "graded").length,
+    rate: labs.length > 0
       ? Math.round((labs.filter(l => l.status === "submitted" || l.status === "graded").length / labs.length) * 100)
       : 0,
   };
 
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center py-16 sm:py-24">
-        <div className="text-center">
-          <svg className="animate-spin h-8 w-8 sm:h-10 sm:w-10 text-blue-600 mx-auto mb-4" viewBox="0 0 24 24" fill="none">
-            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
-            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
-          </svg>
-          <p className="text-sm sm:text-base text-gray-500 dark:text-gray-400">Loading labs...</p>
-        </div>
-      </div>
-    );
-  }
+  if (isLoading) return <LoadingState />;
 
   return (
-    <div className="space-y-5 sm:space-y-6">
-      {/* Header */}
-      <div>
-        <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 dark:text-white">Labs</h1>
-        <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400 mt-1">
-          Practical lab assignments — submit your work for instructor review
-        </p>
-      </div>
+    <div className="space-y-5 pb-10" style={{ fontFamily: "'Lexend', sans-serif" }}>
 
-      {error && (
-        <div className="p-3 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 flex items-center gap-2">
-          <span className="material-symbols-outlined text-red-600 text-sm">error</span>
-          <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
-        </div>
-      )}
 
-      {/* Course selector */}
+
+      {/* Course Selector */}
       {courses.length > 0 && (
-        <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4">
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Select Course</label>
+        <div className="rounded-2xl p-4" style={{ background: "#0f1629", border: "1px solid #1e293b" }}>
+          <SectionHeader icon="school" title="Select Course" color="#6366f1" />
           <select
             value={selectedCourse}
             onChange={e => handleCourseChange(e.target.value)}
-            className="w-full sm:w-80 px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
+            className="w-full sm:w-80 px-3 py-2 rounded-xl bg-gray-800/50 text-white border border-gray-700 focus:ring-2 focus:ring-indigo-500 focus:border-transparent cursor-pointer hover:bg-gray-800 transition-colors text-sm"
           >
             {courses.map(c => <option key={c._id} value={c._id}>{c.title}</option>)}
           </select>
         </div>
       )}
 
-      {/* Stats */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-        {[
-          { icon: "science",      label: "Total Labs",       value: stats.total,     color: "bg-blue-100 dark:bg-blue-900/30 text-blue-600"    },
-          { icon: "check_circle", label: "Submitted",        value: stats.completed, color: "bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600" },
-          { icon: "grade",        label: "Graded",           value: stats.graded,    color: "bg-green-100 dark:bg-green-900/30 text-green-600"   },
-          { icon: "trending_up",  label: "Completion Rate",  value: `${stats.rate}%`, color: "bg-purple-100 dark:bg-purple-900/30 text-purple-600" },
-        ].map((stat, idx) => (
-          <div key={idx} className="bg-white dark:bg-gray-800 rounded-xl p-3 sm:p-4 border border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-md transition-all hover:scale-105 group">
-            <div className="flex items-center gap-3">
-              <div className={`flex items-center justify-center w-10 h-10 sm:w-12 sm:h-12 rounded-lg ${stat.color} group-hover:scale-110 transition-transform`}>
-                <span className="material-symbols-outlined text-xl sm:text-2xl">{stat.icon}</span>
-              </div>
-              <div>
-                <p className="text-gray-500 dark:text-gray-400 text-xs sm:text-sm">{stat.label}</p>
-                <p className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">{stat.value}</p>
-              </div>
-            </div>
-          </div>
-        ))}
+      {/* Stats Cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <GlowCard icon="science" label="Total Labs" value={stats.total} color="#6366f1" />
+        <GlowCard icon="check_circle" label="Submitted" value={stats.completed} color="#f59e0b" sub={`${stats.completed}/${stats.total}`} />
+        <GlowCard icon="verified" label="Graded" value={stats.graded} color="#22c55e" />
+        <GlowCard icon="trending_up" label="Completion Rate" value={`${stats.rate}%`} color="#a855f7" />
       </div>
 
-      {/* Lab cards */}
-      {labs.length > 0 ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
-          {labs.map((lab, idx) => {
-            const sc = getStatusConfig(lab.status, lab.dueDate);
-            const icon = labTypeIcon[lab.labType] || "science";
-            const isOverdue = lab.dueDate && new Date(lab.dueDate) < new Date() && !lab.status;
-
-            return (
-              <div
-                key={lab._id || idx}
-                onClick={() => navigate(`/lessons/${lab.courseId}?lessonId=${lab.lessonId}`)}
-                className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-lg transition-all duration-300 overflow-hidden group cursor-pointer hover:-translate-y-1 flex flex-col"
-              >
-                {/* Card header */}
-                <div className={`px-4 pt-4 pb-3 border-b border-gray-100 dark:border-gray-700 ${isOverdue ? "bg-red-50 dark:bg-red-900/10" : ""}`}>
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="flex items-center gap-2.5 min-w-0">
-                      <div className="flex items-center justify-center w-9 h-9 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 text-white flex-shrink-0">
-                        <span className="material-symbols-outlined text-base">{icon}</span>
-                      </div>
-                      <div className="min-w-0">
-                        <h3 className="font-semibold text-gray-900 dark:text-white text-sm truncate group-hover:text-blue-600 transition-colors">
-                          {lab.title}
-                        </h3>
-                        <p className="text-[10px] sm:text-xs text-gray-500 truncate">
-                          Lesson {lab.lessonOrder}: {lab.lessonTitle}
-                        </p>
-                      </div>
-                    </div>
-                    <span className={`flex-shrink-0 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium ${sc.color}`}>
-                      <span className="material-symbols-outlined text-xs">{sc.icon}</span>
-                      {sc.text}
-                    </span>
-                  </div>
-                </div>
-
-                {/* Card body */}
-                <div className="p-4 flex-1">
-                  {lab.description && (
-                    <p className="text-xs text-gray-600 dark:text-gray-400 line-clamp-2 mb-3 leading-relaxed">
-                      {lab.description}
-                    </p>
-                  )}
-
-                  <div className="flex flex-wrap gap-2 text-[10px] sm:text-xs text-gray-500">
-                    {lab.difficulty && (
-                      <span className={`px-2 py-0.5 rounded-full font-medium ${getDifficultyColor(lab.difficulty)}`}>
-                        {lab.difficulty}
-                      </span>
-                    )}
-                    <span className="flex items-center gap-1">
-                      <span className="material-symbols-outlined text-xs">grade</span>
-                      {lab.totalMarks || 100} pts
-                    </span>
-                    {lab.language && lab.labType === "programming" && (
-                      <span className="flex items-center gap-1 bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded-full">
-                        <span className="material-symbols-outlined text-xs">code</span>
-                        {lab.language}
-                      </span>
-                    )}
-                    {lab.dueDate && (
-                      <span className={`flex items-center gap-1 ${isOverdue ? "text-red-600 dark:text-red-400" : ""}`}>
-                        <span className="material-symbols-outlined text-xs">{isOverdue ? "warning" : "schedule"}</span>
-                        {isOverdue ? "Overdue: " : "Due: "}
-                        {new Date(lab.dueDate).toLocaleDateString()}
-                      </span>
-                    )}
-                  </div>
-
-                  {/* Graded result */}
-                  {lab.status === "graded" && lab.marks !== null && (
-                    <div className="mt-3 p-2.5 rounded-lg bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-700">
-                      <div className="flex items-center justify-between">
-                        <p className="text-xs font-semibold text-green-700 dark:text-green-300">Score</p>
-                        <p className="text-sm font-bold text-green-700 dark:text-green-300">
-                          {lab.marks} / {lab.totalMarks || 100}
-                          <span className="text-xs font-normal ml-1">
-                            ({Math.round((lab.marks / (lab.totalMarks || 100)) * 100)}%)
-                          </span>
-                        </p>
-                      </div>
-                      {lab.submission?.feedback && (
-                        <p className="text-[10px] text-gray-600 dark:text-gray-400 mt-1 line-clamp-2 italic">
-                          "{lab.submission.feedback}"
-                        </p>
-                      )}
-                    </div>
-                  )}
-                </div>
-
-                {/* Card footer */}
-                <div className="border-t border-gray-100 dark:border-gray-700 px-4 py-3">
-                  <button className="w-full flex items-center justify-center gap-1.5 text-xs sm:text-sm font-medium py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-colors group-hover:bg-blue-700">
-                    <span className="material-symbols-outlined text-sm">
-                      {lab.status === "graded" ? "visibility" : lab.status === "submitted" ? "edit" : "play_arrow"}
-                    </span>
-                    {lab.status === "graded"    ? "View Result"
-                     : lab.status === "submitted" ? "Update Submission"
-                     : "Start Lab"}
-                  </button>
-                </div>
-              </div>
-            );
-          })}
+      {/* Error Banner */}
+      {error && (
+        <div className="p-3 rounded-xl flex items-center gap-2" style={{ background: "#1a0a0a", border: "1px solid #ef444433" }}>
+          <span className="material-symbols-outlined text-red-500 text-sm">error</span>
+          <p className="text-sm text-red-400 flex-1">{error}</p>
+          <button onClick={() => setError("")} className="text-red-500 hover:text-red-400">
+            <span className="material-symbols-outlined text-sm">close</span>
+          </button>
         </div>
+      )}
+
+      {/* Lab Cards */}
+      {labs.length > 0 ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+  {labs.map((lab, idx) => {
+    const sc = getStatusConfig(lab.status, lab.dueDate);
+    const difficulty = getDifficultyColor(lab.difficulty);
+    const icon = labTypeIcon[lab.labType] || "science";
+    const scorePercent = lab.marks && lab.totalMarks ? (lab.marks / lab.totalMarks) * 100 : 0;
+
+    return (
+      <div
+        key={lab._id || idx}
+        onClick={() => navigate(`/lessons/${lab.courseId}?lessonId=${lab.lessonId}`)}
+        className="group rounded-xl overflow-hidden transition-all duration-300 cursor-pointer hover:-translate-y-1 flex flex-col"
+        style={{ background: "#0f1629", border: `1px solid ${sc.border}33` }}
+      >
+        <div className="p-4 flex flex-col h-full">
+          {/* Header */}
+          <div className="flex items-start justify-between gap-2 mb-3">
+            <div className="flex items-center gap-2 flex-1 min-w-0">
+              <div className="flex-shrink-0 w-9 h-9 rounded-lg flex items-center justify-center" style={{ background: "linear-gradient(135deg, #6366f1, #818cf8)" }}>
+                <span className="material-symbols-outlined text-white text-base">{icon}</span>
+              </div>
+              <div className="min-w-0 flex-1">
+                <h3 className="font-bold text-white text-sm truncate group-hover:text-indigo-400 transition-colors">
+                  {lab.title}
+                </h3>
+                <p className="text-[10px] text-gray-500 truncate">
+                  {lab.lessonTitle}
+                </p>
+              </div>
+            </div>
+            <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10px] font-bold border flex-shrink-0`} style={{ background: sc.bg, borderColor: sc.border, color: sc.color }}>
+              <span className="material-symbols-outlined text-xs">{sc.icon}</span>
+              {sc.text}
+            </span>
+          </div>
+
+          {/* Description */}
+          {lab.description && (
+            <p className="text-xs text-gray-400 line-clamp-2 mb-3 leading-relaxed flex-shrink-0">
+              {lab.description}
+            </p>
+          )}
+
+          {/* Tags */}
+          <div className="flex flex-wrap gap-2 mb-3 flex-shrink-0">
+            {lab.difficulty && (
+              <span className="text-[10px] font-medium px-2 py-0.5 rounded-full" style={{ background: difficulty.bg, color: difficulty.color }}>
+                {lab.difficulty}
+              </span>
+            )}
+            <span className="text-[10px] font-medium px-2 py-0.5 rounded-full flex items-center gap-1" style={{ background: "#1e293b", color: "#94a3b8" }}>
+              <span className="material-symbols-outlined text-xs">grade</span>
+              {lab.totalMarks || 100} pts
+            </span>
+            {lab.language && lab.labType === "programming" && (
+              <span className="text-[10px] font-medium px-2 py-0.5 rounded-full flex items-center gap-1" style={{ background: "#1e293b", color: "#94a3b8" }}>
+                <span className="material-symbols-outlined text-xs">code</span>
+                {lab.language}
+              </span>
+            )}
+            {lab.dueDate && (
+              <span className="text-[10px] font-medium px-2 py-0.5 rounded-full flex items-center gap-1" style={{ background: "#1e293b", color: "#94a3b8" }}>
+                <span className="material-symbols-outlined text-xs">schedule</span>
+                Due: {new Date(lab.dueDate).toLocaleDateString()}
+              </span>
+            )}
+          </div>
+
+          {/* Score Section for Graded Labs */}
+          {lab.status === "graded" && lab.marks !== null && (
+            <div className="mb-3 p-2 rounded-lg flex-shrink-0" style={{ background: "#1e293b", border: "1px solid #22c55e33" }}>
+              <div className="flex justify-between items-center mb-1">
+                <span className="text-[10px] font-semibold text-green-400">Score</span>
+                <span className="text-xs font-bold text-green-400">
+                  {lab.marks}/{lab.totalMarks || 100}
+                  <span className="text-[9px] ml-1 text-gray-400">
+                    ({Math.round(scorePercent)}%)
+                  </span>
+                </span>
+              </div>
+              <MiniBar value={scorePercent} color="#22c55e" height={2} />
+              {lab.feedback && (
+                <p className="text-[9px] text-gray-400 mt-1 italic line-clamp-2">
+                  "{lab.feedback}"
+                </p>
+              )}
+            </div>
+          )}
+
+          {/* Submitted but not graded yet */}
+          {lab.status === "submitted" && !lab.marks && (
+            <div className="mb-3 p-2 rounded-lg flex-shrink-0" style={{ background: "#1e293b", border: "1px solid #f59e0b33" }}>
+              <div className="flex items-center gap-2">
+                <span className="material-symbols-outlined text-amber-400 text-sm">pending</span>
+                <p className="text-[10px] text-amber-400">Waiting for instructor review</p>
+              </div>
+            </div>
+          )}
+
+          {/* Spacer to push button to bottom */}
+          <div className="flex-1"></div>
+
+          {/* Action Button - Always at bottom */}
+          <button className="w-full flex items-center justify-center gap-1.5 text-xs font-bold py-2 rounded-lg transition-all hover:opacity-90 mt-3 flex-shrink-0" style={{
+            background: lab.status === "graded" ? "#22c55e" : lab.status === "submitted" ? "#f59e0b" : "linear-gradient(135deg, #6366f1, #818cf8)",
+            color: "white"
+          }}>
+            <span className="material-symbols-outlined text-sm">
+              {lab.status === "graded" ? "visibility" : lab.status === "submitted" ? "edit" : "play_arrow"}
+            </span>
+            {lab.status === "graded" ? "View Results" : lab.status === "submitted" ? "Update Submission" : "Start Lab"}
+          </button>
+        </div>
+      </div>
+    );
+  })}
+</div>
       ) : (
-        <div className="text-center py-12 sm:py-16 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700">
-          <span className="material-symbols-outlined text-5xl sm:text-6xl text-gray-300 dark:text-gray-600 mb-4">science</span>
-          <h3 className="text-base sm:text-lg font-medium text-gray-900 dark:text-white mb-2">No Labs Available</h3>
-          <p className="text-sm text-gray-500 dark:text-gray-400">
+        <div className="rounded-2xl p-12 text-center" style={{ background: "#0f1629", border: "1px solid #1e293b" }}>
+          <span className="material-symbols-outlined text-6xl text-gray-700 mb-4 block">science</span>
+          <p className="text-gray-400 font-semibold">No Labs Available</p>
+          <p className="text-sm text-gray-600 mt-1">
             {courses.length === 0 ? "Enroll in a course to access labs" : "No labs have been created for your courses yet"}
           </p>
           {courses.length === 0 && (
             <button
               onClick={() => navigate("/student/dashboard?tab=courses")}
-              className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors"
+              className="mt-4 px-4 py-2 rounded-xl text-sm font-bold transition-all hover:scale-105"
+              style={{ background: "linear-gradient(135deg, #6366f1, #818cf8)", color: "white" }}
             >
               Browse Courses
             </button>
@@ -331,15 +374,17 @@ const Labs = () => {
         </div>
       )}
 
-      {/* Info banner */}
-      <div className="bg-blue-50 dark:bg-blue-900/20 rounded-xl border border-blue-200 dark:border-blue-800 p-4 sm:p-5">
+      {/* Info Banner */}
+      <div className="rounded-xl p-4" style={{ background: "#0f1629", border: "1px solid #6366f133" }}>
         <div className="flex items-start gap-3">
-          <span className="material-symbols-outlined text-blue-600 text-lg">info</span>
+          <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: "#6366f122", border: "1px solid #6366f144" }}>
+            <span className="material-symbols-outlined text-sm" style={{ color: "#6366f1" }}>info</span>
+          </div>
           <div>
-            <h4 className="text-sm font-semibold text-blue-800 dark:text-blue-300 mb-1">How labs work</h4>
-            <p className="text-xs sm:text-sm text-blue-700 dark:text-blue-400">
-              Click a lab to open it within its lesson. You can submit a text answer, code, or upload a PDF.
-              Your instructor will review and provide marks with feedback. Completing a lab unlocks the next lesson.
+            <h4 className="text-xs font-bold text-white mb-1">How labs work</h4>
+            <p className="text-xs text-gray-400">
+              Click a lab to open it within its lesson. You can submit text, code, or upload a PDF.
+              Your instructor will review and provide marks with feedback.
             </p>
           </div>
         </div>

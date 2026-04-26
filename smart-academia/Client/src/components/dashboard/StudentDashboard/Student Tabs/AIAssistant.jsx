@@ -3,39 +3,139 @@ import ReactMarkdown from "react-markdown";
 
 const API = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
+// ─── Design System ───────────────────────────────────────────
+const C = {
+  bg: "#070d1a",
+  surface: "#0f1629",
+  border: "#1e293b",
+  text: "#f1f5f9",
+  muted: "#64748b",
+  faint: "#334155",
+};
+
+// ── Mini Bar ──────────────────────────────────────────────────
+const MiniBar = ({ value = 0, color = "#6366f1", height = 5 }) => (
+  <div className="w-full rounded-full overflow-hidden" style={{ height, background: "#1e293b" }}>
+    <div
+      className="h-full rounded-full"
+      style={{
+        width: `${Math.min(Math.max(value, 0), 100)}%`,
+        background: `linear-gradient(90deg, ${color}bb, ${color})`,
+        boxShadow: `0 0 10px ${color}55`,
+        transition: "width 1s cubic-bezier(.4,0,.2,1)",
+      }}
+    />
+  </div>
+);
+
+// ── Glow Card ─────────────────────────────────────────────────
+const GlowCard = ({ icon, label, value, color, sub }) => (
+  <div
+    className="relative rounded-2xl overflow-hidden p-5 flex flex-col gap-3 group cursor-default"
+    style={{ background: C.surface, border: `1px solid ${color}33` }}
+  >
+    <div
+      className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500"
+      style={{ background: `radial-gradient(ellipse at 50% 0%, ${color}18 0%, transparent 70%)` }}
+    />
+    <div className="flex items-start justify-between relative">
+      <div
+        className="w-11 h-11 rounded-xl flex items-center justify-center"
+        style={{ background: `${color}22`, border: `1px solid ${color}44` }}
+      >
+        <span className="material-symbols-outlined text-xl" style={{ color }}>{icon}</span>
+      </div>
+      {sub && (
+        <span className="text-[10px] font-medium px-2 py-0.5 rounded-full" style={{ background: "#1e293b", color: C.muted }}>
+          {sub}
+        </span>
+      )}
+    </div>
+    <div className="relative">
+      <p className="text-3xl font-black text-white tracking-tight" style={{ textShadow: `0 0 20px ${color}55` }}>
+        {value}
+      </p>
+      <p className="text-xs font-medium mt-0.5" style={{ color: C.muted }}>{label}</p>
+    </div>
+    <MiniBar value={typeof value === "string" && value.endsWith("%") ? parseFloat(value) : 60} color={color} />
+  </div>
+);
+
+// ── Section Header ────────────────────────────────────────────
+const SectionHeader = ({ icon, title, color = "#6366f1" }) => (
+  <div className="flex items-center gap-3 mb-4">
+    <div
+      className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
+      style={{ background: `${color}22`, border: `1px solid ${color}44` }}
+    >
+      <span className="material-symbols-outlined text-sm" style={{ color }}>{icon}</span>
+    </div>
+    <h3 className="text-xs font-bold tracking-widest uppercase" style={{ color: C.muted }}>{title}</h3>
+    <div className="flex-1 h-px" style={{ background: `linear-gradient(90deg, ${color}44, transparent)` }} />
+  </div>
+);
+
+// ── Loading Spinner ───────────────────────────────────────────
+const LoadingSpinner = ({ size = "md" }) => {
+  const dim = size === "sm" ? "w-5 h-5" : size === "lg" ? "w-16 h-16" : "w-12 h-12";
+  return (
+    <div className={`relative ${dim} mx-auto`}>
+      <div className="absolute inset-0 rounded-full border-4" style={{ borderColor: "#1e293b" }} />
+      <div className="absolute inset-0 rounded-full border-4 border-transparent border-t-indigo-500 animate-spin" />
+      <div className="absolute inset-2 rounded-full border-4 border-transparent border-t-purple-500 animate-spin" style={{ animationDirection: "reverse", animationDuration: "0.8s" }} />
+    </div>
+  );
+};
+
+// ── Empty State ───────────────────────────────────────────────
+const EmptyState = ({ icon, title, subtitle }) => (
+  <div className="rounded-2xl p-12 text-center" style={{ background: C.surface, border: `1px solid ${C.border}` }}>
+    <span className="material-symbols-outlined text-5xl mb-4 block" style={{ color: C.faint }}>{icon}</span>
+    <p className="font-semibold" style={{ color: C.muted }}>{title}</p>
+    <p className="text-sm mt-1" style={{ color: "#475569" }}>{subtitle}</p>
+  </div>
+);
+
+// ── Pill Badge ────────────────────────────────────────────────
+const Pill = ({ children, color = "#6366f1" }) => (
+  <span
+    className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold"
+    style={{ background: `${color}22`, color, border: `1px solid ${color}44` }}
+  >
+    {children}
+  </span>
+);
+
+// ─── API helpers ─────────────────────────────────────────────
 const apiFetch = (url, opts = {}) => {
   const token = localStorage.getItem("token");
   return fetch(`${API}${url}`, {
     ...opts,
-    headers: {
-      Authorization: `Bearer ${token}`,
-      ...(opts.headers || {}),
-    },
+    headers: { Authorization: `Bearer ${token}`, ...(opts.headers || {}) },
   });
 };
-
 const apiFetchJSON = (url, opts = {}) =>
   apiFetch(url, { ...opts, headers: { "Content-Type": "application/json", ...(opts.headers || {}) } });
 
-// ─── Markdown renderer ──────────────────────────────────────────────────────
+// ─── Markdown renderer ───────────────────────────────────────
 const renderMarkdown = (text) => (
   <ReactMarkdown
     components={{
-      p: ({ children }) => <p className="mb-2 text-sm leading-relaxed">{children}</p>,
-      strong: ({ children }) => <strong className="font-bold">{children}</strong>,
-      ul: ({ children }) => <ul className="list-disc pl-4 mb-2 space-y-0.5">{children}</ul>,
-      ol: ({ children }) => <ol className="list-decimal pl-4 mb-2 space-y-0.5">{children}</ol>,
-      li: ({ children }) => <li className="text-sm">{children}</li>,
-      h1: ({ children }) => <h1 className="text-base font-bold mb-2 mt-3">{children}</h1>,
-      h2: ({ children }) => <h2 className="text-sm font-bold mb-1.5 mt-2">{children}</h2>,
-      h3: ({ children }) => <h3 className="text-sm font-semibold mb-1 mt-2">{children}</h3>,
+      p: ({ children }) => <p className="mb-2 text-sm leading-relaxed" style={{ color: "#cbd5e1" }}>{children}</p>,
+      strong: ({ children }) => <strong className="font-bold text-white">{children}</strong>,
+      ul: ({ children }) => <ul className="list-disc pl-4 mb-2 space-y-0.5" style={{ color: "#cbd5e1" }}>{children}</ul>,
+      ol: ({ children }) => <ol className="list-decimal pl-4 mb-2 space-y-0.5" style={{ color: "#cbd5e1" }}>{children}</ol>,
+      li: ({ children }) => <li className="text-sm" style={{ color: "#cbd5e1" }}>{children}</li>,
+      h1: ({ children }) => <h1 className="text-base font-bold mb-2 mt-3 text-white">{children}</h1>,
+      h2: ({ children }) => <h2 className="text-sm font-bold mb-1.5 mt-2 text-white">{children}</h2>,
+      h3: ({ children }) => <h3 className="text-sm font-semibold mb-1 mt-2 text-white">{children}</h3>,
       code: ({ children }) => (
-        <code className="bg-gray-100 dark:bg-gray-700 text-blue-600 dark:text-blue-400 px-1 py-0.5 rounded text-xs font-mono">
+        <code className="px-1.5 py-0.5 rounded text-xs font-mono" style={{ background: "#1e293b", color: "#818cf8" }}>
           {children}
         </code>
       ),
       pre: ({ children }) => (
-        <pre className="bg-gray-900 text-gray-100 p-3 rounded-xl text-xs font-mono overflow-x-auto my-2">
+        <pre className="p-4 rounded-xl text-xs font-mono overflow-x-auto my-3" style={{ background: "#020817", color: "#e2e8f0" }}>
           {children}
         </pre>
       ),
@@ -45,7 +145,7 @@ const renderMarkdown = (text) => (
   </ReactMarkdown>
 );
 
-// ─── Documents Panel ────────────────────────────────────────────────────────
+// ─── Documents Panel ─────────────────────────────────────────
 const DocumentsPanel = ({ onSelectDoc, selectedDocId }) => {
   const [docs, setDocs] = useState([]);
   const [uploading, setUploading] = useState(false);
@@ -96,93 +196,103 @@ const DocumentsPanel = ({ onSelectDoc, selectedDocId }) => {
   };
 
   return (
-    <div className="space-y-4">
-      <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl p-4">
-        <p className="text-xs font-semibold text-blue-700 dark:text-blue-300 mb-3 flex items-center gap-1.5">
-          <span className="material-symbols-outlined text-sm">upload_file</span>
-          Upload PDF Document
-        </p>
-        <form onSubmit={handleUpload} className="space-y-2.5">
+    <div className="space-y-6">
+      {/* Upload card */}
+      <div className="rounded-2xl p-5" style={{ background: "#0a0f1e", border: "1px solid #6366f133" }}>
+        <SectionHeader icon="upload_file" title="Upload PDF Document" color="#6366f1" />
+        <form onSubmit={handleUpload} className="space-y-3">
           <input
             value={title}
             onChange={e => setTitle(e.target.value)}
             placeholder="Document title (optional)"
-            className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none"
+            className="w-full px-4 py-2.5 text-sm rounded-xl outline-none transition-all"
+            style={{ background: "#1e293b", color: "white", border: "1px solid #334155" }}
+            onFocus={e => e.target.style.borderColor = "#6366f1"}
+            onBlur={e => e.target.style.borderColor = "#334155"}
           />
           <div
             onClick={() => fileRef.current?.click()}
-            className={`flex items-center gap-2 px-3 py-2.5 border-2 border-dashed rounded-lg cursor-pointer transition-colors ${file
-              ? "border-blue-500 bg-blue-50 dark:bg-blue-900/30"
-              : "border-gray-300 dark:border-gray-600 hover:border-blue-400 dark:hover:border-blue-500"
-              }`}
+            className="flex items-center gap-3 px-4 py-3 rounded-xl cursor-pointer transition-all"
+            style={{
+              border: `2px dashed ${file ? "#6366f1" : "#334155"}`,
+              background: file ? "#6366f111" : "transparent",
+            }}
           >
-            <span className="material-symbols-outlined text-blue-500 text-base">description</span>
-            <span className="text-sm text-gray-600 dark:text-gray-400 truncate flex-1">
+            <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: "#ef444422" }}>
+              <span className="material-symbols-outlined text-sm text-red-500">picture_as_pdf</span>
+            </div>
+            <span className="text-sm flex-1 truncate" style={{ color: file ? "#a5b4fc" : C.muted }}>
               {file ? file.name : "Click to select PDF (max 10MB)"}
             </span>
             {file && (
               <button type="button" onClick={e => { e.stopPropagation(); setFile(null); if (fileRef.current) fileRef.current.value = ""; }}
-                className="text-red-400 hover:text-red-600 flex-shrink-0">
-                <span className="material-symbols-outlined text-sm">close</span>
+                className="flex-shrink-0 transition-colors" style={{ color: C.muted }}>
+                <span className="material-symbols-outlined text-base">close</span>
               </button>
             )}
           </div>
           <input ref={fileRef} type="file" accept=".pdf" onChange={e => setFile(e.target.files[0])} className="hidden" />
-          {error && <p className="text-xs text-red-600 dark:text-red-400">{error}</p>}
+          {error && (
+            <div className="flex items-center gap-2 px-3 py-2 rounded-xl" style={{ background: "#ef444422", border: "1px solid #ef444433" }}>
+              <span className="material-symbols-outlined text-red-400 text-sm">error</span>
+              <p className="text-xs text-red-400">{error}</p>
+            </div>
+          )}
           <button
             type="submit"
             disabled={uploading || !file}
-            className="w-full py-2 rounded-lg text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 flex items-center justify-center gap-2 transition-all"
+            className="w-full py-3 rounded-xl text-sm font-bold text-white transition-all hover:scale-[1.02] active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            style={{ background: "linear-gradient(135deg, #6366f1, #818cf8)", boxShadow: "0 0 24px #6366f133" }}
           >
             {uploading
-              ? <><svg className="animate-spin h-3.5 w-3.5" viewBox="0 0 24 24" fill="none"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" /></svg>Uploading...</>
-              : <><span className="material-symbols-outlined text-sm">upload</span>Upload</>
+              ? <><LoadingSpinner size="sm" /><span>Uploading...</span></>
+              : <><span className="material-symbols-outlined text-base">upload</span>Upload Document</>
             }
           </button>
         </form>
       </div>
 
+      {/* Doc list */}
       <div>
-        <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-2 uppercase tracking-wide">
-          Your Documents ({docs.length})
-        </p>
+        <SectionHeader icon="folder_open" title={`Your Documents (${docs.length})`} color="#22c55e" />
         {loading ? (
-          <div className="text-center py-6">
-            <svg className="animate-spin h-6 w-6 text-blue-600 mx-auto" viewBox="0 0 24 24" fill="none">
-              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
-            </svg>
-          </div>
+          <div className="py-12"><LoadingSpinner /></div>
         ) : docs.length === 0 ? (
-          <div className="text-center py-8">
-            <span className="material-symbols-outlined text-4xl text-gray-300 dark:text-gray-600">folder_open</span>
-            <p className="text-sm text-gray-500 mt-2">No documents yet. Upload a PDF to get started.</p>
-          </div>
+          <EmptyState icon="folder_open" title="No documents yet" subtitle="Upload a PDF to get started" />
         ) : (
-          <div className="space-y-2 max-h-[320px] overflow-y-auto pr-1">
+          <div className="space-y-2 max-h-[380px] overflow-y-auto pr-1">
             {docs.map(doc => (
               <div
                 key={doc._id}
                 onClick={() => onSelectDoc(doc)}
-                className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all ${selectedDocId === doc._id
-                  ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20 ring-1 ring-blue-200 dark:ring-blue-800"
-                  : "border-gray-200 dark:border-gray-700 hover:border-blue-300 dark:hover:border-blue-700 bg-white dark:bg-gray-800"
-                  }`}
+                className="flex items-center gap-3 p-3.5 rounded-xl cursor-pointer transition-all group"
+                style={{
+                  background: selectedDocId === doc._id ? "#6366f122" : "#0a0f1e",
+                  border: `1px solid ${selectedDocId === doc._id ? "#6366f155" : C.border}`,
+                }}
+                onMouseEnter={e => { if (selectedDocId !== doc._id) e.currentTarget.style.borderColor = "#6366f144"; }}
+                onMouseLeave={e => { if (selectedDocId !== doc._id) e.currentTarget.style.borderColor = C.border; }}
               >
-                <div className="w-8 h-8 rounded-lg bg-red-100 dark:bg-red-900/30 flex items-center justify-center flex-shrink-0">
-                  <span className="material-symbols-outlined text-red-600 text-sm">picture_as_pdf</span>
+                <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: "#ef444422", border: "1px solid #ef444433" }}>
+                  <span className="material-symbols-outlined text-red-400 text-lg">picture_as_pdf</span>
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{doc.title}</p>
-                  <p className="text-xs text-gray-400">
+                  <p className="text-sm font-semibold text-white truncate">{doc.title}</p>
+                  <p className="text-xs mt-0.5" style={{ color: C.muted }}>
                     {(doc.fileSize / 1024).toFixed(1)} KB · {new Date(doc.createdAt).toLocaleDateString()}
                   </p>
                 </div>
+                {selectedDocId === doc._id && (
+                  <Pill color="#6366f1">Active</Pill>
+                )}
                 <button
                   onClick={e => handleDelete(doc._id, e)}
-                  className="p-1 text-gray-300 hover:text-red-500 flex-shrink-0 transition-colors"
+                  className="p-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-all"
+                  style={{ color: C.muted }}
+                  onMouseEnter={e => e.currentTarget.style.color = "#f87171"}
+                  onMouseLeave={e => e.currentTarget.style.color = C.muted}
                 >
-                  <span className="material-symbols-outlined text-sm">delete</span>
+                  <span className="material-symbols-outlined text-base">delete</span>
                 </button>
               </div>
             ))}
@@ -193,7 +303,7 @@ const DocumentsPanel = ({ onSelectDoc, selectedDocId }) => {
   );
 };
 
-// ─── Chat Panel ─────────────────────────────────────────────────────────────
+// ─── Chat Panel ──────────────────────────────────────────────
 const ChatPanel = ({ doc }) => {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
@@ -201,13 +311,8 @@ const ChatPanel = ({ doc }) => {
   const [loading, setLoading] = useState(true);
   const endRef = useRef();
 
-  useEffect(() => {
-    if (doc) { loadHistory(); }
-  }, [doc?._id]);
-
-  useEffect(() => {
-    endRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, sending]);
+  useEffect(() => { if (doc) loadHistory(); }, [doc?._id]);
+  useEffect(() => { endRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages, sending]);
 
   const loadHistory = async () => {
     setLoading(true);
@@ -233,10 +338,7 @@ const ChatPanel = ({ doc }) => {
     setMessages(p => [...p, { role: "user", content: msg, timestamp: new Date() }]);
     setSending(true);
     try {
-      const res = await apiFetchJSON(`/api/assistant/chat/${doc._id}`, {
-        method: "POST",
-        body: JSON.stringify({ message: msg }),
-      });
+      const res = await apiFetchJSON(`/api/assistant/chat/${doc._id}`, { method: "POST", body: JSON.stringify({ message: msg }) });
       const data = await res.json();
       if (res.ok) setMessages(data.chatHistory);
     } catch { }
@@ -244,53 +346,63 @@ const ChatPanel = ({ doc }) => {
   };
 
   if (!doc) return (
-    <div className="flex flex-col items-center justify-center h-64 text-center">
-      <span className="material-symbols-outlined text-5xl text-gray-300 dark:text-gray-600">chat</span>
-      <p className="text-sm text-gray-500 mt-3">Select a document to start chatting</p>
-    </div>
+    <EmptyState icon="chat_bubble_outline" title="Select a document first" subtitle="Choose a document from the Documents tab to start chatting" />
   );
 
   return (
-    <div className="flex flex-col h-[400px] sm:h-[480px]">
-      <div className="flex items-center justify-between px-1 pb-3 flex-shrink-0">
-        <div className="flex items-center gap-2 min-w-0">
-          <span className="material-symbols-outlined text-blue-600 text-sm">description</span>
-          <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{doc.title}</p>
+    <div className="flex flex-col" style={{ height: "520px" }}>
+      {/* Doc header */}
+      <div className="flex items-center justify-between pb-3 mb-3 flex-shrink-0" style={{ borderBottom: `1px solid ${C.border}` }}>
+        <div className="flex items-center gap-2.5 min-w-0">
+          <div className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: "#6366f122", border: "1px solid #6366f144" }}>
+            <span className="material-symbols-outlined text-indigo-400 text-sm">description</span>
+          </div>
+          <p className="text-sm font-semibold text-white truncate">{doc.title}</p>
         </div>
         {messages.length > 0 && (
-          <button onClick={clearChat} className="text-xs text-gray-400 hover:text-red-500 flex items-center gap-1 transition-colors flex-shrink-0">
+          <button
+            onClick={clearChat}
+            className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs transition-all"
+            style={{ color: C.muted }}
+            onMouseEnter={e => { e.currentTarget.style.color = "#f87171"; e.currentTarget.style.background = "#ef444411"; }}
+            onMouseLeave={e => { e.currentTarget.style.color = C.muted; e.currentTarget.style.background = "transparent"; }}
+          >
             <span className="material-symbols-outlined text-sm">delete_sweep</span>Clear
           </button>
         )}
       </div>
 
+      {/* Messages */}
       <div className="flex-1 overflow-y-auto space-y-3 pr-1 pb-2">
         {loading ? (
-          <div className="text-center py-8">
-            <svg className="animate-spin h-6 w-6 text-blue-600 mx-auto" viewBox="0 0 24 24" fill="none">
-              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
-            </svg>
-          </div>
+          <div className="py-16 flex items-center justify-center"><LoadingSpinner /></div>
         ) : messages.length === 0 ? (
-          <div className="text-center py-10">
-            <span className="material-symbols-outlined text-4xl text-gray-300 dark:text-gray-600">chat_bubble_outline</span>
-            <p className="text-sm text-gray-500 mt-2">Ask anything about <strong>{doc.title}</strong></p>
+          <div className="py-16 text-center">
+            <div className="w-16 h-16 rounded-2xl mx-auto mb-4 flex items-center justify-center" style={{ background: "#6366f122", border: "1px solid #6366f133" }}>
+              <span className="material-symbols-outlined text-3xl" style={{ color: "#6366f1" }}>chat_bubble_outline</span>
+            </div>
+            <p className="text-sm font-medium text-white">Ask anything about</p>
+            <p className="text-sm mt-0.5" style={{ color: "#818cf8" }}>{doc.title}</p>
           </div>
         ) : (
           messages.map((msg, i) => (
-            <div key={i} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
+            <div key={i} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"} gap-2`}>
               {msg.role === "assistant" && (
-                <div className="w-7 h-7 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center flex-shrink-0 mr-2 mt-0.5">
+                <div className="w-7 h-7 rounded-xl flex items-center justify-center flex-shrink-0 mt-0.5" style={{ background: "linear-gradient(135deg, #6366f1, #818cf8)" }}>
                   <span className="material-symbols-outlined text-white text-xs">smart_toy</span>
                 </div>
               )}
-              <div className={`max-w-[80%] px-3.5 py-2.5 rounded-2xl text-sm ${msg.role === "user"
-                ? "bg-blue-600 text-white rounded-tr-sm"
-                : "bg-gray-100 dark:bg-gray-700/60 text-gray-900 dark:text-white rounded-tl-sm border border-gray-200 dark:border-gray-600"
-                }`}>
+              <div
+                className="max-w-[80%] px-4 py-3 rounded-2xl text-sm"
+                style={{
+                  background: msg.role === "user" ? "linear-gradient(135deg, #6366f1, #818cf8)" : "#1e293b",
+                  borderRadius: msg.role === "user" ? "18px 4px 18px 18px" : "4px 18px 18px 18px",
+                  border: msg.role === "assistant" ? `1px solid ${C.border}` : "none",
+                  boxShadow: msg.role === "user" ? "0 0 20px #6366f144" : "none",
+                }}
+              >
                 {msg.role === "user"
-                  ? <p className="text-sm leading-relaxed whitespace-pre-wrap">{msg.content}</p>
+                  ? <p className="text-sm leading-relaxed whitespace-pre-wrap text-white">{msg.content}</p>
                   : renderMarkdown(msg.content)
                 }
               </div>
@@ -298,14 +410,14 @@ const ChatPanel = ({ doc }) => {
           ))
         )}
         {sending && (
-          <div className="flex justify-start">
-            <div className="w-7 h-7 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center mr-2 mt-0.5">
+          <div className="flex justify-start gap-2">
+            <div className="w-7 h-7 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: "linear-gradient(135deg, #6366f1, #818cf8)" }}>
               <span className="material-symbols-outlined text-white text-xs">smart_toy</span>
             </div>
-            <div className="bg-gray-100 dark:bg-gray-700/60 border border-gray-200 dark:border-gray-600 px-3.5 py-2.5 rounded-2xl rounded-tl-sm">
-              <div className="flex gap-1 items-center h-4">
+            <div className="px-4 py-3 rounded-2xl" style={{ background: "#1e293b", border: `1px solid ${C.border}`, borderRadius: "4px 18px 18px 18px" }}>
+              <div className="flex gap-1.5 items-center h-5">
                 {[0, 1, 2].map(i => (
-                  <div key={i} className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: `${i * 0.15}s` }} />
+                  <div key={i} className="w-2 h-2 rounded-full animate-bounce" style={{ background: "#6366f1", animationDelay: `${i * 0.15}s` }} />
                 ))}
               </div>
             </div>
@@ -314,37 +426,37 @@ const ChatPanel = ({ doc }) => {
         <div ref={endRef} />
       </div>
 
-      <form onSubmit={send} className="flex gap-2 pt-3 border-t border-gray-200 dark:border-gray-700 flex-shrink-0">
+      {/* Input */}
+      <form onSubmit={send} className="flex gap-2 pt-3 flex-shrink-0" style={{ borderTop: `1px solid ${C.border}` }}>
         <input
           value={input}
           onChange={e => setInput(e.target.value)}
-          placeholder="Ask anything..."
-          className="flex-1 px-3.5 py-2.5 text-sm border border-gray-300 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none"
+          placeholder="Ask anything about this document..."
+          className="flex-1 px-4 py-2.5 text-sm rounded-xl outline-none transition-all"
+          style={{ background: "#1e293b", color: "white", border: `1px solid ${C.border}` }}
+          onFocus={e => e.target.style.borderColor = "#6366f1"}
+          onBlur={e => e.target.style.borderColor = C.border}
         />
         <button
           type="submit"
           disabled={!input.trim() || sending}
-          className="w-10 h-10 flex items-center justify-center rounded-xl bg-blue-600 hover:bg-blue-700 text-white disabled:opacity-50 transition-all flex-shrink-0"
+          className="w-11 h-11 flex items-center justify-center rounded-xl transition-all hover:scale-105 active:scale-95 disabled:opacity-40 flex-shrink-0"
+          style={{ background: "linear-gradient(135deg, #6366f1, #818cf8)", boxShadow: "0 0 16px #6366f133" }}
         >
-          {sending
-            ? <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" /></svg>
-            : <span className="material-symbols-outlined text-base">send</span>
-          }
+          <span className="material-symbols-outlined text-white text-base">send</span>
         </button>
       </form>
     </div>
   );
 };
 
-// ─── Summary Panel ──────────────────────────────────────────────────────────
+// ─── Summary Panel ───────────────────────────────────────────
 const SummaryPanel = ({ doc }) => {
   const [summary, setSummary] = useState("");
   const [loading, setLoading] = useState(false);
   const [fetching, setFetching] = useState(true);
 
-  useEffect(() => {
-    if (doc) fetchDoc();
-  }, [doc?._id]);
+  useEffect(() => { if (doc) fetchDoc(); }, [doc?._id]);
 
   const fetchDoc = async () => {
     setFetching(true);
@@ -367,49 +479,50 @@ const SummaryPanel = ({ doc }) => {
     finally { setLoading(false); }
   };
 
-  if (!doc) return (
-    <div className="flex flex-col items-center justify-center h-48 text-center">
-      <span className="material-symbols-outlined text-5xl text-gray-300 dark:text-gray-600">summarize</span>
-      <p className="text-sm text-gray-500 mt-3">Select a document to generate a summary</p>
-    </div>
-  );
+  if (!doc) return <EmptyState icon="summarize" title="Select a document" subtitle="Choose a document from the Documents tab to generate a summary" />;
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-        <div className="flex items-center gap-2">
-          <span className="material-symbols-outlined text-blue-600 text-sm">description</span>
-          <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{doc.title}</p>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2.5 min-w-0">
+          <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: "#6366f122", border: "1px solid #6366f144" }}>
+            <span className="material-symbols-outlined text-indigo-400 text-base">description</span>
+          </div>
+          <p className="text-sm font-semibold text-white truncate">{doc.title}</p>
         </div>
         <button
           onClick={generate}
           disabled={loading}
-          className="flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-lg text-xs font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 transition-all"
+          className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold text-white transition-all hover:scale-105 disabled:opacity-40 flex-shrink-0"
+          style={{ background: "linear-gradient(135deg, #6366f1, #818cf8)", boxShadow: "0 0 20px #6366f133" }}
         >
           {loading
-            ? <><svg className="animate-spin h-3 w-3" viewBox="0 0 24 24" fill="none"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" /></svg>Generating...</>
-            : <><span className="material-symbols-outlined text-sm">auto_awesome</span>{summary ? "Regenerate" : "Generate"}</>
+            ? <><LoadingSpinner size="sm" /><span>Generating...</span></>
+            : <><span className="material-symbols-outlined text-base">auto_awesome</span>{summary ? "Regenerate" : "Generate Summary"}</>
           }
         </button>
       </div>
 
       {fetching ? (
-        <div className="text-center py-8"><svg className="animate-spin h-6 w-6 text-blue-600 mx-auto" viewBox="0 0 24 24" fill="none"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" /></svg></div>
+        <div className="py-20 flex items-center justify-center"><LoadingSpinner /></div>
       ) : summary ? (
-        <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 max-h-[400px] overflow-y-auto">
+        <div className="rounded-2xl p-5 max-h-[440px] overflow-y-auto" style={{ background: "#0a0f1e", border: `1px solid ${C.border}` }}>
           {renderMarkdown(summary)}
         </div>
       ) : (
-        <div className="text-center py-10 bg-white dark:bg-gray-800 rounded-xl border border-dashed border-gray-300 dark:border-gray-600">
-          <span className="material-symbols-outlined text-4xl text-gray-300 dark:text-gray-600">summarize</span>
-          <p className="text-sm text-gray-500 mt-2">No summary yet. Click Generate to create one.</p>
+        <div className="text-center py-20 rounded-2xl" style={{ background: "#0a0f1e", border: `2px dashed ${C.border}` }}>
+          <div className="w-16 h-16 rounded-2xl mx-auto mb-4 flex items-center justify-center" style={{ background: "#6366f122", border: "1px solid #6366f133" }}>
+            <span className="material-symbols-outlined text-3xl" style={{ color: "#6366f1" }}>summarize</span>
+          </div>
+          <p className="text-sm font-medium" style={{ color: C.muted }}>No summary yet.</p>
+          <p className="text-xs mt-1" style={{ color: "#475569" }}>Click Generate to create one.</p>
         </div>
       )}
     </div>
   );
 };
 
-// ─── Explain Panel ──────────────────────────────────────────────────────────
+// ─── Explain Panel ───────────────────────────────────────────
 const ExplainPanel = ({ doc }) => {
   const [concept, setConcept] = useState("");
   const [explanation, setExplanation] = useState("");
@@ -423,10 +536,7 @@ const ExplainPanel = ({ doc }) => {
     const c = concept.trim();
     setConcept("");
     try {
-      const res = await apiFetchJSON(`/api/assistant/explain/${doc._id}`, {
-        method: "POST",
-        body: JSON.stringify({ concept: c }),
-      });
+      const res = await apiFetchJSON(`/api/assistant/explain/${doc._id}`, { method: "POST", body: JSON.stringify({ concept: c }) });
       const data = await res.json();
       if (res.ok) {
         setHistory(p => [{ concept: c, explanation: data.explanation }, ...p.slice(0, 4)]);
@@ -436,49 +546,49 @@ const ExplainPanel = ({ doc }) => {
     finally { setLoading(false); }
   };
 
-  if (!doc) return (
-    <div className="flex flex-col items-center justify-center h-48 text-center">
-      <span className="material-symbols-outlined text-5xl text-gray-300 dark:text-gray-600">lightbulb</span>
-      <p className="text-sm text-gray-500 mt-3">Select a document to explain concepts</p>
-    </div>
-  );
+  if (!doc) return <EmptyState icon="lightbulb" title="Select a document" subtitle="Choose a document to explain concepts from it" />;
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center gap-2 mb-1">
-        <span className="material-symbols-outlined text-amber-500 text-sm">lightbulb</span>
-        <p className="text-sm font-medium text-gray-700 dark:text-gray-300">
-          Explain a concept from <span className="text-blue-600 dark:text-blue-400 font-semibold">{doc.title}</span>
+    <div className="space-y-5">
+      <div className="flex items-center gap-2.5">
+        <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: "#f59e0b22", border: "1px solid #f59e0b44" }}>
+          <span className="material-symbols-outlined text-amber-400 text-base">lightbulb</span>
+        </div>
+        <p className="text-sm text-white">
+          Explain a concept from{" "}
+          <span className="font-semibold" style={{ color: "#fbbf24" }}>{doc.title}</span>
         </p>
       </div>
 
-      <form onSubmit={explain} className="flex flex-col sm:flex-row gap-2">
+      <form onSubmit={explain} className="flex flex-col sm:flex-row gap-3">
         <input
           value={concept}
           onChange={e => setConcept(e.target.value)}
-          placeholder="e.g. recursion, binary search..."
-          className="flex-1 px-3.5 py-2.5 text-sm border border-gray-300 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-amber-400 outline-none"
+          placeholder="e.g. recursion, binary search, neural networks..."
+          className="flex-1 px-4 py-2.5 text-sm rounded-xl outline-none transition-all"
+          style={{ background: "#1e293b", color: "white", border: `1px solid ${C.border}` }}
+          onFocus={e => e.target.style.borderColor = "#f59e0b"}
+          onBlur={e => e.target.style.borderColor = C.border}
         />
         <button
           type="submit"
           disabled={!concept.trim() || loading}
-          className="flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-medium text-white bg-amber-500 hover:bg-amber-600 disabled:opacity-50 transition-all"
+          className="flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold text-white transition-all hover:scale-105 disabled:opacity-40"
+          style={{ background: "linear-gradient(135deg, #f59e0b, #d97706)", boxShadow: "0 0 20px #f59e0b33" }}
         >
-          {loading
-            ? <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" /></svg>
-            : <span className="material-symbols-outlined text-base">auto_awesome</span>
-          }
+          {loading ? <LoadingSpinner size="sm" /> : <span className="material-symbols-outlined text-base">auto_awesome</span>}
           Explain
         </button>
       </form>
 
       {history.length > 0 && (
-        <div className="flex flex-wrap gap-1.5">
+        <div className="flex flex-wrap gap-2">
           {history.map((h, i) => (
             <button
               key={i}
               onClick={() => setExplanation(h.explanation)}
-              className="text-xs px-2.5 py-1 rounded-full bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-700"
+              className="text-xs px-3 py-1.5 rounded-full font-semibold transition-all hover:scale-105"
+              style={{ background: "#f59e0b22", color: "#fbbf24", border: "1px solid #f59e0b44" }}
             >
               {h.concept}
             </button>
@@ -487,7 +597,7 @@ const ExplainPanel = ({ doc }) => {
       )}
 
       {explanation && (
-        <div className="bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-800 rounded-xl p-4 max-h-[350px] overflow-y-auto">
+        <div className="rounded-2xl p-5 max-h-[380px] overflow-y-auto" style={{ background: "#0a0f1e", border: "1px solid #f59e0b33" }}>
           {renderMarkdown(explanation)}
         </div>
       )}
@@ -495,7 +605,7 @@ const ExplainPanel = ({ doc }) => {
   );
 };
 
-// ─── Flashcards Panel ───────────────────────────────────────────────────────
+// ─── Flashcards Panel ────────────────────────────────────────
 const FlashcardsPanel = ({ doc }) => {
   const [sets, setSets] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -522,10 +632,7 @@ const FlashcardsPanel = ({ doc }) => {
     if (!doc) { alert("Select a document first"); return; }
     setGenLoading(true);
     try {
-      const res = await apiFetchJSON(`/api/assistant/flashcards/${doc._id}`, {
-        method: "POST",
-        body: JSON.stringify({ count: genCount, title: genTitle }),
-      });
+      const res = await apiFetchJSON(`/api/assistant/flashcards/${doc._id}`, { method: "POST", body: JSON.stringify({ count: genCount, title: genTitle }) });
       const data = await res.json();
       if (res.ok) { fetchSets(); setActiveSet(data.flashcard); setCardIdx(0); setFlipped(false); }
     } catch { }
@@ -550,94 +657,118 @@ const FlashcardsPanel = ({ doc }) => {
   const next = () => { setFlipped(false); setTimeout(() => setCardIdx(p => Math.min(activeSet.cards.length - 1, p + 1)), 120); };
 
   return (
-    <div className="space-y-5">
-      <div className="bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 rounded-xl p-4">
-        <p className="text-xs font-semibold text-emerald-700 dark:text-emerald-300 mb-3 flex items-center gap-1.5">
-          <span className="material-symbols-outlined text-sm">auto_awesome</span>
-          Generate Flashcards {doc ? `from "${doc.title}"` : "(select a document)"}
-        </p>
-        <div className="flex flex-col sm:flex-row flex-wrap gap-2 items-stretch sm:items-center">
+    <div className="space-y-6">
+      {/* Generate */}
+      <div className="rounded-2xl p-5" style={{ background: "#0a0f1e", border: "1px solid #10b98133" }}>
+        <SectionHeader icon="auto_awesome" title={`Generate Flashcards${doc ? ` · ${doc.title}` : " (select a doc)"}`} color="#10b981" />
+        <div className="flex flex-col sm:flex-row gap-3">
           <input
             value={genTitle}
             onChange={e => setGenTitle(e.target.value)}
             placeholder="Set title (optional)"
-            className="flex-1 min-w-[140px] px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700"
+            className="flex-1 px-4 py-2.5 text-sm rounded-xl outline-none transition-all"
+            style={{ background: "#1e293b", color: "white", border: `1px solid ${C.border}` }}
+            onFocus={e => e.target.style.borderColor = "#10b981"}
+            onBlur={e => e.target.style.borderColor = C.border}
           />
           <select
             value={genCount}
             onChange={e => setGenCount(Number(e.target.value))}
-            className="px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700"
+            className="px-4 py-2.5 text-sm rounded-xl outline-none cursor-pointer"
+            style={{ background: "#1e293b", color: "white", border: `1px solid ${C.border}` }}
           >
             {[5, 10, 15, 20].map(n => <option key={n} value={n}>{n} cards</option>)}
           </select>
           <button
             onClick={generate}
             disabled={genLoading || !doc}
-            className="flex items-center justify-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium text-white bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50"
+            className="flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold text-white transition-all hover:scale-105 disabled:opacity-40"
+            style={{ background: "linear-gradient(135deg, #10b981, #059669)", boxShadow: "0 0 20px #10b98133" }}
           >
-            {genLoading
-              ? <><svg className="animate-spin h-3.5 w-3.5" viewBox="0 0 24 24" fill="none"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" /></svg>Generating...</>
-              : <><span className="material-symbols-outlined text-sm">bolt</span>Generate</>
-            }
+            {genLoading ? <><LoadingSpinner size="sm" /><span>Generating...</span></> : <><span className="material-symbols-outlined text-base">bolt</span>Generate</>}
           </button>
         </div>
       </div>
 
+      {/* Active card */}
       {activeSet && activeSet.cards?.length > 0 && (
-        <div className="space-y-3">
+        <div className="space-y-4">
           <div className="flex items-center justify-between">
-            <p className="text-sm font-semibold text-gray-900 dark:text-white">{activeSet.title}</p>
-            <p className="text-xs text-gray-500">{cardIdx + 1} / {activeSet.cards.length}</p>
+            <p className="text-sm font-bold text-white">{activeSet.title}</p>
+            <Pill color="#10b981">{cardIdx + 1} / {activeSet.cards.length}</Pill>
           </div>
-          <div className="h-1 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
-            <div className="h-full bg-emerald-500 rounded-full transition-all duration-300" style={{ width: `${((cardIdx + 1) / activeSet.cards.length) * 100}%` }} />
-          </div>
-          <div onClick={() => setFlipped(p => !p)} className="cursor-pointer h-44 relative" style={{ perspective: "1000px" }}>
-            <div className="w-full h-full transition-transform duration-500 relative" style={{ transformStyle: "preserve-3d", transform: flipped ? "rotateY(180deg)" : "" }}>
-              <div className="absolute inset-0 rounded-2xl flex flex-col items-center justify-center p-5 bg-white dark:bg-gray-800 border-2 border-emerald-300 dark:border-emerald-700" style={{ backfaceVisibility: "hidden" }}>
-                <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 uppercase mb-3">Question</span>
-                <p className="text-sm font-medium text-gray-900 dark:text-white text-center">{activeSet.cards[cardIdx]?.question}</p>
-                <p className="text-xs text-gray-400 absolute bottom-3">Tap to reveal</p>
+          <MiniBar value={((cardIdx + 1) / activeSet.cards.length) * 100} color="#10b981" height={4} />
+
+          <div onClick={() => setFlipped(p => !p)} className="cursor-pointer h-52 relative" style={{ perspective: "1000px" }}>
+            <div
+              className="w-full h-full transition-transform duration-500 relative"
+              style={{ transformStyle: "preserve-3d", transform: flipped ? "rotateY(180deg)" : "" }}
+            >
+              {/* Front */}
+              <div
+                className="absolute inset-0 rounded-2xl flex flex-col items-center justify-center p-6"
+                style={{ backfaceVisibility: "hidden", background: "#0a0f1e", border: "2px solid #10b981", boxShadow: "0 0 30px #10b98122" }}
+              >
+                <Pill color="#10b981">Question</Pill>
+                <p className="text-sm font-medium text-white text-center mt-4 leading-relaxed">{activeSet.cards[cardIdx]?.question}</p>
+                <p className="text-xs absolute bottom-4" style={{ color: C.muted }}>Tap to reveal answer</p>
               </div>
-              <div className="absolute inset-0 rounded-2xl flex flex-col items-center justify-center p-5" style={{ backfaceVisibility: "hidden", transform: "rotateY(180deg)", background: "linear-gradient(135deg, #059669, #0284c7)" }}>
-                <span className="text-xs font-semibold text-emerald-200 uppercase mb-3">Answer</span>
-                <p className="text-sm font-medium text-white text-center">{activeSet.cards[cardIdx]?.answer}</p>
+              {/* Back */}
+              <div
+                className="absolute inset-0 rounded-2xl flex flex-col items-center justify-center p-6"
+                style={{ backfaceVisibility: "hidden", transform: "rotateY(180deg)", background: "linear-gradient(135deg, #059669, #0284c7)", boxShadow: "0 0 30px #10b98133" }}
+              >
+                <span className="text-xs font-bold text-emerald-200 uppercase tracking-wider mb-4">Answer</span>
+                <p className="text-sm font-medium text-white text-center leading-relaxed">{activeSet.cards[cardIdx]?.answer}</p>
               </div>
             </div>
           </div>
+
           <div className="flex items-center justify-between">
-            <button onClick={prev} disabled={cardIdx === 0} className="flex items-center gap-1 px-3 py-2 rounded-lg text-sm text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-40">
+            <button onClick={prev} disabled={cardIdx === 0} className="flex items-center gap-1 px-4 py-2 rounded-xl text-sm transition-all disabled:opacity-30" style={{ color: C.muted, background: "#1e293b" }}
+              onMouseEnter={e => e.currentTarget.style.color = "white"} onMouseLeave={e => e.currentTarget.style.color = C.muted}>
               <span className="material-symbols-outlined text-base">chevron_left</span>Prev
             </button>
-            <button onClick={() => setFlipped(p => !p)} className="px-4 py-2 rounded-lg text-sm text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700">
+            <button onClick={() => setFlipped(p => !p)} className="px-4 py-2 rounded-xl text-sm flex items-center gap-1 transition-all" style={{ color: C.muted, background: "#1e293b" }}
+              onMouseEnter={e => e.currentTarget.style.color = "white"} onMouseLeave={e => e.currentTarget.style.color = C.muted}>
               <span className="material-symbols-outlined text-base">flip</span>Flip
             </button>
-            <button onClick={next} disabled={cardIdx === activeSet.cards.length - 1} className="flex items-center gap-1 px-3 py-2 rounded-lg text-sm text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-40">
+            <button onClick={next} disabled={cardIdx === activeSet.cards.length - 1} className="flex items-center gap-1 px-4 py-2 rounded-xl text-sm transition-all disabled:opacity-30" style={{ color: C.muted, background: "#1e293b" }}
+              onMouseEnter={e => e.currentTarget.style.color = "white"} onMouseLeave={e => e.currentTarget.style.color = C.muted}>
               Next<span className="material-symbols-outlined text-base">chevron_right</span>
             </button>
           </div>
         </div>
       )}
 
+      {/* Saved sets */}
       <div>
-        <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-2 uppercase">Saved Sets ({sets.length})</p>
+        <SectionHeader icon="style" title={`Saved Sets (${sets.length})`} color="#10b981" />
         {loading ? (
-          <div className="text-center py-4"><svg className="animate-spin h-5 w-5 text-emerald-500 mx-auto" viewBox="0 0 24 24" fill="none"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" /></svg></div>
+          <div className="py-8 flex items-center justify-center"><LoadingSpinner size="sm" /></div>
         ) : sets.length === 0 ? (
-          <p className="text-sm text-gray-400 text-center py-4">No flashcard sets yet.</p>
+          <p className="text-sm text-center py-8" style={{ color: C.muted }}>No flashcard sets yet.</p>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {sets.map(set => (
-              <div key={set._id} onClick={() => openSet(set)} className={`flex items-center gap-2.5 p-3 rounded-xl border cursor-pointer ${activeSet?._id === set._id ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20" : "border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800"}`}>
-                <div className="w-8 h-8 rounded-lg bg-emerald-100 dark:bg-emerald-900/40 flex items-center justify-center">
-                  <span className="material-symbols-outlined text-emerald-600 text-sm">style</span>
+              <div
+                key={set._id}
+                onClick={() => openSet(set)}
+                className="flex items-center gap-3 p-3.5 rounded-xl cursor-pointer transition-all group"
+                style={{ background: activeSet?._id === set._id ? "#10b98122" : "#0a0f1e", border: `1px solid ${activeSet?._id === set._id ? "#10b98155" : C.border}` }}
+                onMouseEnter={e => { if (activeSet?._id !== set._id) e.currentTarget.style.borderColor = "#10b98144"; }}
+                onMouseLeave={e => { if (activeSet?._id !== set._id) e.currentTarget.style.borderColor = C.border; }}
+              >
+                <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: "#10b98122", border: "1px solid #10b98133" }}>
+                  <span className="material-symbols-outlined text-emerald-400 text-lg">style</span>
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{set.title}</p>
-                  <p className="text-xs text-gray-400">{new Date(set.createdAt).toLocaleDateString()}</p>
+                  <p className="text-sm font-semibold text-white truncate">{set.title}</p>
+                  <p className="text-xs mt-0.5" style={{ color: C.muted }}>{new Date(set.createdAt).toLocaleDateString()}</p>
                 </div>
-                <button onClick={e => deleteSet(set._id, e)} className="text-gray-300 hover:text-red-500">
-                  <span className="material-symbols-outlined text-sm">delete</span>
+                <button onClick={e => deleteSet(set._id, e)} className="p-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-all" style={{ color: C.muted }}
+                  onMouseEnter={e => e.currentTarget.style.color = "#f87171"} onMouseLeave={e => e.currentTarget.style.color = C.muted}>
+                  <span className="material-symbols-outlined text-base">delete</span>
                 </button>
               </div>
             ))}
@@ -648,7 +779,7 @@ const FlashcardsPanel = ({ doc }) => {
   );
 };
 
-// ─── Quiz Panel ─────────────────────────────────────────────────────────────
+// ─── Quiz Panel ──────────────────────────────────────────────
 const QuizPanel = ({ doc }) => {
   const [quizzes, setQuizzes] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -678,10 +809,7 @@ const QuizPanel = ({ doc }) => {
     if (!doc) { alert("Select a document first"); return; }
     setGenLoading(true);
     try {
-      const res = await apiFetchJSON(`/api/assistant/quiz/${doc._id}`, {
-        method: "POST",
-        body: JSON.stringify({ count: genCount, title: genTitle }),
-      });
+      const res = await apiFetchJSON(`/api/assistant/quiz/${doc._id}`, { method: "POST", body: JSON.stringify({ count: genCount, title: genTitle }) });
       const data = await res.json();
       if (res.ok) { fetchQuizzes(); startQuiz(data.quiz); }
     } catch { }
@@ -707,10 +835,7 @@ const QuizPanel = ({ doc }) => {
     if (answers.includes(null)) { alert("Answer all questions first!"); return; }
     setSubmitting(true);
     try {
-      const res = await apiFetchJSON(`/api/assistant/quizzes/${activeQuiz._id}/submit`, {
-        method: "POST",
-        body: JSON.stringify({ answers }),
-      });
+      const res = await apiFetchJSON(`/api/assistant/quizzes/${activeQuiz._id}/submit`, { method: "POST", body: JSON.stringify({ answers }) });
       const data = await res.json();
       if (res.ok) { setResult(data); setSubmitted(true); fetchQuizzes(); }
     } catch { }
@@ -730,96 +855,149 @@ const QuizPanel = ({ doc }) => {
     return Math.max(...quiz.results.map(r => Math.round((r.score / r.totalQuestions) * 100)));
   };
 
-  const scoreColor = result
-    ? result.percentage >= 70 ? "text-emerald-600" : result.percentage >= 50 ? "text-amber-600" : "text-red-600"
-    : "";
+  const resultColor = result ? (result.percentage >= 70 ? "#22c55e" : result.percentage >= 50 ? "#f59e0b" : "#ef4444") : "#6366f1";
 
   return (
-    <div className="space-y-5">
-      <div className="bg-sky-50 dark:bg-sky-900/20 border border-sky-200 dark:border-sky-800 rounded-xl p-4">
-        <p className="text-xs font-semibold text-sky-700 dark:text-sky-300 mb-3 flex items-center gap-1.5">
-          <span className="material-symbols-outlined text-sm">quiz</span>
-          Generate Quiz {doc ? `from "${doc.title}"` : "(select a document)"}
-        </p>
-        <div className="flex flex-col sm:flex-row flex-wrap gap-2 items-stretch sm:items-center">
-          <input value={genTitle} onChange={e => setGenTitle(e.target.value)} placeholder="Quiz title (optional)" className="flex-1 min-w-[140px] px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700" />
-          <select value={genCount} onChange={e => setGenCount(Number(e.target.value))} className="px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700">
+    <div className="space-y-6">
+      {/* Generate */}
+      <div className="rounded-2xl p-5" style={{ background: "#0a0f1e", border: "1px solid #0ea5e933" }}>
+        <SectionHeader icon="quiz" title={`Generate Quiz${doc ? ` · ${doc.title}` : " (select a doc)"}`} color="#0ea5e9" />
+        <div className="flex flex-col sm:flex-row gap-3">
+          <input
+            value={genTitle}
+            onChange={e => setGenTitle(e.target.value)}
+            placeholder="Quiz title (optional)"
+            className="flex-1 px-4 py-2.5 text-sm rounded-xl outline-none transition-all"
+            style={{ background: "#1e293b", color: "white", border: `1px solid ${C.border}` }}
+            onFocus={e => e.target.style.borderColor = "#0ea5e9"}
+            onBlur={e => e.target.style.borderColor = C.border}
+          />
+          <select
+            value={genCount}
+            onChange={e => setGenCount(Number(e.target.value))}
+            className="px-4 py-2.5 text-sm rounded-xl outline-none cursor-pointer"
+            style={{ background: "#1e293b", color: "white", border: `1px solid ${C.border}` }}
+          >
             {[5, 10, 15, 20].map(n => <option key={n} value={n}>{n} questions</option>)}
           </select>
-          <button onClick={generate} disabled={genLoading || !doc} className="flex items-center justify-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium text-white bg-sky-600 hover:bg-sky-700 disabled:opacity-50">
-            {genLoading ? <><svg className="animate-spin h-3.5 w-3.5" viewBox="0 0 24 24" fill="none"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" /></svg>Generating...</> : <><span className="material-symbols-outlined text-sm">bolt</span>Generate</>}
+          <button
+            onClick={generate}
+            disabled={genLoading || !doc}
+            className="flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold text-white transition-all hover:scale-105 disabled:opacity-40"
+            style={{ background: "linear-gradient(135deg, #0ea5e9, #0284c7)", boxShadow: "0 0 20px #0ea5e933" }}
+          >
+            {genLoading ? <><LoadingSpinner size="sm" /><span>Generating...</span></> : <><span className="material-symbols-outlined text-base">bolt</span>Generate</>}
           </button>
         </div>
       </div>
 
+      {/* Active quiz */}
       {activeQuiz && !submitted && activeQuiz.questions?.length > 0 && (
-        <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-4 space-y-4">
+        <div className="rounded-2xl p-5 space-y-5" style={{ background: "#0a0f1e", border: "1px solid #0ea5e933" }}>
           <div className="flex items-center justify-between">
-            <p className="text-sm font-semibold text-gray-900 dark:text-white truncate">{activeQuiz.title}</p>
-            <p className="text-xs text-gray-500">{currentQ + 1}/{activeQuiz.questions.length}</p>
+            <p className="text-sm font-bold text-white truncate">{activeQuiz.title}</p>
+            <Pill color="#0ea5e9">{currentQ + 1} / {activeQuiz.questions.length}</Pill>
           </div>
-          <div className="h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
-            <div className="h-full bg-sky-500 rounded-full transition-all" style={{ width: `${((currentQ + 1) / activeQuiz.questions.length) * 100}%` }} />
-          </div>
+          <MiniBar value={((currentQ + 1) / activeQuiz.questions.length) * 100} color="#0ea5e9" height={4} />
           <div>
-            <p className="text-sm font-medium text-gray-900 dark:text-white mb-3">{currentQ + 1}. {activeQuiz.questions[currentQ]?.question}</p>
-            <div className="space-y-2">
+            <p className="text-sm font-semibold text-white mb-4 leading-relaxed">
+              <span className="font-black mr-2" style={{ color: "#38bdf8" }}>{currentQ + 1}.</span>
+              {activeQuiz.questions[currentQ]?.question}
+            </p>
+            <div className="space-y-2.5">
               {activeQuiz.questions[currentQ]?.options.map((opt, i) => (
-                <label key={i} className={`flex items-center gap-3 p-3 rounded-xl border-2 cursor-pointer ${answers[currentQ] === i ? "border-sky-500 bg-sky-50 dark:bg-sky-900/20" : "border-gray-200 dark:border-gray-600"}`}>
-                  <input type="radio" name={`q${currentQ}`} checked={answers[currentQ] === i} onChange={() => setAnswers(p => { const a = [...p]; a[currentQ] = i; return a; })} className="text-sky-600" />
-                  <span className="text-sm text-gray-800 dark:text-gray-200">{opt}</span>
+                <label
+                  key={i}
+                  className="flex items-center gap-3 p-3.5 rounded-xl border-2 cursor-pointer transition-all"
+                  style={{
+                    borderColor: answers[currentQ] === i ? "#0ea5e9" : C.border,
+                    background: answers[currentQ] === i ? "#0ea5e911" : "transparent",
+                    boxShadow: answers[currentQ] === i ? "0 0 16px #0ea5e922" : "none",
+                  }}
+                >
+                  <input
+                    type="radio" name={`q${currentQ}`}
+                    checked={answers[currentQ] === i}
+                    onChange={() => setAnswers(p => { const a = [...p]; a[currentQ] = i; return a; })}
+                    className="w-4 h-4 accent-sky-500"
+                  />
+                  <span className="text-sm" style={{ color: answers[currentQ] === i ? "white" : "#cbd5e1" }}>{opt}</span>
                 </label>
               ))}
             </div>
           </div>
-          <div className="flex items-center justify-between pt-1">
-            <button onClick={() => setCurrentQ(p => Math.max(0, p - 1))} disabled={currentQ === 0} className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-sm text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-40">
-              <span className="material-symbols-outlined text-sm">chevron_left</span>Prev
+          <div className="flex items-center justify-between">
+            <button onClick={() => setCurrentQ(p => Math.max(0, p - 1))} disabled={currentQ === 0}
+              className="flex items-center gap-1 px-4 py-2 rounded-xl text-sm transition-all disabled:opacity-30"
+              style={{ color: C.muted, background: "#1e293b" }}>
+              <span className="material-symbols-outlined text-base">chevron_left</span>Prev
             </button>
             {currentQ < activeQuiz.questions.length - 1 ? (
-              <button onClick={() => setCurrentQ(p => p + 1)} disabled={answers[currentQ] === null} className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-sm text-sky-600 hover:bg-sky-50 dark:hover:bg-sky-900/20 disabled:opacity-40">
-                Next<span className="material-symbols-outlined text-sm">chevron_right</span>
+              <button onClick={() => setCurrentQ(p => p + 1)} disabled={answers[currentQ] === null}
+                className="flex items-center gap-1 px-5 py-2 rounded-xl text-sm font-semibold transition-all disabled:opacity-30"
+                style={{ color: "#38bdf8", background: "#0ea5e922" }}>
+                Next<span className="material-symbols-outlined text-base">chevron_right</span>
               </button>
             ) : (
-              <button onClick={submitQuiz} disabled={submitting || answers.includes(null)} className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-sm font-medium text-white bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50">
-                {submitting ? <svg className="animate-spin h-3.5 w-3.5" viewBox="0 0 24 24" fill="none"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" /></svg> : <span className="material-symbols-outlined text-sm">check</span>}Submit
+              <button onClick={submitQuiz} disabled={submitting || answers.includes(null)}
+                className="flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-bold text-white transition-all hover:scale-105 disabled:opacity-40"
+                style={{ background: "linear-gradient(135deg, #10b981, #059669)", boxShadow: "0 0 16px #10b98133" }}>
+                {submitting ? <LoadingSpinner size="sm" /> : <span className="material-symbols-outlined text-base">check</span>}Submit
               </button>
             )}
           </div>
         </div>
       )}
 
+      {/* Result */}
       {submitted && result && (
-        <div className={`rounded-2xl border-2 p-5 text-center ${result.percentage >= 70 ? "border-emerald-300 bg-emerald-50 dark:bg-emerald-900/20" : result.percentage >= 50 ? "border-amber-300 bg-amber-50 dark:bg-amber-900/20" : "border-red-300 bg-red-50 dark:bg-red-900/20"}`}>
-          <p className={`text-4xl font-black mb-1 ${scoreColor}`}>{result.percentage}%</p>
-          <p className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">
+        <div className="rounded-2xl p-8 text-center" style={{ background: "#0a0f1e", border: `2px solid ${resultColor}55`, boxShadow: `0 0 40px ${resultColor}22` }}>
+          <div className="w-24 h-24 rounded-full mx-auto mb-4 flex items-center justify-center" style={{ background: `${resultColor}22`, border: `3px solid ${resultColor}` }}>
+            <p className="text-2xl font-black" style={{ color: resultColor }}>{result.percentage}%</p>
+          </div>
+          <p className="text-lg font-black text-white mb-1">
             {result.percentage >= 70 ? "Excellent! 🎉" : result.percentage >= 50 ? "Good effort! 👍" : "Keep practicing! 💪"}
           </p>
-          <p className="text-xs text-gray-500 mb-4">{result.score} out of {result.totalQuestions} correct</p>
-          <button onClick={() => startQuiz(activeQuiz)} className="px-4 py-2 rounded-lg text-sm font-medium text-white bg-sky-600 hover:bg-sky-700">Try Again</button>
+          <p className="text-sm mb-5" style={{ color: C.muted }}>{result.score} out of {result.totalQuestions} correct</p>
+          <button onClick={() => startQuiz(activeQuiz)}
+            className="px-6 py-2.5 rounded-xl text-sm font-bold text-white transition-all hover:scale-105"
+            style={{ background: "linear-gradient(135deg, #0ea5e9, #0284c7)" }}>
+            Try Again
+          </button>
         </div>
       )}
 
+      {/* Saved quizzes */}
       <div>
-        <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-2 uppercase">Saved Quizzes ({quizzes.length})</p>
+        <SectionHeader icon="quiz" title={`Saved Quizzes (${quizzes.length})`} color="#0ea5e9" />
         {loading ? (
-          <div className="text-center py-4"><svg className="animate-spin h-5 w-5 text-sky-500 mx-auto" viewBox="0 0 24 24" fill="none"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" /></svg></div>
+          <div className="py-8 flex items-center justify-center"><LoadingSpinner size="sm" /></div>
         ) : quizzes.length === 0 ? (
-          <p className="text-sm text-gray-400 text-center py-4">No quizzes yet.</p>
+          <p className="text-sm text-center py-8" style={{ color: C.muted }}>No quizzes yet.</p>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {quizzes.map(q => {
               const best = getBestScore(q);
               return (
-                <div key={q._id} onClick={() => startQuiz(q)} className="flex items-center gap-2.5 p-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 cursor-pointer">
-                  <div className="w-8 h-8 rounded-lg bg-sky-100 dark:bg-sky-900/40 flex items-center justify-center">
-                    <span className="material-symbols-outlined text-sky-600 text-sm">quiz</span>
+                <div key={q._id} onClick={() => startQuiz(q)}
+                  className="flex items-center gap-3 p-3.5 rounded-xl cursor-pointer transition-all group"
+                  style={{ background: "#0a0f1e", border: `1px solid ${C.border}` }}
+                  onMouseEnter={e => e.currentTarget.style.borderColor = "#0ea5e944"}
+                  onMouseLeave={e => e.currentTarget.style.borderColor = C.border}>
+                  <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: "#0ea5e922", border: "1px solid #0ea5e933" }}>
+                    <span className="material-symbols-outlined text-sky-400 text-lg">quiz</span>
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{q.title}</p>
-                    <p className="text-xs text-gray-400">{q.questions?.length || 0} Qs{best !== null && <span className="ml-1 font-semibold">· Best: {best}%</span>}</p>
+                    <p className="text-sm font-semibold text-white truncate">{q.title}</p>
+                    <p className="text-xs mt-0.5" style={{ color: C.muted }}>
+                      {q.questions?.length || 0} questions
+                      {best !== null && <span className="ml-2 font-bold" style={{ color: "#38bdf8" }}>Best: {best}%</span>}
+                    </p>
                   </div>
-                  <button onClick={e => deleteQuiz(q._id, e)} className="text-gray-300 hover:text-red-500"><span className="material-symbols-outlined text-sm">delete</span></button>
+                  <button onClick={e => deleteQuiz(q._id, e)} className="p-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-all" style={{ color: C.muted }}
+                    onMouseEnter={e => e.currentTarget.style.color = "#f87171"} onMouseLeave={e => e.currentTarget.style.color = C.muted}>
+                    <span className="material-symbols-outlined text-base">delete</span>
+                  </button>
                 </div>
               );
             })}
@@ -830,7 +1008,7 @@ const QuizPanel = ({ doc }) => {
   );
 };
 
-// ─── Analytics Panel ────────────────────────────────────────────────────────
+// ─── Analytics Panel ─────────────────────────────────────────
 const AnalyticsPanel = () => {
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -844,90 +1022,91 @@ const AnalyticsPanel = () => {
       const res = await apiFetch(`/api/assistant/analytics?range=${timeRange}`);
       const data = await res.json();
       if (res.ok) setStats(data);
-    } catch (err) {
-      console.error("Failed to fetch analytics:", err);
-    } finally {
-      setLoading(false);
-    }
+    } catch (err) { console.error(err); }
+    finally { setLoading(false); }
   };
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <svg className="animate-spin h-8 w-8 text-blue-600" viewBox="0 0 24 24" fill="none">
-          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
-        </svg>
-      </div>
-    );
-  }
+  if (loading) return <div className="py-24 flex items-center justify-center"><LoadingSpinner size="lg" /></div>;
 
   const s = stats || { totalDocuments: 0, totalQuizzes: 0, totalFlashcardSets: 0, totalQuizAttempts: 0, avgQuizScore: 0, bestQuizScore: 0, totalStudyTime: 0, streak: 0, recentActivity: [] };
 
-  const statCards = [
-    { label: "Documents", value: s.totalDocuments, icon: "folder_open", color: "from-blue-500 to-blue-600" },
-    { label: "Quizzes", value: s.totalQuizAttempts, icon: "quiz", color: "from-sky-500 to-sky-600" },
-    { label: "Flashcards", value: s.totalFlashcardSets, icon: "style", color: "from-emerald-500 to-emerald-600" },
-    { label: "Day Streak", value: s.streak, icon: "local_fire_department", color: "from-orange-500 to-red-500" },
-  ];
-
   return (
     <div className="space-y-5">
+      {/* Range toggle */}
       <div className="flex justify-end">
-        <div className="inline-flex rounded-lg border border-gray-200 dark:border-gray-700 p-1">
+        <div className="inline-flex rounded-xl p-1" style={{ background: "#0a0f1e", border: `1px solid ${C.border}` }}>
           {["week", "month", "all"].map((range) => (
-            <button key={range} onClick={() => setTimeRange(range)} className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all ${timeRange === range ? "bg-blue-600 text-white" : "text-gray-600 dark:text-gray-400"}`}>{range.charAt(0).toUpperCase() + range.slice(1)}</button>
+            <button key={range} onClick={() => setTimeRange(range)}
+              className="px-4 py-1.5 text-xs font-semibold rounded-lg transition-all"
+              style={timeRange === range ? { background: "#6366f1", color: "white" } : { color: C.muted }}>
+              {range.charAt(0).toUpperCase() + range.slice(1)}
+            </button>
           ))}
         </div>
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        {statCards.map((stat, i) => (
-          <div key={i} className="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700">
-            <div className={`w-8 h-8 rounded-lg bg-gradient-to-br ${stat.color} flex items-center justify-center mb-3`}>
-              <span className="material-symbols-outlined text-white text-sm">{stat.icon}</span>
-            </div>
-            <p className="text-2xl font-bold text-gray-900 dark:text-white">{stat.value}</p>
-            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{stat.label}</p>
-          </div>
-        ))}
+      {/* Stat cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <GlowCard icon="folder_open" label="Documents" value={s.totalDocuments} color="#6366f1" />
+        <GlowCard icon="quiz" label="Quiz Attempts" value={s.totalQuizAttempts} color="#0ea5e9" />
+        <GlowCard icon="style" label="Flashcard Sets" value={s.totalFlashcardSets} color="#10b981" />
+        <GlowCard icon="local_fire_department" label="Day Streak" value={s.streak} color="#f59e0b" />
       </div>
 
+      {/* Performance cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-5">
-          <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-4 flex items-center gap-2">
-            <span className="material-symbols-outlined text-blue-600 text-base">trending_up</span>Quiz Performance
-          </h3>
-          <div className="flex items-end justify-between">
-            <div><p className="text-4xl font-bold text-gray-900 dark:text-white">{s.avgQuizScore}%</p><p className="text-xs text-gray-500 mt-1">Average Score</p></div>
-            <div className="text-right"><p className="text-2xl font-semibold text-emerald-600">{s.bestQuizScore}%</p><p className="text-xs text-gray-500">Best Score</p></div>
+        <div className="rounded-2xl p-5" style={{ background: "#0a0f1e", border: "1px solid #0ea5e933" }}>
+          <SectionHeader icon="trending_up" title="Quiz Performance" color="#0ea5e9" />
+          <div className="flex items-end justify-between mb-4">
+            <div>
+              <p className="text-4xl font-black text-white">{s.avgQuizScore}%</p>
+              <p className="text-xs mt-1" style={{ color: C.muted }}>Average Score</p>
+            </div>
+            <div className="text-right">
+              <p className="text-2xl font-bold" style={{ color: "#4ade80" }}>{s.bestQuizScore}%</p>
+              <p className="text-xs" style={{ color: C.muted }}>Best Score</p>
+            </div>
           </div>
-          <div className="mt-4 h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
-            <div className="h-full bg-gradient-to-r from-blue-500 to-emerald-500 rounded-full" style={{ width: `${s.avgQuizScore}%` }} />
-          </div>
+          <MiniBar value={s.avgQuizScore} color="#0ea5e9" height={8} />
         </div>
-        <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-5">
-          <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-4 flex items-center gap-2">
-            <span className="material-symbols-outlined text-purple-600 text-base">schedule</span>Study Time
-          </h3>
-          <div><p className="text-4xl font-bold text-gray-900 dark:text-white">{Math.floor(s.totalStudyTime / 60)}h {s.totalStudyTime % 60}m</p><p className="text-xs text-gray-500 mt-1">Total time spent</p></div>
-          <div className="mt-4 flex items-center gap-2"><span className="material-symbols-outlined text-amber-500 text-sm">emoji_events</span><p className="text-sm text-gray-600 dark:text-gray-400"><span className="font-semibold">{s.streak} day streak!</span> Keep it up!</p></div>
+
+        <div className="rounded-2xl p-5" style={{ background: "#0a0f1e", border: "1px solid #a855f733" }}>
+          <SectionHeader icon="schedule" title="Study Activity" color="#a855f7" />
+          <p className="text-4xl font-black text-white mb-1">
+            {Math.floor(s.totalStudyTime / 60)}h {s.totalStudyTime % 60}m
+          </p>
+          <p className="text-xs mb-4" style={{ color: C.muted }}>Total time spent</p>
+          <div className="flex items-center gap-2 px-3 py-2 rounded-xl" style={{ background: "#f59e0b11", border: "1px solid #f59e0b33" }}>
+            <span className="material-symbols-outlined text-amber-400 text-lg">local_fire_department</span>
+            <p className="text-sm" style={{ color: "#fbbf24" }}>
+              <span className="font-black text-white">{s.streak} day streak!</span> Keep it up!
+            </p>
+          </div>
         </div>
       </div>
 
+      {/* Recent activity */}
       {s.recentActivity?.length > 0 && (
-        <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
-          <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-700">
-            <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 flex items-center gap-2"><span className="material-symbols-outlined text-blue-600 text-base">history</span>Recent Activity</h3>
+        <div className="rounded-2xl overflow-hidden" style={{ background: "#0a0f1e", border: `1px solid ${C.border}` }}>
+          <div className="px-5 pt-5">
+            <SectionHeader icon="history" title="Recent Activity" color="#6366f1" />
           </div>
-          <div className="divide-y divide-gray-200 dark:divide-gray-700">
+          <div className="divide-y" style={{ borderColor: C.border }}>
             {s.recentActivity.slice(0, 5).map((activity, i) => (
-              <div key={i} className="px-4 py-3 flex items-center gap-3">
-                <div className="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
-                  <span className="material-symbols-outlined text-blue-600 text-sm">{activity.type === "quiz" ? "quiz" : "style"}</span>
+              <div key={i} className="px-5 py-3.5 flex items-center gap-3 transition-all" style={{ cursor: "default" }}
+                onMouseEnter={e => e.currentTarget.style.background = "#ffffff08"}
+                onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
+                <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
+                  style={{ background: activity.type === "quiz" ? "#0ea5e922" : "#10b98122", border: `1px solid ${activity.type === "quiz" ? "#0ea5e933" : "#10b98133"}` }}>
+                  <span className="material-symbols-outlined text-sm" style={{ color: activity.type === "quiz" ? "#38bdf8" : "#34d399" }}>
+                    {activity.type === "quiz" ? "quiz" : "style"}
+                  </span>
                 </div>
-                <div className="flex-1"><p className="text-sm font-medium text-gray-900 dark:text-white">{activity.title}</p><p className="text-xs text-gray-500">{activity.description}</p></div>
-                <span className="text-xs text-gray-400">{activity.time}</span>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-white truncate">{activity.title}</p>
+                  <p className="text-xs" style={{ color: C.muted }}>{activity.description}</p>
+                </div>
+                <span className="text-xs flex-shrink-0" style={{ color: C.muted }}>{activity.time}</span>
               </div>
             ))}
           </div>
@@ -937,20 +1116,20 @@ const AnalyticsPanel = () => {
   );
 };
 
-// ─── MAIN COMPONENT ─────────────────────────────────────────────────────────
+// ─── MAIN COMPONENT ──────────────────────────────────────────
 const AIAssistant = () => {
   const [activeFeature, setActiveFeature] = useState("documents");
   const [selectedDoc, setSelectedDoc] = useState(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const features = [
-    { id: "documents", icon: "folder_open", label: "Documents", color: "text-blue-600" },
-    { id: "chat", icon: "chat", label: "Chat", color: "text-indigo-600" },
-    { id: "summary", icon: "summarize", label: "Summary", color: "text-blue-600" },
-    { id: "explain", icon: "lightbulb", label: "Explain", color: "text-amber-600" },
-    { id: "flashcards", icon: "style", label: "Flashcards", color: "text-emerald-600" },
-    { id: "quiz", icon: "quiz", label: "Quiz", color: "text-sky-600" },
-    { id: "analytics", icon: "analytics", label: "Analytics", color: "text-purple-600" },
+    { id: "documents", icon: "folder_open",  label: "Documents",  color: "#6366f1" },
+    { id: "chat",      icon: "chat",          label: "Chat",       color: "#818cf8" },
+    { id: "summary",   icon: "summarize",     label: "Summary",    color: "#6366f1" },
+    { id: "explain",   icon: "lightbulb",     label: "Explain",    color: "#f59e0b" },
+    { id: "flashcards",icon: "style",         label: "Flashcards", color: "#10b981" },
+    { id: "quiz",      icon: "quiz",          label: "Quiz",       color: "#0ea5e9" },
+    { id: "analytics", icon: "analytics",     label: "Analytics",  color: "#a855f7" },
   ];
 
   const handleSelectDoc = (doc) => {
@@ -958,74 +1137,148 @@ const AIAssistant = () => {
     if (doc && activeFeature === "documents") setActiveFeature("chat");
   };
 
+  const active = features.find(f => f.id === activeFeature);
+
   return (
-    <div className="space-y-4 sm:space-y-6 px-3 sm:px-0">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-        <div>
-          <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 dark:text-white flex items-center gap-2.5">
-            <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-md">
-              <span className="material-symbols-outlined text-white text-base sm:text-lg">auto_awesome</span>
+    <div className="space-y-5 pb-10" style={{ fontFamily: "'Lexend', sans-serif" }}>
+
+      {/* ── Hero ─────────────────────────────────────────── */}
+      <div className="relative rounded-2xl overflow-hidden p-6 sm:p-8"
+        style={{ background: "linear-gradient(135deg, #0c0e1e 0%, #131b35 50%, #0d1527 100%)", border: `1px solid ${C.border}` }}>
+        {/* Glow blobs */}
+        <div className="absolute top-0 left-1/4 w-56 h-56 rounded-full blur-3xl opacity-20 pointer-events-none" style={{ background: "#6366f1" }} />
+        <div className="absolute bottom-0 right-1/4 w-56 h-56 rounded-full blur-3xl opacity-15 pointer-events-none" style={{ background: "#a855f7" }} />
+
+        <div className="relative flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <div className="flex items-center gap-2 mb-1">
+              <span className="w-2 h-2 rounded-full" style={{ background: "#6366f1", boxShadow: "0 0 8px #6366f1" }} />
+              <p className="text-xs font-bold tracking-widest uppercase" style={{ color: "#818cf8" }}>
+                SmartAcademia · AI Assistant
+              </p>
             </div>
-            AI Assistant
-          </h1>
-          <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mt-1">Upload PDFs · Chat · Summarize · Explain · Flashcards · Quiz · Analytics</p>
-        </div>
-        {selectedDoc && (
-          <div className="flex items-center gap-2 px-3 py-1.5 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 rounded-xl max-w-full sm:max-w-xs">
-            <span className="material-symbols-outlined text-blue-600 text-sm flex-shrink-0">description</span>
-            <span className="text-xs font-medium text-blue-700 dark:text-blue-300 truncate">{selectedDoc.title}</span>
-            <button onClick={() => setSelectedDoc(null)} className="text-blue-400 hover:text-blue-600 flex-shrink-0"><span className="material-symbols-outlined text-sm">close</span></button>
+            <h1 className="text-2xl sm:text-3xl font-black text-white leading-tight tracking-tight">
+              AI-Powered{" "}
+              <span style={{ background: "linear-gradient(90deg, #818cf8, #c084fc)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>
+                Study Tools
+              </span>
+            </h1>
+            <p className="text-xs mt-2" style={{ color: C.muted }}>
+              Upload PDFs · Chat · Summarize · Explain · Flashcards · Quiz · Analytics
+            </p>
           </div>
-        )}
+
+          {selectedDoc ? (
+            <div className="flex items-center gap-2.5 px-4 py-2.5 rounded-xl flex-shrink-0"
+              style={{ background: "#6366f122", border: "1px solid #6366f144" }}>
+              <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: "#ef444422" }}>
+                <span className="material-symbols-outlined text-red-400 text-sm">picture_as_pdf</span>
+              </div>
+              <span className="text-xs font-semibold text-white truncate max-w-[160px]">{selectedDoc.title}</span>
+              <button onClick={() => setSelectedDoc(null)} className="flex-shrink-0 transition-colors" style={{ color: "#818cf8" }}
+                onMouseEnter={e => e.currentTarget.style.color = "#f87171"} onMouseLeave={e => e.currentTarget.style.color = "#818cf8"}>
+                <span className="material-symbols-outlined text-sm">close</span>
+              </button>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2 px-4 py-2.5 rounded-xl" style={{ background: "#f59e0b11", border: "1px solid #f59e0b33" }}>
+              <span className="material-symbols-outlined text-amber-400 text-base">info</span>
+              <p className="text-xs" style={{ color: "#fbbf24" }}>Upload a PDF to unlock all features</p>
+            </div>
+          )}
+        </div>
       </div>
 
-      <div className="flex flex-col lg:flex-row gap-4 sm:gap-5">
-        <div className="lg:hidden">
-          <button onClick={() => setMobileMenuOpen(!mobileMenuOpen)} className="w-full flex items-center justify-between px-4 py-2.5 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700">
-            <span className="flex items-center gap-2">
-              <span className={`material-symbols-outlined text-base ${features.find(f => f.id === activeFeature)?.color}`}>{features.find(f => f.id === activeFeature)?.icon}</span>
-              <span className="text-sm font-medium text-gray-900 dark:text-white">{features.find(f => f.id === activeFeature)?.label}</span>
-            </span>
-            <span className="material-symbols-outlined text-gray-400">{mobileMenuOpen ? "expand_less" : "expand_more"}</span>
+      {/* ── Stat strip ───────────────────────────────────── */}
+      <div className="grid grid-cols-4 gap-3">
+        {features.slice(0, 4).map(f => (
+          <button
+            key={f.id}
+            onClick={() => setActiveFeature(f.id)}
+            className="flex flex-col items-center gap-1.5 py-3 rounded-xl transition-all hover:scale-105"
+            style={{
+              background: activeFeature === f.id ? `${f.color}22` : "#0f1629",
+              border: `1px solid ${activeFeature === f.id ? `${f.color}55` : C.border}`,
+              boxShadow: activeFeature === f.id ? `0 0 20px ${f.color}22` : "none",
+            }}
+          >
+            <span className="material-symbols-outlined text-xl" style={{ color: f.color }}>{f.icon}</span>
+            <span className="text-[10px] font-semibold" style={{ color: activeFeature === f.id ? "white" : C.muted }}>{f.label}</span>
           </button>
+        ))}
+      </div>
+
+      {/* ── Layout ───────────────────────────────────────── */}
+      <div className="flex flex-col lg:flex-row gap-4">
+
+        {/* Sidebar */}
+        <div className="lg:w-52 flex-shrink-0">
+          {/* Mobile toggle */}
+          <button
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            className="lg:hidden w-full flex items-center justify-between px-4 py-3 rounded-xl mb-2"
+            style={{ background: C.surface, border: `1px solid ${active?.color}44` }}
+          >
+            <span className="flex items-center gap-2">
+              <span className="material-symbols-outlined text-base" style={{ color: active?.color }}>{active?.icon}</span>
+              <span className="text-sm font-semibold text-white">{active?.label}</span>
+            </span>
+            <span className="material-symbols-outlined" style={{ color: C.muted }}>{mobileMenuOpen ? "expand_less" : "expand_more"}</span>
+          </button>
+
+          {/* Mobile grid */}
           {mobileMenuOpen && (
-            <div className="mt-2 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-lg p-2 grid grid-cols-4 gap-1">
-              {features.map((f) => (
-                <button key={f.id} onClick={() => { setActiveFeature(f.id); setMobileMenuOpen(false); }} className={`flex flex-col items-center gap-1 p-2 rounded-lg transition-all ${activeFeature === f.id ? "bg-blue-600 text-white" : "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700"}`}>
-                  <span className="material-symbols-outlined text-base">{f.icon}</span>
-                  <span className="text-[10px] font-medium">{f.label}</span>
+            <div className="lg:hidden grid grid-cols-4 gap-1.5 p-2 rounded-xl mb-3" style={{ background: C.surface, border: `1px solid ${C.border}` }}>
+              {features.map(f => (
+                <button key={f.id} onClick={() => { setActiveFeature(f.id); setMobileMenuOpen(false); }}
+                  className="flex flex-col items-center gap-1 p-2.5 rounded-xl transition-all"
+                  style={{ background: activeFeature === f.id ? "#6366f1" : "transparent" }}>
+                  <span className="material-symbols-outlined text-base" style={{ color: activeFeature === f.id ? "white" : f.color }}>{f.icon}</span>
+                  <span className="text-[10px] font-medium" style={{ color: activeFeature === f.id ? "white" : C.muted }}>{f.label}</span>
                 </button>
               ))}
             </div>
           )}
-        </div>
 
-        <div className="hidden lg:block lg:w-44 flex-shrink-0">
-          <nav className="flex lg:flex-col gap-1.5">
-            {features.map((f) => (
-              <button key={f.id} onClick={() => setActiveFeature(f.id)} className={`flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all ${activeFeature === f.id ? "bg-blue-600 text-white shadow-md" : "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800"}`}>
-                <span className={`material-symbols-outlined text-base ${activeFeature === f.id ? "text-white" : f.color}`}>{f.icon}</span>
-                <span>{f.label}</span>
+          {/* Desktop nav */}
+          <nav className="hidden lg:flex flex-col gap-1">
+            {features.map(f => (
+              <button
+                key={f.id}
+                onClick={() => setActiveFeature(f.id)}
+                className="flex items-center gap-2.5 px-4 py-2.5 rounded-xl text-sm font-medium transition-all text-left"
+                style={activeFeature === f.id
+                  ? { background: `${f.color}22`, color: "white", border: `1px solid ${f.color}44`, boxShadow: `0 0 16px ${f.color}22` }
+                  : { color: C.muted, border: "1px solid transparent" }}
+                onMouseEnter={e => { if (activeFeature !== f.id) { e.currentTarget.style.background = "#0f1629"; e.currentTarget.style.color = "white"; } }}
+                onMouseLeave={e => { if (activeFeature !== f.id) { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = C.muted; } }}
+              >
+                <span className="material-symbols-outlined text-base" style={{ color: activeFeature === f.id ? "white" : f.color }}>{f.icon}</span>
+                {f.label}
               </button>
             ))}
           </nav>
         </div>
 
-        <div className="flex-1 bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm p-3 sm:p-5 min-h-[400px]">
-          {activeFeature === "documents" && <DocumentsPanel onSelectDoc={handleSelectDoc} selectedDocId={selectedDoc?._id} />}
-          {activeFeature === "chat" && <ChatPanel doc={selectedDoc} />}
-          {activeFeature === "summary" && <SummaryPanel doc={selectedDoc} />}
-          {activeFeature === "explain" && <ExplainPanel doc={selectedDoc} />}
+        {/* Main panel */}
+        <div className="flex-1 rounded-2xl p-5 min-h-[560px]" style={{ background: C.surface, border: `1px solid ${C.border}` }}>
+          {activeFeature === "documents"  && <DocumentsPanel onSelectDoc={handleSelectDoc} selectedDocId={selectedDoc?._id} />}
+          {activeFeature === "chat"       && <ChatPanel doc={selectedDoc} />}
+          {activeFeature === "summary"    && <SummaryPanel doc={selectedDoc} />}
+          {activeFeature === "explain"    && <ExplainPanel doc={selectedDoc} />}
           {activeFeature === "flashcards" && <FlashcardsPanel doc={selectedDoc} />}
-          {activeFeature === "quiz" && <QuizPanel doc={selectedDoc} />}
-          {activeFeature === "analytics" && <AnalyticsPanel />}
+          {activeFeature === "quiz"       && <QuizPanel doc={selectedDoc} />}
+          {activeFeature === "analytics"  && <AnalyticsPanel />}
         </div>
       </div>
 
-      <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/10 dark:to-indigo-900/10 border border-blue-100 dark:border-blue-800/50 rounded-xl p-3 sm:p-3.5 flex items-start gap-3">
-        <span className="material-symbols-outlined text-blue-500 text-base mt-0.5 flex-shrink-0">info</span>
-        <p className="text-xs text-blue-700 dark:text-blue-300 leading-relaxed">
-          <strong>How it works:</strong> Upload a PDF from Documents. Then select it to unlock all AI features — Chat, Summary, Explain, Flashcards, Quiz, and track your progress in Analytics.
+      {/* ── Info strip ───────────────────────────────────── */}
+      <div className="flex items-start gap-3 px-4 py-3 rounded-xl" style={{ background: "#0a0f1e", border: "1px solid #6366f133" }}>
+        <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5" style={{ background: "#6366f122", border: "1px solid #6366f144" }}>
+          <span className="material-symbols-outlined text-sm" style={{ color: "#6366f1" }}>info</span>
+        </div>
+        <p className="text-xs leading-relaxed" style={{ color: C.muted }}>
+          <strong className="text-indigo-400">How it works:</strong> Upload a PDF from Documents, then select it to unlock Chat, Summary, Explain, Flashcards, and Quiz. Track your study habits in Analytics.
         </p>
       </div>
     </div>

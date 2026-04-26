@@ -3,6 +3,63 @@ import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 
 const API = import.meta.env.VITE_API_URL || "http://localhost:5000";
+
+// ── Mini Bar ──────────────────────────────────────────────────
+const MiniBar = ({ value = 0, color = "#6366f1", height = 6 }) => (
+  <div className="w-full rounded-full overflow-hidden" style={{ height, background: "#1e293b" }}>
+    <div
+      className="h-full rounded-full"
+      style={{
+        width: `${Math.min(value, 100)}%`,
+        background: `linear-gradient(90deg, ${color}cc, ${color})`,
+        boxShadow: `0 0 8px ${color}66`,
+        transition: "width 1s cubic-bezier(.4,0,.2,1)"
+      }}
+    />
+  </div>
+);
+
+// ── Section Header ────────────────────────────────────────────
+const SectionHeader = ({ icon, title, color = "#6366f1" }) => (
+  <div className="flex items-center gap-3 mb-4">
+    <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: `${color}22`, border: `1px solid ${color}44` }}>
+      <span className="material-symbols-outlined text-sm" style={{ color }}>{icon}</span>
+    </div>
+    <h3 className="text-xs font-bold text-white tracking-wide uppercase">{title}</h3>
+    <div className="flex-1 h-px" style={{ background: `linear-gradient(90deg, ${color}44, transparent)` }} />
+  </div>
+);
+
+// ── Glow Card ─────────────────────────────────────────────────
+const GlowCard = ({ icon, label, value, color, sub }) => (
+  <div className="relative rounded-2xl overflow-hidden p-5 flex flex-col gap-3 group" style={{ background: "#0f1629", border: `1px solid ${color}33` }}>
+    <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500" style={{ background: `radial-gradient(ellipse at 50% 0%, ${color}15 0%, transparent 70%)` }} />
+    <div className="flex items-start justify-between">
+      <div className="w-11 h-11 rounded-xl flex items-center justify-center" style={{ background: `${color}22`, border: `1px solid ${color}44` }}>
+        <span className="material-symbols-outlined text-xl" style={{ color }}>{icon}</span>
+      </div>
+      {sub && <span className="text-[10px] text-gray-500 font-medium bg-gray-800 px-2 py-0.5 rounded-full">{sub}</span>}
+    </div>
+    <div>
+      <p className="text-3xl font-black text-white tracking-tight" style={{ textShadow: `0 0 20px ${color}66` }}>{value}</p>
+      <p className="text-xs text-gray-400 font-medium mt-0.5">{label}</p>
+    </div>
+    <MiniBar value={75} color={color} />
+  </div>
+);
+
+// ── Loading Spinner ───────────────────────────────────────────
+const LoadingSpinner = ({ size = "md" }) => {
+  const dimensions = size === "sm" ? "w-10 h-10" : size === "lg" ? "w-16 h-16" : "w-12 h-12";
+  return (
+    <div className={`relative ${dimensions} mx-auto`}>
+      <div className="absolute inset-0 rounded-full border-4 border-indigo-900" />
+      <div className="absolute inset-0 rounded-full border-4 border-transparent border-t-indigo-500 animate-spin" />
+      <div className="absolute inset-2 rounded-full border-4 border-transparent border-t-purple-500 animate-spin" style={{ animationDirection: "reverse", animationDuration: "0.8s" }} />
+    </div>
+  );
+};
+
 const apiFetch = (url, opts = {}) => {
   const token = localStorage.getItem("token");
   return fetch(`${API}${url}`, {
@@ -12,19 +69,19 @@ const apiFetch = (url, opts = {}) => {
 };
 
 const typeConfig = {
-  quiz_deadline:       { icon: "quiz",                 color: "text-amber-500",  bg: "bg-amber-100 dark:bg-amber-900/30",   badge: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300", label: "Quiz Deadline"    },
-  lab_deadline:        { icon: "science",              color: "text-purple-500", bg: "bg-purple-100 dark:bg-purple-900/30", badge: "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300", label: "Lab Deadline"  },
-  assignment_deadline: { icon: "assignment",           color: "text-red-500",    bg: "bg-red-100 dark:bg-red-900/30",       badge: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300",       label: "Assignment Due"   },
-  announcement:        { icon: "campaign",             color: "text-blue-500",   bg: "bg-blue-100 dark:bg-blue-900/30",     badge: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300",     label: "Announcement"     },
-  course_published:    { icon: "school",               color: "text-green-500",  bg: "bg-green-100 dark:bg-green-900/30",   badge: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300",  label: "Course Update"    },
-  enrollment:          { icon: "check_circle",         color: "text-green-500",  bg: "bg-green-100 dark:bg-green-900/30",   badge: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300",  label: "Enrolled"         },
-  grade_posted:        { icon: "grade",                color: "text-indigo-500", bg: "bg-indigo-100 dark:bg-indigo-900/30", badge: "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300", label: "Grade Posted"   },
-  lab_graded:          { icon: "science",              color: "text-indigo-500", bg: "bg-indigo-100 dark:bg-indigo-900/30", badge: "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300", label: "Lab Graded"     },
-  assignment_graded:   { icon: "assignment_turned_in", color: "text-indigo-500", bg: "bg-indigo-100 dark:bg-indigo-900/30", badge: "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300", label: "Assignment Graded"},
-  lesson_unlocked:     { icon: "lock_open",            color: "text-teal-500",   bg: "bg-teal-100 dark:bg-teal-900/30",     badge: "bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-300",     label: "Unlocked"         },
-  quiz_passed:         { icon: "emoji_events",         color: "text-yellow-500", bg: "bg-yellow-100 dark:bg-yellow-900/30", badge: "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300", label: "Quiz Passed"    },
-  course_completed:    { icon: "celebration",          color: "text-green-500",  bg: "bg-green-100 dark:bg-green-900/30",   badge: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300",  label: "Completed"        },
-  system:              { icon: "info",                 color: "text-gray-500",   bg: "bg-gray-100 dark:bg-gray-700",        badge: "bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300",         label: "System"           },
+  quiz_deadline:       { icon: "quiz",                 color: "#f59e0b",  bg: "#f59e0b22", border: "#f59e0b44", label: "Quiz Deadline"    },
+  lab_deadline:        { icon: "science",              color: "#a855f7", bg: "#a855f722", border: "#a855f744", label: "Lab Deadline"  },
+  assignment_deadline: { icon: "assignment",           color: "#ef4444", bg: "#ef444422", border: "#ef444444", label: "Assignment Due"   },
+  announcement:        { icon: "campaign",             color: "#3b82f6", bg: "#3b82f622", border: "#3b82f644", label: "Announcement"     },
+  course_published:    { icon: "school",               color: "#22c55e", bg: "#22c55e22", border: "#22c55e44", label: "Course Update"    },
+  enrollment:          { icon: "check_circle",         color: "#22c55e", bg: "#22c55e22", border: "#22c55e44", label: "Enrolled"         },
+  grade_posted:        { icon: "grade",                color: "#6366f1", bg: "#6366f122", border: "#6366f144", label: "Grade Posted"   },
+  lab_graded:          { icon: "science",              color: "#6366f1", bg: "#6366f122", border: "#6366f144", label: "Lab Graded"     },
+  assignment_graded:   { icon: "assignment_turned_in", color: "#6366f1", bg: "#6366f122", border: "#6366f144", label: "Assignment Graded"},
+  lesson_unlocked:     { icon: "lock_open",            color: "#14b8a6", bg: "#14b8a622", border: "#14b8a644", label: "Unlocked"         },
+  quiz_passed:         { icon: "emoji_events",         color: "#eab308", bg: "#eab30822", border: "#eab30844", label: "Quiz Passed"    },
+  course_completed:    { icon: "celebration",          color: "#22c55e", bg: "#22c55e22", border: "#22c55e44", label: "Completed"        },
+  system:              { icon: "info",                 color: "#6b7280", bg: "#6b728022", border: "#6b728044", label: "System"           },
 };
 
 const timeAgo = (date) => {
@@ -37,10 +94,10 @@ const timeAgo = (date) => {
 };
 
 const FILTER_TABS = [
-  { key: "all",       label: "All",        icon: "notifications"    },
-  { key: "unread",    label: "Unread",     icon: "mark_email_unread" },
-  { key: "deadlines", label: "Deadlines",  icon: "schedule"         },
-  { key: "grades",    label: "Grades",     icon: "grade"            },
+  { key: "all",       label: "All",        icon: "notifications",    color: "#6366f1" },
+  { key: "unread",    label: "Unread",     icon: "mark_email_unread", color: "#ef4444" },
+  { key: "deadlines", label: "Deadlines",  icon: "schedule",         color: "#f59e0b" },
+  { key: "grades",    label: "Grades",     icon: "grade",            color: "#22c55e" },
 ];
 
 const Notifications = () => {
@@ -125,144 +182,112 @@ const Notifications = () => {
   const groupOrder = ["Today", "Yesterday", "This Week", "Earlier"];
 
   const stats = [
-    { label: "Total",    value: notifications.length, icon: "notifications",    color: "text-indigo-600" },
-    { label: "Unread",   value: unreadCount,           icon: "mark_email_unread", color: "text-red-500"    },
-    { label: "Deadlines",value: notifications.filter(n => n.type?.includes("deadline")).length, icon: "schedule", color: "text-amber-500" },
-    { label: "Grades",   value: notifications.filter(n => n.type?.includes("graded") || n.type === "grade_posted").length, icon: "grade", color: "text-green-500" },
+    { label: "Total",    value: notifications.length, icon: "notifications",     color: "#6366f1" },
+    { label: "Unread",   value: unreadCount,           icon: "mark_email_unread", color: "#ef4444" },
+    { label: "Deadlines",value: notifications.filter(n => n.type?.includes("deadline")).length, icon: "schedule", color: "#f59e0b" },
+    { label: "Grades",   value: notifications.filter(n => n.type?.includes("graded") || n.type === "grade_posted").length, icon: "grade", color: "#22c55e" },
   ];
 
   return (
-    <div className="space-y-5 sm:space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-        <div>
-          <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
-            <span className="material-symbols-outlined text-indigo-600 text-2xl sm:text-3xl">notifications</span>
-            Notifications
-          </h1>
-          <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-            Stay updated on deadlines, grades, and course activities
-          </p>
-        </div>
-        <div className="flex items-center gap-2 flex-wrap">
-          {unreadCount > 0 && (
-            <button onClick={handleMarkAllRead}
-              className="flex items-center gap-1.5 px-3 py-2 text-xs sm:text-sm font-medium text-indigo-600 bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-900/20 dark:text-indigo-400 rounded-lg transition-colors">
-              <span className="material-symbols-outlined text-sm">done_all</span>
-              Mark all read
-            </button>
-          )}
-          {notifications.some(n => n.isRead) && (
-            <button onClick={handleClearRead}
-              className="flex items-center gap-1.5 px-3 py-2 text-xs sm:text-sm font-medium text-gray-600 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-400 rounded-lg transition-colors">
-              <span className="material-symbols-outlined text-sm">delete_sweep</span>
-              Clear read
-            </button>
-          )}
-        </div>
-      </div>
+    <div className="space-y-5 pb-10" style={{ fontFamily: "'Lexend', sans-serif" }}>
 
-      {/* Stats */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+     
+
+      {/* ── Stats Cards ────────────────────────────────────── */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         {stats.map(s => (
-          <div key={s.label} className="bg-white dark:bg-gray-800 rounded-xl p-3 sm:p-4 border border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-md transition-all hover:scale-105 group">
-            <div className="flex items-center gap-3">
-              <div className={`w-9 h-9 rounded-lg bg-gray-50 dark:bg-gray-700 flex items-center justify-center group-hover:scale-110 transition-transform`}>
-                <span className={`material-symbols-outlined text-lg ${s.color}`}>{s.icon}</span>
-              </div>
-              <div>
-                <p className="text-xs text-gray-500 dark:text-gray-400">{s.label}</p>
-                <p className="text-xl font-bold text-gray-900 dark:text-white">{s.value}</p>
-              </div>
-            </div>
-          </div>
+          <GlowCard key={s.label} icon={s.icon} label={s.label} value={s.value} color={s.color} />
         ))}
       </div>
 
-      {/* Filter Tabs */}
-      <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
-        <div className="flex border-b border-gray-200 dark:border-gray-700">
-          {FILTER_TABS.map(tab => (
-            <button key={tab.key} onClick={() => setFilter(tab.key)}
-              className={`flex-1 flex items-center justify-center gap-1 sm:gap-2 px-3 py-3 text-xs sm:text-sm font-medium transition-all ${
-                filter === tab.key
-                  ? "text-indigo-600 dark:text-indigo-400 border-b-2 border-indigo-600 dark:border-indigo-400 bg-indigo-50/50 dark:bg-indigo-900/10"
-                  : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700/30"
-              }`}>
-              <span className="material-symbols-outlined text-sm">{tab.icon}</span>
-              <span className="hidden xs:inline">{tab.label}</span>
-            </button>
-          ))}
-        </div>
+      {/* ── Filter Tabs ────────────────────────────────────── */}
+      <div className="flex gap-1 rounded-xl p-1.5" style={{ background: "#0a0f1e", border: "1px solid #1e293b" }}>
+        {FILTER_TABS.map(tab => (
+          <button
+            key={tab.key}
+            onClick={() => setFilter(tab.key)}
+            className="flex-1 flex items-center justify-center gap-1.5 py-2.5 px-2 rounded-lg text-sm font-semibold transition-all duration-200"
+            style={filter === tab.key
+              ? { background: "#1e293b", color: "#818cf8", boxShadow: "0 0 20px #6366f120" }
+              : { color: "#4b5563" }
+            }
+          >
+            <span className="material-symbols-outlined text-base">{tab.icon}</span>
+            <span className="hidden sm:inline">{tab.label}</span>
+          </button>
+        ))}
+      </div>
 
-        {/* Notification List */}
-        <div className="divide-y divide-gray-100 dark:divide-gray-700/50">
-          {loading ? (
-            <div className="flex items-center justify-center py-16">
-              <svg className="animate-spin h-8 w-8 text-indigo-600" viewBox="0 0 24 24" fill="none">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
-              </svg>
-            </div>
-          ) : notifications.length === 0 ? (
-            <div className="text-center py-16">
-              <span className="material-symbols-outlined text-6xl text-gray-300 dark:text-gray-600 mb-4 block">
-                notifications_off
-              </span>
-              <h3 className="text-base font-medium text-gray-700 dark:text-gray-300 mb-1">
-                {filter === "unread" ? "No unread notifications" :
-                 filter === "deadlines" ? "No deadline notifications" :
-                 filter === "grades" ? "No grade notifications" :
-                 "No notifications yet"}
-              </h3>
-              <p className="text-sm text-gray-500 dark:text-gray-400">
-                {filter === "all" ? "You'll see notifications from your courses here" : "Try a different filter"}
-              </p>
-            </div>
-          ) : (
-            groupOrder.map(group => {
-              if (!grouped[group]?.length) return null;
-              return (
-                <div key={group}>
-                  <div className="px-4 sm:px-5 py-2 bg-gray-50 dark:bg-gray-700/30">
-                    <p className="text-[10px] sm:text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                      {group}
-                    </p>
-                  </div>
+      {/* ── Notification List ──────────────────────────────── */}
+      <div className="rounded-2xl overflow-hidden" style={{ background: "#0f1629", border: "1px solid #1e293b" }}>
+        {loading ? (
+          <div className="py-20">
+            <LoadingSpinner />
+          </div>
+        ) : notifications.length === 0 ? (
+          <div className="text-center py-20">
+            <span className="material-symbols-outlined text-6xl text-gray-700 mb-4 block">
+              notifications_off
+            </span>
+            <h3 className="text-base font-bold text-gray-400 mb-1">
+              {filter === "unread" ? "No unread notifications" :
+               filter === "deadlines" ? "No deadline notifications" :
+               filter === "grades" ? "No grade notifications" :
+               "No notifications yet"}
+            </h3>
+            <p className="text-sm text-gray-600">
+              {filter === "all" ? "You'll see notifications from your courses here" : "Try a different filter"}
+            </p>
+          </div>
+        ) : (
+          groupOrder.map(group => {
+            if (!grouped[group]?.length) return null;
+            return (
+              <div key={group}>
+                <div className="px-5 py-2.5" style={{ background: "#0a0f1e", borderBottom: "1px solid #1e293b" }}>
+                  <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">
+                    {group}
+                  </p>
+                </div>
+                <div className="divide-y" style={{ borderColor: "#1e293b" }}>
                   {grouped[group].map(notif => {
                     const cfg = typeConfig[notif.type] || typeConfig.system;
                     return (
-                      <div key={notif._id}
-                        className={`group flex items-start gap-3 sm:gap-4 px-4 sm:px-5 py-3 sm:py-4 cursor-pointer transition-all hover:bg-gray-50 dark:hover:bg-gray-700/30 ${
-                          !notif.isRead ? "bg-indigo-50/40 dark:bg-indigo-900/5" : ""
+                      <div
+                        key={notif._id}
+                        className={`group flex items-start gap-4 px-5 py-4 cursor-pointer transition-all hover:bg-white/5 ${
+                          !notif.isRead ? "bg-indigo-500/5" : ""
                         }`}
                         onClick={() => handleRead(notif)}
                       >
                         {/* Icon */}
-                        <div className={`flex-shrink-0 w-10 h-10 rounded-full ${cfg.bg} flex items-center justify-center mt-0.5`}>
-                          <span className={`material-symbols-outlined text-lg ${cfg.color}`}>{cfg.icon}</span>
+                        <div className={`flex-shrink-0 w-11 h-11 rounded-xl flex items-center justify-center mt-0.5`}
+                          style={{ background: cfg.bg, border: `1px solid ${cfg.border}` }}>
+                          <span className={`material-symbols-outlined text-lg`} style={{ color: cfg.color }}>{cfg.icon}</span>
                         </div>
 
                         {/* Content */}
                         <div className="flex-1 min-w-0">
                           <div className="flex items-start justify-between gap-2">
                             <div className="flex-1 min-w-0">
-                              <div className="flex flex-wrap items-center gap-1.5 mb-0.5">
-                                <p className={`text-sm font-medium leading-snug ${
-                                  !notif.isRead ? "text-gray-900 dark:text-white" : "text-gray-700 dark:text-gray-300"
+                              <div className="flex flex-wrap items-center gap-1.5 mb-1">
+                                <p className={`text-sm font-semibold leading-snug ${
+                                  !notif.isRead ? "text-white" : "text-gray-300"
                                 }`}>
                                   {notif.title}
                                 </p>
-                                <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${cfg.badge}`}>
+                                <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold`}
+                                  style={{ background: cfg.bg, border: `1px solid ${cfg.border}`, color: cfg.color }}>
                                   {cfg.label}
                                 </span>
                                 {notif.priority === "high" || notif.priority === "urgent" ? (
-                                  <span className="text-[10px] px-1.5 py-0.5 rounded-full font-medium bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-300">
+                                  <span className="text-[10px] px-2 py-0.5 rounded-full font-bold"
+                                    style={{ background: "#ef444422", border: "1px solid #ef444444", color: "#f87171" }}>
                                     {notif.priority === "urgent" ? "🚨 Urgent" : "⚠️ High"}
                                   </span>
                                 ) : null}
                               </div>
-                              <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 leading-relaxed">
+                              <p className="text-xs text-gray-400 leading-relaxed">
                                 {notif.message}
                               </p>
                             </div>
@@ -270,34 +295,34 @@ const Notifications = () => {
                             {/* Delete */}
                             <button
                               onClick={(e) => { e.stopPropagation(); handleDelete(notif._id); }}
-                              className="opacity-0 group-hover:opacity-100 flex-shrink-0 p-1 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-all"
+                              className="opacity-0 group-hover:opacity-100 flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center text-gray-500 hover:text-red-500 hover:bg-red-500/10 transition-all"
                             >
                               <span className="material-symbols-outlined text-sm">delete</span>
                             </button>
                           </div>
 
                           {/* Meta */}
-                          <div className="flex flex-wrap items-center gap-2 mt-1.5">
-                            <span className="text-[10px] text-gray-400">{timeAgo(notif.createdAt)}</span>
+                          <div className="flex flex-wrap items-center gap-2 mt-2">
+                            <span className="text-[10px] text-gray-500">{timeAgo(notif.createdAt)}</span>
                             {notif.courseId?.title && (
                               <>
-                                <span className="text-[10px] text-gray-300">•</span>
-                                <span className="text-[10px] text-indigo-500 dark:text-indigo-400 truncate max-w-[150px]">
+                                <span className="text-[10px] text-gray-600">•</span>
+                                <span className="text-[10px] text-indigo-400 truncate max-w-[150px]">
                                   {notif.courseId.title}
                                 </span>
                               </>
                             )}
                             {notif.dueDate && (
                               <>
-                                <span className="text-[10px] text-gray-300">•</span>
-                                <span className="flex items-center gap-0.5 text-[10px] text-red-500 font-medium">
+                                <span className="text-[10px] text-gray-600">•</span>
+                                <span className="flex items-center gap-0.5 text-[10px] text-red-400 font-medium">
                                   <span className="material-symbols-outlined text-xs">schedule</span>
                                   Due {new Date(notif.dueDate).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
                                 </span>
                               </>
                             )}
                             {notif.link && (
-                              <span className="text-[10px] text-indigo-500 dark:text-indigo-400 flex items-center gap-0.5">
+                              <span className="text-[10px] text-indigo-400 flex items-center gap-0.5">
                                 <span className="material-symbols-outlined text-xs">open_in_new</span>
                                 View
                               </span>
@@ -307,30 +332,41 @@ const Notifications = () => {
 
                         {/* Unread dot */}
                         {!notif.isRead && (
-                          <div className="flex-shrink-0 w-2.5 h-2.5 bg-indigo-500 rounded-full mt-2" />
+                          <div className="flex-shrink-0 w-2.5 h-2.5 rounded-full mt-2" style={{ background: "#6366f1", boxShadow: "0 0 6px #6366f1" }} />
                         )}
                       </div>
                     );
                   })}
                 </div>
-              );
-            })
-          )}
+              </div>
+            );
+          })
+        )}
 
-          {/* Load more */}
-          {hasMore && !loading && (
-            <div className="p-4">
-              <button onClick={() => fetchNotifications(false)} disabled={loadingMore}
-                className="w-full py-2.5 text-sm text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-700 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 rounded-xl transition-colors disabled:opacity-50 flex items-center justify-center gap-2">
-                {loadingMore ? (
-                  <><svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/></svg>Loading...</>
-                ) : (
-                  <><span className="material-symbols-outlined text-sm">expand_more</span>Load more</>
-                )}
-              </button>
-            </div>
-          )}
+        {/* Load more */}
+        {hasMore && !loading && (
+          <div className="p-5 border-t" style={{ borderColor: "#1e293b" }}>
+            <button onClick={() => fetchNotifications(false)} disabled={loadingMore}
+              className="w-full py-3 text-sm font-semibold rounded-xl transition-all hover:scale-105 disabled:opacity-50 flex items-center justify-center gap-2"
+              style={{ background: "#6366f122", color: "#818cf8", border: "1px solid #6366f144" }}>
+              {loadingMore ? (
+                <><div className="relative w-4 h-4"><div className="absolute inset-0 rounded-full border-2 border-indigo-900" /><div className="absolute inset-0 rounded-full border-2 border-transparent border-t-white animate-spin" /></div>Loading...</>
+              ) : (
+                <><span className="material-symbols-outlined text-sm">expand_more</span>Load more</>
+              )}
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* ── Info Banner ────────────────────────────────────── */}
+      <div className="rounded-xl p-3 flex items-start gap-3" style={{ background: "#0f1629", border: "1px solid #6366f133" }}>
+        <div className="w-6 h-6 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: "#6366f122", border: "1px solid #6366f144" }}>
+          <span className="material-symbols-outlined text-xs" style={{ color: "#6366f1" }}>info</span>
         </div>
+        <p className="text-xs text-gray-400 leading-relaxed">
+          <strong className="text-indigo-400">Stay informed:</strong> Notifications include deadlines, grade updates, and important announcements from your courses. Click any notification to view details.
+        </p>
       </div>
     </div>
   );

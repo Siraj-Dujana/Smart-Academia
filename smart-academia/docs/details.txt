@@ -1,14 +1,24 @@
-Problem:
-
-🎯 Problem 1: Quiz and Lab Should Be OPTIONAL
-Current: Every lesson has both tabs
-Fix: Hide tabs based on checkbox settings
+1. progress is not working properly dude
+2. there should be proper calculation of the course labs quizes and combining all the things then student course score is calculated 
 
 
-🎯 Problem 2: Unlock on SUBMIT (Not PASS)
-Current: Student must pass quiz/lab to unlock next lesson
-Fix: Change condition from quizCompleted to quizSubmitted and lab submitted
 
-i want that for example if a student has submitted the both quiz and the lab then there would be a button called complete lesson then it should move to the next question it is not neccessary that both of them should be pass they can be failed as well but the next lesson would be unlocked when both of them are submitted if they are avialble in the lesson cause there can be lessons in which there is just theory and there is no quiz and there is no lab
+Here’s a clean Claude AI prompt for you:
 
+---
 
+**Prompt:**
+
+Build an analytics dashboard system for students with the following structure:
+exausted
+1. Overall Performance (score, credits earned, courses completed)
+2. Per-Course Performance (progress %, score, credits, status)
+3. Per-Lesson Performance (viewed, quiz, lab, status)
+4. Per-Quiz Performance (score, attempts, pass/fail, time)
+5. Per-Lab Performance (score, feedback, submission status)
+
+Use a clean and scalable design for storing and calculating this data.
+
+Also, if you have a better or more optimized architecture or analytics design idea than this, you are allowed to improve or redesign it — feel free to suggest and implement a better approach for scalability and accuracy.
+
+---

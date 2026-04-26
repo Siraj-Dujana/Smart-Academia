@@ -48,7 +48,6 @@ router.post("/:quizId/mark-exhausted", protect, async (req, res) => {
       { upsert: true, new: true }
     );
 
-    console.log("Marked quiz as exhausted:", result);
 
     const { checkAndUnlockNext } = require("../controllers/lessonController");
     await checkAndUnlockNext(req.user._id, quiz.lesson, quiz.course);

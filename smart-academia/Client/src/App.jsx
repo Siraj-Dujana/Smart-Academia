@@ -13,6 +13,7 @@ import Lessons from './components/dashboard/StudentDashboard/Student Tabs/Lesson
 import ProtectedRoute from './components/ProtectedRoute';
 import Setup from './pages/Setup';
 import LessonEditor from "./components/dashboard/TeacherDashboard/Teacher Tabs/LessonEditor";
+import StudentAnalytics from "./components/dashboard/StudentDashboard/Student Tabs/StudentAnalytics";
 
 // =============================================
 // Smart home route — checks token and redirects

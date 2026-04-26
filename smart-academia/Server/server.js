@@ -2,7 +2,10 @@ const express  = require("express");
 const mongoose = require("mongoose");
 const cors     = require("cors");
 const dotenv   = require("dotenv");
+const { getStudentAnalytics } = require("./controllers/analyticsController");
+
 dotenv.config();
+
 
 const app = express();
 app.use(cors({ origin: ["http://localhost:5173", "http://localhost:3000"] }));
@@ -35,7 +38,11 @@ app.use("/api/assistant/documents",  require("./routes/documentRoutes"));
 app.use("/api/assistant/flashcards", require("./routes/flashcardRoutes"));
 app.use("/api/assistant/quizzes",    require("./routes/quizRoutes"));
 
+// Progress
+app.use("/api/analytics", require("./routes/analytics"));
+
 app.get("/", (req, res) => res.json({ message: "SmartAcademia API running" }));
+
 
 mongoose.connect(process.env.MONGO_URI)
   .then(() => {
