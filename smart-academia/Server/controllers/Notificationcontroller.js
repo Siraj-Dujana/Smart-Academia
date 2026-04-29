@@ -8,29 +8,30 @@ const { sendEmail } = require("../utils/sendEmail");
 // ─────────────────────────────────────────────────────────────
 const notificationEmailTemplate = ({ recipientName, title, message, link, type }) => {
   const iconMap = {
-    quiz_deadline:        "⏰",
-    lab_deadline:         "🧪",
-    assignment_deadline:  "📝",
-    announcement:         "📢",
-    course_published:     "🎓",
-    enrollment:           "✅",
-    grade_posted:         "📊",
-    lab_graded:           "🧪",
-    assignment_graded:    "📝",
-    lesson_unlocked:      "🔓",
-    quiz_passed:          "🏆",
-    course_completed:     "🎉",
-    teacher_registration: "👨‍🏫",
-    student_registration: "👨‍🎓",
-    course_creation:      "📚",
-    course_deletion:      "🗑️",
-    user_report:          "🚩",
-    system_alert:         "⚠️",
-    backup_completed:     "💾",
-    maintenance:          "🔧",
-    system:               "ℹ️",
+    quiz_deadline:        "quiz",
+    lab_deadline:         "science",
+    assignment_deadline:  "assignment",
+    announcement:         "campaign",
+    course_published:     "school",
+    enrollment:           "check_circle",
+    grade_posted:         "grade",
+    lab_graded:           "science",
+    assignment_graded:    "assignment_turned_in",
+    lesson_unlocked:      "lock_open",
+    quiz_passed:          "emoji_events",
+    course_completed:     "celebration",
+    teacher_registration: "person_add",
+    student_registration: "group_add",
+    course_creation:      "menu_book",
+    course_deletion:      "delete",
+    user_report:          "flag",
+    system_alert:         "warning",
+    backup_completed:     "backup",
+    maintenance:          "build",
+    system:               "info",
   };
-  const icon = iconMap[type] || "🔔";
+  
+  const iconName = iconMap[type] || "notifications";
 
   return `
     <div style="font-family: 'Lexend', Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #f8fafc; padding: 24px;">
@@ -617,6 +618,20 @@ const sendSystemAlert = async (alertData) => {
   });
 };
 module.exports.sendSystemAlert = sendSystemAlert;
+
+// controllers/notificationController.js - Add this at the bottom
+
+const notifyUserDeleted = async (adminName, deletedUserName, deletedUserRole) => {
+  return await broadcastToAdmins({
+    type: "user_report",
+    title: "👤 User Account Deleted",
+    message: `Admin "${adminName}" deleted ${deletedUserRole} account: "${deletedUserName}".`,
+    link: `/admin/dashboard?tab=${deletedUserRole === "teacher" ? "teachers" : "students"}`,
+    priority: "high",
+    sendEmailNotif: false,
+  });
+};
+module.exports.notifyUserDeleted = notifyUserDeleted;
 
 const notifyTeacherAssignment = async (teacherId, courseData, adminName) => {
   return await broadcastToTeacher(teacherId, {

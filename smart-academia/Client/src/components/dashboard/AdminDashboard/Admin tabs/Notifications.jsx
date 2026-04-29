@@ -58,21 +58,6 @@ const ProgressStatCard = ({ icon, label, value, total, color, isLoading }) => {
   );
 };
 
-// ── Mini Bar ──────────────────────────────────────────────────
-const MiniBar = ({ value = 0, color = "#6366f1", height = 6 }) => (
-  <div className="w-full rounded-full overflow-hidden" style={{ height, background: "#1e293b" }}>
-    <div
-      className="h-full rounded-full"
-      style={{
-        width: `${Math.min(value, 100)}%`,
-        background: `linear-gradient(90deg, ${color}cc, ${color})`,
-        boxShadow: `0 0 8px ${color}66`,
-        transition: "width 1s cubic-bezier(.4,0,.2,1)"
-      }}
-    />
-  </div>
-);
-
 // ── Loading Spinner ───────────────────────────────────────────
 const LoadingSpinner = ({ size = "md" }) => {
   const dimensions = size === "sm" ? "w-10 h-10" : size === "lg" ? "w-16 h-16" : "w-12 h-12";
@@ -148,7 +133,8 @@ const AdminNotifications = () => {
       const p = reset ? 1 : page;
       const activeFilter = filterOverride ?? filter;
 
-      let url = `/api/admin/notifications?page=${p}&limit=15`;
+      // ✅ FIXED: Use correct API endpoint (notifications/admin, not admin/notifications)
+      let url = `/api/notifications/admin?page=${p}&limit=15`;
       if (activeFilter === "unread") url += "&unreadOnly=true";
       if (activeFilter === "users") url += "&type=teacher_registration,student_registration,user_report";
       if (activeFilter === "courses") url += "&type=course_creation,course_deletion";
@@ -163,7 +149,9 @@ const AdminNotifications = () => {
         if (!reset) setPage(p + 1);
         else setPage(2);
       }
-    } catch { /* silent */ }
+    } catch (err) { 
+      console.error("Fetch error:", err);
+    }
     finally { reset ? setLoading(false) : setLoadingMore(false); }
   }, [filter, page]);
 
@@ -173,7 +161,8 @@ const AdminNotifications = () => {
 
   const handleRead = async (notif) => {
     if (!notif.isRead) {
-      await apiFetch(`/api/admin/notifications/${notif._id}/read`, { method: "PUT" });
+      // ✅ FIXED: Use correct API endpoint
+      await apiFetch(`/api/notifications/admin/${notif._id}/read`, { method: "PUT" });
       setNotifs(prev => prev.map(n => n._id === notif._id ? { ...n, isRead: true } : n));
       setUnreadCount(prev => Math.max(0, prev - 1));
     }
@@ -181,19 +170,22 @@ const AdminNotifications = () => {
   };
 
   const handleDelete = async (notifId) => {
-    await apiFetch(`/api/admin/notifications/${notifId}`, { method: "DELETE" });
+    // ✅ FIXED: Use correct API endpoint
+    await apiFetch(`/api/notifications/admin/${notifId}`, { method: "DELETE" });
     setNotifs(prev => prev.filter(n => n._id !== notifId));
   };
 
   const handleMarkAllRead = async () => {
-    await apiFetch("/api/admin/notifications/read-all", { method: "PUT" });
+    // ✅ FIXED: Use correct API endpoint
+    await apiFetch("/api/notifications/admin/read-all", { method: "PUT" });
     setNotifs(prev => prev.map(n => ({ ...n, isRead: true })));
     setUnreadCount(0);
   };
 
   const handleClearRead = async () => {
     if (!window.confirm("Clear all read notifications?")) return;
-    await apiFetch("/api/admin/notifications/clear-read", { method: "DELETE" });
+    // ✅ FIXED: Use correct API endpoint
+    await apiFetch("/api/notifications/admin/clear-read", { method: "DELETE" });
     setNotifs(prev => prev.filter(n => !n.isRead));
   };
 

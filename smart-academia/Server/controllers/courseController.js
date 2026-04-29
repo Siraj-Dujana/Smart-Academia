@@ -1,9 +1,10 @@
+// controllers/courseController.js
 const Course         = require("../models/Course");
 const Lesson         = require("../models/Lesson");
 const Enrollment     = require("../models/Enrollment");
 const LessonProgress = require("../models/LessonProgress");
-const User           = require("../models/User");  // ✅ ADDED
-const { notifyEnrollment, notifyUnenrollment } = require("../utils/notificationHooks");  // ✅ ADDED
+const User           = require("../models/User");
+const { notifyEnrollment, notifyUnenrollment,  notifyCourseCreated,  notifyCourseDeleted } = require("../utils/notificationHooks");
 
 // =============================================
 // TEACHER — Create a new course
@@ -32,6 +33,16 @@ const createCourse = async (req, res) => {
     });
 
     await course.populate("teacher", "fullName email");
+
+    // ✅ NOTIFY: Course Creation
+    await notifyCourseCreated({
+      teacherId: req.user._id,
+      teacherName: req.user.fullName,
+      courseId: course._id,
+      courseTitle: course.title,
+      courseCode: course.code,
+    });
+
     res.status(201).json({ message: "Course created successfully", course });
   } catch (error) {
     console.error("Create course error:", error);
@@ -99,10 +110,27 @@ const deleteCourse = async (req, res) => {
       return res.status(403).json({ message: "Not authorized to delete this course" });
     }
 
+    // Store course data BEFORE deletion for notification
+    const courseData = {
+      title: course.title,
+      code: course.code,
+      _id: course._id,
+    };
+    const teacherName = req.user.fullName;
+
     await Lesson.deleteMany({ course: course._id });
     await Enrollment.deleteMany({ course: course._id });
     await LessonProgress.deleteMany({ course: course._id });
     await course.deleteOne();
+
+    // ✅ NOTIFY: Course Deletion
+    await notifyCourseDeleted({
+      teacherId: req.user._id,
+      teacherName: teacherName,
+      courseId: courseData._id,
+      courseTitle: courseData.title,
+      courseCode: courseData.code,
+    });
 
     res.status(200).json({ message: "Course deleted successfully" });
   } catch (error) {
@@ -221,7 +249,7 @@ const enrollCourse = async (req, res) => {
 
     res.status(201).json({ 
       message: "Enrolled successfully",
-      enrolled: true,  // ✅ Send enrollment status
+      enrolled: true,
       courseId: course._id
     });
   } catch (error) {
@@ -276,7 +304,7 @@ const unenrollCourse = async (req, res) => {
 
     res.status(200).json({ 
       message: "Unenrolled successfully",
-      enrolled: false,  // ✅ Send enrollment status
+      enrolled: false,
       courseId: req.params.id
     });
   } catch (error) {

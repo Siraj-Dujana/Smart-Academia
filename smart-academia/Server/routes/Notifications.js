@@ -50,4 +50,7 @@ router.put("/admin/:id/read",           authorize("admin"), markAdminAsRead);
 router.delete("/admin/:id",             authorize("admin"), deleteAdminNotification);
 router.post("/admin/broadcast",         authorize("admin"), adminBroadcast);
 
+// Add this admin route for unread count
+router.get("/admin/unread-count", authorize("admin"), getUnreadCount);
+
 module.exports = router;

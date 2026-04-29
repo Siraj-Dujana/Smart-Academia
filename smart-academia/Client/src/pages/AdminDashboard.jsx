@@ -5,7 +5,7 @@ import ManageStudents from "../components/dashboard/AdminDashboard/Admin tabs/Ma
 import ManageCourses from "../components/dashboard/AdminDashboard/Admin tabs/ManageCourses";
 import ProfileManagement from '../components/dashboard/AdminDashboard/Admin tabs/Profilemanagement';
 import Notifications from "../components/dashboard/AdminDashboard/Admin tabs/Notifications";
-import NotificationBell from "../components/notifications/NotificationBell";
+import NotificationBell from "../components/dashboard/AdminDashboard/Admin tabs/AdminNotificationBell";
 import FloatingButtons from '../components/sections/LandingPage/FloatingButtons';
 import Dashboard from "../components/dashboard/AdminDashboard/Admin tabs/Dashboard";
 

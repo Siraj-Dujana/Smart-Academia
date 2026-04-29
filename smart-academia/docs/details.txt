@@ -1,24 +1,9 @@
-1. progress is not working properly dude
-2. there should be proper calculation of the course labs quizes and combining all the things then student course score is calculated 
+problems:
+dude please check up the notification system for the all modules admin, teacher, student they are working properly or not.
+and also fix there whole notification system(frontend and backend)
 
 
 
-Here’s a clean Claude AI prompt for you:
 
----
-
-**Prompt:**
-
-Build an analytics dashboard system for students with the following structure:
-exausted
-1. Overall Performance (score, credits earned, courses completed)
-2. Per-Course Performance (progress %, score, credits, status)
-3. Per-Lesson Performance (viewed, quiz, lab, status)
-4. Per-Quiz Performance (score, attempts, pass/fail, time)
-5. Per-Lab Performance (score, feedback, submission status)
-
-Use a clean and scalable design for storing and calculating this data.
-
-Also, if you have a better or more optimized architecture or analytics design idea than this, you are allowed to improve or redesign it — feel free to suggest and implement a better approach for scalability and accuracy.
-
----
+I will solve this problem in the future
+the ai tutor chat is saved in local storage of the browser but will be saving in the mongodb database

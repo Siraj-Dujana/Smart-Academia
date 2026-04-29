@@ -1,6 +1,7 @@
 const User = require("../models/User");
 const Course = require("../models/Course");
 const Enrollment = require("../models/Enrollment");
+const { notifyUserDeleted } = require("./notificationController"); // ✅ ADD THIS
 
 // Get all students
 const getAllStudents = async (req, res) => {
@@ -35,9 +36,17 @@ const deleteUser = async (req, res) => {
     if (!user) return res.status(404).json({ message: "User not found" });
     if (user.role === "admin") return res.status(403).json({ message: "Cannot delete admin" });
 
+    // ✅ Store user data BEFORE deletion for notification
+    const deletedUserName = user.fullName;
+    const deletedUserRole = user.role;
+    const adminName = req.user.fullName;
+
     // Delete their enrollments too
     await Enrollment.deleteMany({ student: user._id });
     await user.deleteOne();
+
+    // ✅ NOTIFY ALL ADMINS about user deletion
+    await notifyUserDeleted(adminName, deletedUserName, deletedUserRole);
 
     res.status(200).json({ message: "User deleted successfully" });
   } catch (error) {

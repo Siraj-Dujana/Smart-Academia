@@ -1,5 +1,6 @@
 const User = require("../models/User");
 const jwt = require("jsonwebtoken");
+const { notifyStudentRegistration, notifyTeacherRegistration } = require("./notificationController"); // ✅ ADD THIS
 
 // Generate JWT token
 const generateToken = (userId, role) => {
@@ -52,6 +53,13 @@ const registerStudent = async (req, res) => {
     tempUser.resetOTP = null;
     tempUser.resetOTPExpiry = null;
     await tempUser.save();
+
+    // ✅ NOTIFY ALL ADMINS - New student registered
+    await notifyStudentRegistration({
+      fullName: tempUser.fullName,
+      email: tempUser.email,
+      studentId: tempUser.studentId,
+    });
 
     res.status(201).json({
       message: "Student registered successfully",
@@ -128,6 +136,13 @@ const registerTeacher = async (req, res) => {
     tempUser.resetOTPExpiry = null;
     await tempUser.save();
 
+    // ✅ NOTIFY ALL ADMINS - New teacher registered
+    await notifyTeacherRegistration({
+      fullName: tempUser.fullName,
+      email: tempUser.email,
+      employeeId: tempUser.employeeId,
+    });
+
     res.status(201).json({
       message: "Teacher registered successfully",
       token: generateToken(tempUser._id, tempUser.role),
@@ -194,7 +209,7 @@ const login = async (req, res) => {
         fullName: user.fullName,
         email: user.email,
         role: user.role,
-        studentId: user.studentId,           // ✅ This is what you need!
+        studentId: user.studentId,
         employeeId: user.employeeId,
         avatar: user.avatar,
         department: user.department,
