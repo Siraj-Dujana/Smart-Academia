@@ -22,8 +22,16 @@ const Setup = () => {
     setupKey: "",
   });
 
+  const [animateSchool, setAnimateSchool] = useState(false);
+  const [animateTitle, setAnimateTitle] = useState(false);
+  const [animateTagline, setAnimateTagline] = useState(false);
+
   useEffect(() => {
     checkSetupStatus();
+    const t1 = setTimeout(() => setAnimateSchool(true), 300);
+    const t2 = setTimeout(() => setAnimateTitle(true), 600);
+    const t3 = setTimeout(() => setAnimateTagline(true), 900);
+    return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); };
   }, []);
 
   // Check password strength
@@ -99,10 +107,10 @@ const Setup = () => {
   // Loading state
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center p-4">
+      <div className="h-screen w-full flex items-center justify-center" style={{ background: "#0c0e1e", fontFamily: "'Lexend', sans-serif" }}>
         <div className="text-center">
-          <div className="w-12 h-12 sm:w-16 sm:h-16 border-4 border-blue-200 dark:border-blue-900 border-t-blue-600 rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400">Checking system status...</p>
+          <div className="w-12 h-12 border-4 border-indigo-900 border-t-indigo-500 rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-sm text-gray-500">Checking system status...</p>
         </div>
       </div>
     );
@@ -111,17 +119,18 @@ const Setup = () => {
   // Setup already done
   if (setupRequired === false) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center p-4">
-        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl max-w-md w-full p-6 sm:p-8 text-center">
-          <div className="flex items-center justify-center w-16 h-16 sm:w-20 sm:h-20 bg-green-100 dark:bg-green-900/30 rounded-full mx-auto mb-4 sm:mb-6">
-            <span className="material-symbols-outlined text-green-600 dark:text-green-400 text-3xl sm:text-4xl">check_circle</span>
+      <div className="min-h-screen w-full flex items-center justify-center p-4" style={{ background: "#0c0e1e", fontFamily: "'Lexend', sans-serif" }}>
+        <div className="bg-gray-900 rounded-2xl border border-gray-800 max-w-md w-full p-8 text-center">
+          <div className="flex items-center justify-center w-20 h-20 bg-green-500/20 rounded-full mx-auto mb-6">
+            <span className="material-symbols-outlined text-green-400 text-4xl">check_circle</span>
           </div>
-          <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white mb-2">System Already Configured</h1>
-          <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400 mb-6">
+          <h1 className="text-2xl font-bold text-white mb-2">System Already Configured</h1>
+          <p className="text-gray-500 mb-6">
             An admin account already exists. This setup page is now disabled for security.
           </p>
           <button onClick={() => navigate("/login")}
-            className="w-full py-2.5 sm:py-3 px-4 rounded-xl text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 transition-colors">
+            className="w-full py-3 px-4 rounded-xl text-sm font-bold text-white transition-all hover:scale-105"
+            style={{ background: "linear-gradient(135deg, #6366f1, #818cf8)" }}>
             Go to Login
           </button>
         </div>
@@ -132,20 +141,16 @@ const Setup = () => {
   // Setup complete
   if (isDone) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center p-4">
-        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl max-w-md w-full p-6 sm:p-8 text-center">
-          <div className="flex items-center justify-center w-16 h-16 sm:w-20 sm:h-20 bg-green-100 dark:bg-green-900/30 rounded-full mx-auto mb-4 sm:mb-6 animate-bounce">
-            <span className="material-symbols-outlined text-green-600 dark:text-green-400 text-3xl sm:text-4xl">celebration</span>
+      <div className="min-h-screen w-full flex items-center justify-center p-4" style={{ background: "#0c0e1e", fontFamily: "'Lexend', sans-serif" }}>
+        <div className="bg-gray-900 rounded-2xl border border-gray-800 max-w-md w-full p-8 text-center">
+          <div className="flex items-center justify-center w-20 h-20 bg-green-500/20 rounded-full mx-auto mb-6 animate-bounce">
+            <span className="material-symbols-outlined text-green-400 text-4xl">celebration</span>
           </div>
-          <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white mb-2">Setup Complete!</h1>
-          <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400 mb-2">
-            Admin account created successfully.
-          </p>
-          <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mb-6">
-            Redirecting to login in 3 seconds...
-          </p>
-          <div className="flex items-center justify-center gap-2 text-sm text-blue-600 dark:text-blue-400">
-            <div className="w-4 h-4 border-2 border-blue-200 border-t-blue-600 rounded-full animate-spin"></div>
+          <h1 className="text-2xl font-bold text-white mb-2">Setup Complete!</h1>
+          <p className="text-gray-500 mb-2">Admin account created successfully.</p>
+          <p className="text-sm text-gray-500 mb-6">Redirecting to login in 3 seconds...</p>
+          <div className="flex items-center justify-center gap-2 text-sm text-indigo-400">
+            <div className="w-4 h-4 border-2 border-indigo-900 border-t-indigo-500 rounded-full animate-spin"></div>
             Redirecting...
           </div>
         </div>
@@ -155,35 +160,81 @@ const Setup = () => {
 
   // Setup form
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 font-sans text-gray-900 dark:text-white">
-      <div className="min-h-screen flex flex-col lg:flex-row">
+    <div className="h-screen w-full overflow-hidden" style={{ fontFamily: "'Lexend', sans-serif", background: "#0c0e1e" }}>
+      <style>{`
+        .custom-scroll::-webkit-scrollbar {
+          width: 6px;
+        }
+        .custom-scroll::-webkit-scrollbar-track {
+          background: #1e293b;
+          border-radius: 10px;
+        }
+        .custom-scroll::-webkit-scrollbar-thumb {
+          background: #6366f1;
+          border-radius: 10px;
+        }
+        .custom-scroll::-webkit-scrollbar-thumb:hover {
+          background: #818cf8;
+        }
+      `}</style>
 
-        {/* Left Panel - Desktop Only */}
-        <div className="hidden lg:flex flex-col items-center justify-center bg-gray-900 w-1/2 p-8 xl:p-12 text-center">
-          <div className="max-w-md">
-            <div className="flex items-center justify-center w-20 h-20 bg-blue-600 rounded-2xl mx-auto mb-8">
-              <span className="material-symbols-outlined text-white text-4xl">admin_panel_settings</span>
+      <div className="flex flex-col lg:flex-row h-full w-full">
+
+        {/* Mobile Brand Section */}
+        <div className="lg:hidden relative overflow-hidden flex-shrink-0" style={{ background: "linear-gradient(135deg, #0c0e1e 0%, #131b35 50%, #0d1527 100%)", borderBottom: "1px solid #1e293b" }}>
+          <div className="absolute top-0 left-1/4 w-48 h-48 rounded-full blur-3xl opacity-20" style={{ background: "#6366f1" }} />
+          <div className="absolute bottom-0 right-1/4 w-48 h-48 rounded-full blur-3xl opacity-15" style={{ background: "#a855f7" }} />
+          
+          <div className="relative flex flex-col items-center justify-center py-12 px-6 text-center">
+            <div className={`flex h-20 w-20 items-center justify-center rounded-full transition-all duration-700 transform ${animateSchool ? 'opacity-100 scale-100' : 'opacity-0 scale-50'}`} style={{ background: "linear-gradient(135deg, #6366f1, #818cf8)" }}>
+              <svg className="w-12 h-12 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 14l9-5-9-5-9 5 9 5zm0 0l9-5-9 5-9-5m9 5v5m0-5v5m0 0l-9-5m9 5l9-5" />
+              </svg>
             </div>
-            <h1 className="text-3xl xl:text-4xl font-bold text-white mb-4">SmartAcademia</h1>
-            <p className="text-lg xl:text-xl text-gray-400 mb-8">System Setup</p>
+            <h1 className={`text-2xl font-black text-white mt-4 transition-all duration-700 transform ${animateTitle ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
+              System Setup
+            </h1>
+            <p className={`text-sm text-gray-400 mt-2 transition-all duration-700 ${animateTagline ? 'opacity-100' : 'opacity-0'}`}>
+              Create your admin account
+            </p>
+          </div>
+        </div>
+
+        {/* Desktop Left Panel */}
+        <div className="hidden lg:flex flex-col items-center justify-center w-1/2 h-full relative overflow-hidden" style={{ background: "linear-gradient(135deg, #0c0e1e 0%, #131b35 50%, #0d1527 100%)" }}>
+          <div className="absolute top-0 left-1/4 w-96 h-96 rounded-full blur-3xl opacity-20" style={{ background: "#6366f1" }} />
+          <div className="absolute bottom-0 right-1/4 w-96 h-96 rounded-full blur-3xl opacity-15" style={{ background: "#a855f7" }} />
+          
+          <div className="relative z-10 flex flex-col items-center text-center max-w-md w-full px-8">
+            <div className={`flex h-24 w-24 items-center justify-center rounded-full transition-all duration-700 transform ${animateSchool ? 'opacity-100 scale-100' : 'opacity-0 scale-50'}`} style={{ background: "linear-gradient(135deg, #6366f1, #818cf8)" }}>
+              <svg className="w-12 h-12 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 14l9-5-9-5-9 5 9 5zm0 0l9-5-9 5-9-5m9 5v5m0-5v5m0 0l-9-5m9 5l9-5" />
+              </svg>
+            </div>
+            <h1 className={`text-3xl font-black text-white mt-6 transition-all duration-700 transform ${animateTitle ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>
+              Smart Academia
+            </h1>
+            <p className={`text-gray-400 mt-2 transition-all duration-700 ${animateTagline ? 'opacity-100' : 'opacity-0'}`}>
+              System Setup
+            </p>
 
             {/* Steps */}
-            <div className="text-left space-y-4">
+            <div className="w-full mt-10 space-y-3 text-left">
               {[
-                { icon: "looks_one", text: "Fill in the admin details" },
-                { icon: "looks_two", text: "Enter the setup key from .env" },
-                { icon: "looks_3", text: "System is ready to use" },
-              ].map((step, i) => (
-                <div key={i} className="flex items-center gap-3">
-                  <div className="flex items-center justify-center w-8 h-8 rounded-full bg-blue-600/20 text-blue-400">
-                    <span className="material-symbols-outlined text-sm">{step.icon}</span>
+                { step: "01", text: "Fill in the admin details" },
+                { step: "02", text: "Enter the setup key" },
+                { step: "03", text: "Complete setup & login" },
+              ].map((item, i) => (
+                <div key={i} className="flex items-center gap-3 p-3 rounded-xl" style={{ background: "#0f1629", border: "1px solid #1e293b" }}>
+                  <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-indigo-600/20">
+                    <span className="text-xs font-bold text-indigo-400">{item.step}</span>
                   </div>
-                  <span className="text-gray-400 text-sm">{step.text}</span>
+                  <span className="text-sm text-gray-400">{item.text}</span>
                 </div>
               ))}
             </div>
 
-            <div className="mt-10 p-4 bg-amber-900/20 border border-amber-700/30 rounded-xl text-left">
+            <div className="mt-8 p-4 rounded-xl" style={{ background: "#f59e0b22", border: "1px solid #f59e0b44" }}>
               <div className="flex items-start gap-2">
                 <span className="material-symbols-outlined text-amber-500 text-sm mt-0.5">warning</span>
                 <p className="text-amber-400 text-xs leading-relaxed">
@@ -194,203 +245,187 @@ const Setup = () => {
           </div>
         </div>
 
-        {/* Right Form Panel */}
-        <div className="flex-1 flex flex-col items-center justify-center p-4 sm:p-6 lg:p-8">
-          <div className="w-full max-w-md">
+        {/* Right Panel - Form */}
+        <div className="flex-1 flex flex-col items-center justify-start p-6 lg:p-8 overflow-y-auto custom-scroll" style={{ background: "#0f1629", height: "100vh" }}>
+          <div className="w-full max-w-md mx-auto py-4">
 
-            {/* Mobile Header */}
-            <div className="lg:hidden text-center mb-6 sm:mb-8">
-              <div className="flex items-center justify-center w-14 h-14 sm:w-16 sm:h-16 bg-blue-600 rounded-2xl mx-auto mb-3 sm:mb-4">
-                <span className="material-symbols-outlined text-white text-2xl sm:text-3xl">admin_panel_settings</span>
+            {/* Form Header */}
+            <div className="text-center mb-6">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full mb-4" style={{ background: "#6366f122", border: "1px solid #6366f144" }}>
+                <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: "#6366f1" }} />
+                <span className="text-[10px] font-bold text-indigo-400 uppercase tracking-wider">Admin Setup</span>
               </div>
-              <h1 className="text-xl sm:text-2xl font-bold">SmartAcademia Setup</h1>
-              <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mt-1">Create your admin account</p>
+              <h2 className="text-2xl font-bold text-white">Create Admin Account</h2>
+              <p className="text-gray-500 mt-1 text-sm">This will be the master admin of Smart Academia</p>
             </div>
 
-            <div className="bg-white dark:bg-gray-800 rounded-xl sm:rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm p-5 sm:p-6 md:p-8">
+            {error && (
+              <div className="rounded-xl p-3 flex items-center gap-2 mb-4" style={{ background: "#ef444422", border: "1px solid #ef444444" }}>
+                <span className="material-symbols-outlined text-sm text-red-400">error</span>
+                <p className="text-sm text-red-400 flex-1">{error}</p>
+              </div>
+            )}
 
-              <div className="mb-5 sm:mb-6">
-                <h2 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-white">Create Admin Account</h2>
-                <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mt-1">
-                  This will be the master admin of SmartAcademia
-                </p>
+            <form onSubmit={handleSubmit} className="space-y-4">
+
+              {/* Full Name */}
+              <div className="space-y-2">
+                <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Full Name</label>
+                <div className="relative">
+                  <span className="material-symbols-outlined pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-lg">person</span>
+                  <input 
+                    type="text" 
+                    name="fullName" 
+                    value={formData.fullName}
+                    onChange={handleChange} 
+                    required 
+                    placeholder="Enter your full name"
+                    className="w-full px-4 py-3 pl-10 border rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200 text-sm border-gray-700 bg-gray-800/50"
+                  />
+                </div>
               </div>
 
-              {error && (
-                <div className="mb-4 p-3 rounded-xl bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700 flex items-center gap-2">
-                  <span className="material-symbols-outlined text-red-600 text-base sm:text-lg">error</span>
-                  <p className="text-xs sm:text-sm text-red-600 dark:text-red-400 flex-1">{error}</p>
+              {/* Email */}
+              <div className="space-y-2">
+                <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Admin Email</label>
+                <div className="relative">
+                  <span className="material-symbols-outlined pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-lg">mail</span>
+                  <input 
+                    type="email" 
+                    name="email" 
+                    value={formData.email}
+                    onChange={handleChange} 
+                    required 
+                    placeholder="admin@smartacademia.com"
+                    className="w-full px-4 py-3 pl-10 border rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200 text-sm border-gray-700 bg-gray-800/50"
+                  />
                 </div>
-              )}
+              </div>
 
-              <form onSubmit={handleSubmit} className="space-y-4">
-
-                {/* Full Name */}
-                <div>
-                  <label className="block text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Full Name
-                  </label>
-                  <div className="relative">
-                    <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-lg">person</span>
-                    <input 
-                      type="text" 
-                      name="fullName" 
-                      value={formData.fullName}
-                      onChange={handleChange} 
-                      required 
-                      placeholder="e.g. Siraj Ahmed"
-                      className="w-full pl-9 sm:pl-10 pr-3 sm:pr-4 py-2.5 sm:py-3 text-sm border border-gray-300 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                  </div>
+              {/* Password */}
+              <div className="space-y-2">
+                <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Password</label>
+                <div className="relative">
+                  <span className="material-symbols-outlined pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-lg">lock</span>
+                  <input 
+                    type={showPassword ? "text" : "password"} 
+                    name="password"
+                    value={formData.password} 
+                    onChange={handleChange}
+                    required 
+                    placeholder="Create a strong password"
+                    className="w-full px-4 py-3 pl-10 pr-10 border rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200 text-sm border-gray-700 bg-gray-800/50"
+                  />
+                  <button 
+                    type="button" 
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-400"
+                  >
+                    <span className="material-symbols-outlined text-lg">{showPassword ? "visibility_off" : "visibility"}</span>
+                  </button>
                 </div>
-
-                {/* Email */}
-                <div>
-                  <label className="block text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Admin Email
-                  </label>
-                  <div className="relative">
-                    <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-lg">mail</span>
-                    <input 
-                      type="email" 
-                      name="email" 
-                      value={formData.email}
-                      onChange={handleChange} 
-                      required 
-                      placeholder="admin@smartacademia.com"
-                      className="w-full pl-9 sm:pl-10 pr-3 sm:pr-4 py-2.5 sm:py-3 text-sm border border-gray-300 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                  </div>
-                </div>
-
-                {/* Password */}
-                <div>
-                  <label className="block text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Password
-                  </label>
-                  <div className="relative">
-                    <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-lg">lock</span>
-                    <input 
-                      type={showPassword ? "text" : "password"} 
-                      name="password"
-                      value={formData.password} 
-                      onChange={handleChange}
-                      required 
-                      placeholder="Min 8 chars, 1 uppercase, 1 number"
-                      className="w-full pl-9 sm:pl-10 pr-9 sm:pr-10 py-2.5 sm:py-3 text-sm border border-gray-300 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                    <button 
-                      type="button" 
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-2 sm:right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                    >
-                      <span className="material-symbols-outlined text-base sm:text-lg">
-                        {showPassword ? "visibility_off" : "visibility"}
+                
+                {/* Password strength indicators */}
+                {formData.password && (
+                  <div className="flex flex-wrap gap-2 mt-2">
+                    {[
+                      { test: passwordStrength.length, label: "8+ chars" },
+                      { test: passwordStrength.uppercase, label: "Uppercase" },
+                      { test: passwordStrength.number, label: "Number" },
+                    ].map(rule => (
+                      <span key={rule.label} className={`text-xs px-2 py-1 rounded-full transition-colors ${
+                        rule.test ? "bg-green-500/20 text-green-400 border border-green-500/30" : "bg-gray-800 text-gray-500 border border-gray-700"
+                      }`}>
+                        {rule.test ? "✓" : "○"} {rule.label}
                       </span>
-                    </button>
+                    ))}
                   </div>
-                  
-                  {/* Password strength indicators */}
-                  {formData.password && (
-                    <div className="flex flex-wrap gap-1.5 sm:gap-2 mt-2">
-                      {[
-                        { test: passwordStrength.length, label: "8+ chars" },
-                        { test: passwordStrength.uppercase, label: "Uppercase" },
-                        { test: passwordStrength.number, label: "Number" },
-                      ].map(rule => (
-                        <span key={rule.label} className={`text-[10px] sm:text-xs px-1.5 sm:px-2 py-0.5 rounded-full transition-colors ${
-                          rule.test
-                            ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300"
-                            : "bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400"
-                        }`}>
-                          {rule.test ? "✓" : "·"} {rule.label}
-                        </span>
-                      ))}
+                )}
+              </div>
+
+              {/* Confirm Password */}
+              <div className="space-y-2">
+                <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Confirm Password</label>
+                <div className="relative">
+                  <span className="material-symbols-outlined pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-lg">lock</span>
+                  <input 
+                    type="password" 
+                    name="confirmPassword"
+                    value={formData.confirmPassword} 
+                    onChange={handleChange}
+                    required 
+                    placeholder="Confirm your password"
+                    className={`w-full px-4 py-3 pl-10 border rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200 text-sm bg-gray-800/50 ${
+                      formData.confirmPassword && formData.password !== formData.confirmPassword
+                        ? "border-red-500"
+                        : "border-gray-700"
+                    }`}
+                  />
+                </div>
+                {formData.confirmPassword && formData.password !== formData.confirmPassword && (
+                  <p className="text-xs text-red-400 mt-1">Passwords do not match</p>
+                )}
+              </div>
+
+              {/* Setup Key */}
+              <div className="space-y-2">
+                <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                  Setup Key
+                  <span className="ml-1 text-gray-500">(from .env file)</span>
+                </label>
+                <div className="relative">
+                  <span className="material-symbols-outlined pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-lg">key</span>
+                  <input 
+                    type={showSetupKey ? "text" : "password"} 
+                    name="setupKey" 
+                    value={formData.setupKey}
+                    onChange={handleChange} 
+                    required 
+                    placeholder="Enter setup key"
+                    className="w-full px-4 py-3 pl-10 pr-10 border rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200 text-sm border-gray-700 bg-gray-800/50"
+                  />
+                  <button 
+                    type="button" 
+                    onClick={() => setShowSetupKey(!showSetupKey)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-400"
+                  >
+                    <span className="material-symbols-outlined text-lg">{showSetupKey ? "visibility_off" : "visibility"}</span>
+                  </button>
+                </div>
+              </div>
+
+              <button 
+                type="submit" 
+                disabled={isSubmitting}
+                className="w-full flex justify-center items-center gap-2 py-3 px-4 rounded-xl text-sm font-bold text-white transition-all hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed mt-2"
+                style={{ background: "linear-gradient(135deg, #6366f1, #818cf8)" }}
+              >
+                {isSubmitting ? (
+                  <>
+                    <div className="relative w-4 h-4">
+                      <div className="absolute inset-0 rounded-full border-2 border-indigo-900" />
+                      <div className="absolute inset-0 rounded-full border-2 border-transparent border-t-white animate-spin" />
                     </div>
-                  )}
-                </div>
-
-                {/* Confirm Password */}
-                <div>
-                  <label className="block text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Confirm Password
-                  </label>
-                  <div className="relative">
-                    <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-lg">lock</span>
-                    <input 
-                      type="password" 
-                      name="confirmPassword"
-                      value={formData.confirmPassword} 
-                      onChange={handleChange}
-                      required 
-                      placeholder="Confirm your password"
-                      className={`w-full pl-9 sm:pl-10 pr-3 sm:pr-4 py-2.5 sm:py-3 text-sm border rounded-xl bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                        formData.confirmPassword && formData.password !== formData.confirmPassword
-                          ? "border-red-400"
-                          : "border-gray-300 dark:border-gray-600"
-                      }`}
-                    />
-                  </div>
-                  {formData.confirmPassword && formData.password !== formData.confirmPassword && (
-                    <p className="text-[10px] sm:text-xs text-red-500 mt-1">Passwords do not match</p>
-                  )}
-                </div>
-
-                {/* Setup Key */}
-                <div>
-                  <label className="block text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Setup Key
-                    <span className="ml-1 text-[10px] sm:text-xs text-gray-400">(from Server/.env → SETUP_KEY)</span>
-                  </label>
-                  <div className="relative">
-                    <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-lg">key</span>
-                    <input 
-                      type={showSetupKey ? "text" : "password"} 
-                      name="setupKey" 
-                      value={formData.setupKey}
-                      onChange={handleChange} 
-                      required 
-                      placeholder="Enter setup key"
-                      className="w-full pl-9 sm:pl-10 pr-9 sm:pr-10 py-2.5 sm:py-3 text-sm border border-gray-300 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                    <button 
-                      type="button" 
-                      onClick={() => setShowSetupKey(!showSetupKey)}
-                      className="absolute right-2 sm:right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                    >
-                      <span className="material-symbols-outlined text-base sm:text-lg">
-                        {showSetupKey ? "visibility_off" : "visibility"}
-                      </span>
-                    </button>
-                  </div>
-                </div>
-
-                <button 
-                  type="submit" 
-                  disabled={isSubmitting}
-                  className="w-full flex justify-center items-center gap-2 py-2.5 sm:py-3 px-4 rounded-xl text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors mt-2"
-                >
-                  {isSubmitting ? (
-                    <>
-                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                      Creating Admin Account...
-                    </>
-                  ) : (
-                    <>
-                      <span className="material-symbols-outlined text-base">admin_panel_settings</span>
-                      Complete Setup
-                    </>
-                  )}
-                </button>
-              </form>
-            </div>
-
-            <p className="text-center text-[11px] sm:text-xs text-gray-500 dark:text-gray-400 mt-4">
-              Already have an account?{" "}
-              <button onClick={() => navigate("/login")} className="text-blue-600 hover:text-blue-500 font-medium">
-                Go to Login
+                    Creating Admin Account...
+                  </>
+                ) : (
+                  <>
+                    <span className="material-symbols-outlined text-base">admin_panel_settings</span>
+                    Complete Setup
+                  </>
+                )}
               </button>
-            </p>
+            </form>
+
+            {/* Login Link */}
+            <div className="text-center pt-4">
+              <p className="text-sm text-gray-500">
+                Already have an account?{" "}
+                <button onClick={() => navigate("/login")} className="font-bold transition-all hover:scale-105" style={{ color: "#818cf8" }}>
+                  Go to Login
+                </button>
+              </p>
+            </div>
           </div>
         </div>
       </div>

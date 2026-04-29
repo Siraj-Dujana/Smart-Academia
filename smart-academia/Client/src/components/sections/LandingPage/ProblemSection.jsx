@@ -14,8 +14,7 @@ const ProblemSection = ({
         "Difficulty tracking academic performance",
         "Limited access to personalized learning resources"
       ],
-      color: "text-blue-100",
-      iconColor: "text-white"
+      color: "#6366f1"
     },
     {
       icon: "groups",
@@ -26,39 +25,79 @@ const ProblemSection = ({
         "Limited tools for interactive content",
         "Challenges in maintaining academic integrity"
       ],
-      color: "text-blue-100",
-      iconColor: "text-white"
+      color: "#a855f7"
     }
   ],
-  background = "bg-blue-600",
-  padding = "py-12 sm:py-16 md:py-24 px-4 sm:px-6 lg:px-8",
   className = ""
 }) => {
   return (
-    <section id="solutions" className={`${padding} ${background} ${className}`}>
+    <section id="solutions" className={`py-16 sm:py-20 lg:py-24 px-4 sm:px-6 lg:px-8 ${className}`} style={{ background: "#0f1629" }}>
       <div className="max-w-7xl mx-auto">
-        <div className="flex flex-col gap-4 sm:gap-6 items-center text-center max-w-3xl mx-auto">
-          <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold leading-tight tracking-[-0.015em] text-white">
+        {/* Section Header */}
+        <div className="flex flex-col items-center text-center max-w-3xl mx-auto">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full mb-4" style={{ background: "#ef444422", border: "1px solid #ef444444" }}>
+            <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: "#ef4444" }} />
+            <span className="text-[10px] font-bold text-red-400 uppercase tracking-wider">Problems We Solve</span>
+          </div>
+          <h2 className="text-3xl sm:text-4xl font-black text-white leading-tight">
             {title}
           </h2>
-          <p className="max-w-2xl text-blue-100 text-sm sm:text-lg">
+          <p className="text-gray-500 mt-3 max-w-2xl">
             {subtitle}
           </p>
         </div>
         
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-8 mt-12 sm:mt-16">
+        {/* Challenges Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-12 sm:mt-16">
           {challenges.map((challenge, index) => (
-            <ChallengeCard
+            <div
               key={index}
-              icon={challenge.icon}
-              title={challenge.title}
-              challenges={challenge.challenges}
-              color={challenge.color}
-              iconColor={challenge.iconColor}
-            />
+              className="relative rounded-2xl overflow-hidden p-6 transition-all duration-300 hover:scale-105"
+              style={{ background: "#0f1629", border: `1px solid ${challenge.color}33` }}
+            >
+              {/* Breathing inner glow */}
+              <div 
+                className="absolute inset-0 transition-all duration-[4000ms] ease-in-out"
+                style={{ 
+                  background: `radial-gradient(circle at center, ${challenge.color} 0%, transparent 70%)`,
+                  opacity: 0,
+                  animation: 'breatheGlow 4s ease-in-out infinite',
+                }}
+              />
+              
+              {/* Hover overlay */}
+              <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-700" style={{ background: `radial-gradient(ellipse at 50% 0%, ${challenge.color}15 0%, transparent 80%)` }} />
+              
+              {/* Header */}
+              <div className="flex items-center gap-3 mb-6 relative z-10">
+                <div className="w-12 h-12 rounded-xl flex items-center justify-center" style={{ background: `${challenge.color}22`, border: `1px solid ${challenge.color}44` }}>
+                  <span className="material-symbols-outlined text-2xl" style={{ color: challenge.color }}>{challenge.icon}</span>
+                </div>
+                <h3 className="text-xl font-bold text-white">{challenge.title}</h3>
+              </div>
+              
+              {/* Challenges List */}
+              <ul className="space-y-3 relative z-10">
+                {challenge.challenges.map((item, idx) => (
+                  <li key={idx} className="flex items-start gap-3">
+                    <span className="material-symbols-outlined text-base mt-0.5" style={{ color: challenge.color }}>error</span>
+                    <span className="text-gray-400 text-sm leading-relaxed">{item}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
           ))}
         </div>
       </div>
+
+      <style>
+        {`
+          @keyframes breatheGlow {
+            0%, 100% { opacity: 0; }
+            50% { opacity: 0.25; }
+          }
+        `}
+      </style>
     </section>
   );
 };

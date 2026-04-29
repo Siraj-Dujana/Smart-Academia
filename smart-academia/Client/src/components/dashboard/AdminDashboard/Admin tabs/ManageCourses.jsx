@@ -2,6 +2,74 @@ import React, { useState, useEffect } from "react";
 
 const API = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
+// ── Section Header ────────────────────────────────────────────
+const SectionHeader = ({ icon, title, color = "#6366f1" }) => (
+  <div className="flex items-center gap-3 mb-4">
+    <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: `${color}22`, border: `1px solid ${color}44` }}>
+      <span className="material-symbols-outlined text-sm" style={{ color }}>{icon}</span>
+    </div>
+    <h3 className="text-xs font-bold text-white tracking-wide uppercase">{title}</h3>
+    <div className="flex-1 h-px" style={{ background: `linear-gradient(90deg, ${color}44, transparent)` }} />
+  </div>
+);
+
+// ── Mini Bar ──────────────────────────────────────────────────
+const MiniBar = ({ value = 0, color = "#6366f1", height = 6 }) => (
+  <div className="w-full rounded-full overflow-hidden" style={{ height, background: "#1e293b" }}>
+    <div
+      className="h-full rounded-full"
+      style={{
+        width: `${Math.min(Math.max(value, 0), 100)}%`,
+        background: `linear-gradient(90deg, ${color}cc, ${color})`,
+        boxShadow: `0 0 8px ${color}66`,
+        transition: "width 1s cubic-bezier(.4,0,.2,1)"
+      }}
+    />
+  </div>
+);
+
+// ── Progress Stat Card (with progress bar and ratio) ──────────
+const ProgressStatCard = ({ icon, label, value, total, color, isLoading }) => {
+  const percentage = total > 0 ? Math.round((value / total) * 100) : 0;
+  
+  return (
+    <div className="relative rounded-2xl overflow-hidden p-5 flex flex-col gap-3 group" style={{ background: "#0f1629", border: `1px solid ${color}33` }}>
+      <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500" style={{ background: `radial-gradient(ellipse at 50% 0%, ${color}15 0%, transparent 70%)` }} />
+      <div className="flex items-start justify-between">
+        <div className="w-11 h-11 rounded-xl flex items-center justify-center" style={{ background: `${color}22`, border: `1px solid ${color}44` }}>
+          <span className="material-symbols-outlined text-xl" style={{ color }}>{icon}</span>
+        </div>
+        <span className="text-xs font-bold" style={{ color }}>{percentage}%</span>
+      </div>
+      <div>
+        {isLoading ? (
+          <div className="h-9 w-16 bg-gray-800 rounded-lg animate-pulse" />
+        ) : (
+          <>
+            <p className="text-3xl font-black text-white tracking-tight" style={{ textShadow: `0 0 20px ${color}66` }}>
+              {value}
+            </p>
+            <p className="text-xs text-gray-500 mt-0.5">
+              <span className="text-gray-400">out of</span> {total}
+            </p>
+          </>
+        )}
+        <p className="text-xs text-gray-400 font-medium mt-1">{label}</p>
+      </div>
+      <MiniBar value={percentage} color={color} />
+    </div>
+  );
+};
+
+// ── Loading Spinner ───────────────────────────────────────────
+const LoadingSpinner = () => (
+  <div className="relative w-12 h-12 mx-auto">
+    <div className="absolute inset-0 rounded-full border-4 border-indigo-900" />
+    <div className="absolute inset-0 rounded-full border-4 border-transparent border-t-indigo-500 animate-spin" />
+    <div className="absolute inset-2 rounded-full border-4 border-transparent border-t-purple-500 animate-spin" style={{ animationDirection: "reverse", animationDuration: "0.8s" }} />
+  </div>
+);
+
 const ManageCourses = () => {
   const token = localStorage.getItem("token");
 
@@ -10,18 +78,17 @@ const ManageCourses = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedDepartment, setSelectedDepartment] = useState("all");
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingCourse, setEditingCourse] = useState(null);
   const [error, setError] = useState("");
-  const [formData, setFormData] = useState({
-    title: "", code: "", department: "",
-    instructor: "", startDate: "", endDate: ""
-  });
 
   const departments = [
     "Computer Science", "Mathematics", "Physics", "Biology",
     "Business Administration", "History", "Arts", "Engineering"
   ];
+
+  // Target values for progress bars
+  const MAX_COURSES_TARGET = 200;
+  const MAX_TEACHERS_TARGET = 100;
+  const MAX_DEPARTMENTS_TARGET = 15;
 
   useEffect(() => {
     fetchCourses();
@@ -63,152 +130,90 @@ const ManageCourses = () => {
     return matchesSearch && matchesDepartment;
   });
 
-  const totalCourses     = courses.length;
-  const totalTeachers    = [...new Set(courses.map(c => c.teacher?._id).filter(Boolean))].length;
+  const totalCourses = courses.length;
+  const totalTeachers = [...new Set(courses.map(c => c.teacher?._id).filter(Boolean))].length;
   const totalDepartments = [...new Set(courses.map(c => c.department).filter(Boolean))].length;
 
-  const handleAddCourse = () => {
-    setEditingCourse(null);
-    setFormData({ title: "", code: "", department: "", instructor: "", startDate: "", endDate: "" });
-    setError("");
-    setIsModalOpen(true);
-  };
-
-  const handleEditCourse = (course) => {
-    setEditingCourse(course);
-    setFormData({
-      title:      course.title,
-      code:       course.code,
-      department: course.department || "",
-      instructor: course.teacher?._id || "",
-      startDate:  "",
-      endDate:    "",
-    });
-    setError("");
-    setIsModalOpen(true);
-  };
-
-  const handleDeleteCourse = async (course) => {
-    if (!window.confirm(`Are you sure you want to delete "${course.title}"?`)) return;
-    try {
-      // Admin can call the course delete endpoint
-      const res = await fetch(`${API}/api/courses/${course._id}`, {
-        method: "DELETE",
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const data = await res.json();
-      if (res.ok) {
-        setCourses(prev => prev.filter(c => c._id !== course._id));
-      } else {
-        setError(data.message);
-      }
-    } catch {
-      setError("Cannot connect to server");
-    }
-  };
-
-  const handleFormSubmit = async (e) => {
-    e.preventDefault();
-    setError("");
-
-    // Find the selected teacher object
-    const selectedTeacher = teachers.find(t => t._id === formData.instructor);
-
-    try {
-      if (editingCourse) {
-        // Update via course endpoint
-        const res = await fetch(`${API}/api/courses/${editingCourse._id}`, {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({
-            title:      formData.title,
-            department: formData.department,
-          }),
-        });
-        const data = await res.json();
-        if (!res.ok) { setError(data.message); return; }
-      }
-      // Note: Admin cannot create courses on behalf of teachers via current API.
-      // Course creation requires teacher auth. We show a notice instead.
-      setIsModalOpen(false);
-      fetchCourses();
-    } catch {
-      setError("Cannot connect to server");
-    }
-  };
-
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
-  };
-
   return (
-    <div className="space-y-5 sm:space-y-6 md:space-y-8">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
-        <div>
-          <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 dark:text-white">
+    <div className="space-y-6" style={{ fontFamily: "'Lexend', sans-serif" }}>
+      
+      {/* Hero Section */}
+      <div className="relative rounded-2xl overflow-hidden p-6" style={{ background: "linear-gradient(135deg, #0c0e1e 0%, #131b35 50%, #0d1527 100%)", border: "1px solid #1e293b" }}>
+        <div className="absolute top-0 left-1/4 w-48 h-48 rounded-full blur-3xl opacity-20" style={{ background: "#6366f1" }} />
+        <div className="absolute bottom-0 right-1/4 w-48 h-48 rounded-full blur-3xl opacity-15" style={{ background: "#a855f7" }} />
+        
+        <div className="relative">
+          <div className="flex items-center gap-2 mb-1">
+            <span className="w-2 h-2 rounded-full animate-pulse" style={{ background: "#6366f1" }} />
+            <p className="text-xs font-semibold text-indigo-400 uppercase tracking-widest">Admin · Course Management</p>
+          </div>
+          <h1 className="text-2xl sm:text-3xl font-black text-white leading-tight tracking-tight">
             Manage Courses
           </h1>
-          <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400 mt-1">
-            View and manage all courses across the platform
+          <p className="text-sm text-gray-400 mt-1">
+            View all courses across the platform (Read-only)
           </p>
         </div>
       </div>
 
+      {/* Error Message */}
       {error && (
-        <div className="p-3 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700 flex items-center gap-2">
-          <span className="material-symbols-outlined text-red-600 text-base">error</span>
-          <p className="text-xs sm:text-sm text-red-600 dark:text-red-400 flex-1">{error}</p>
-          <button onClick={() => setError("")} className="text-red-400 hover:text-red-600">
+        <div className="rounded-xl p-3 flex items-center gap-2" style={{ background: "#ef444422", border: "1px solid #ef444444" }}>
+          <span className="material-symbols-outlined text-sm text-red-400">error</span>
+          <p className="text-sm text-red-400 flex-1">{error}</p>
+          <button onClick={() => setError("")} className="text-red-400 hover:text-red-300">
             <span className="material-symbols-outlined text-sm">close</span>
           </button>
         </div>
       )}
 
-      {/* Summary Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 md:gap-5">
-        {[
-          { icon: "menu_book",     label: "Total Courses",     value: totalCourses,     color: "bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600" },
-          { icon: "person",        label: "Total Teachers",     value: totalTeachers,    color: "bg-blue-100 dark:bg-blue-900/30 text-blue-600" },
-          { icon: "corporate_fare",label: "Departments",        value: totalDepartments, color: "bg-purple-100 dark:bg-purple-900/30 text-purple-600" },
-        ].map(stat => (
-          <div key={stat.label} className="bg-white dark:bg-gray-800 rounded-xl p-4 sm:p-5 border border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-md transition-all duration-300 hover:scale-105 group">
-            <div className="flex items-start gap-3 sm:gap-4">
-              <div className={`flex items-center justify-center w-10 h-10 sm:w-11 sm:h-11 rounded-lg ${stat.color} group-hover:scale-110 transition-transform duration-200`}>
-                <span className="material-symbols-outlined text-xl sm:text-2xl">{stat.icon}</span>
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-gray-600 dark:text-gray-400 text-xs sm:text-sm font-medium mb-0.5">{stat.label}</p>
-                <p className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900 dark:text-white">
-                  {isLoading ? "..." : stat.value}
-                </p>
-              </div>
-            </div>
-          </div>
-        ))}
+      {/* Stats Grid using ProgressStatCards with ratio display */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <ProgressStatCard 
+          icon="menu_book" 
+          label="Total Courses" 
+          value={totalCourses} 
+          total={MAX_COURSES_TARGET}
+          color="#6366f1"
+          isLoading={isLoading}
+        />
+        <ProgressStatCard 
+          icon="person" 
+          label="Active Teachers" 
+          value={totalTeachers} 
+          total={MAX_TEACHERS_TARGET}
+          color="#22c55e"
+          isLoading={isLoading}
+        />
+        <ProgressStatCard 
+          icon="corporate_fare" 
+          label="Departments" 
+          value={totalDepartments} 
+          total={MAX_DEPARTMENTS_TARGET}
+          color="#a855f7"
+          isLoading={isLoading}
+        />
       </div>
 
-      {/* Filters */}
-      <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm p-4 sm:p-5">
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+      {/* Filters Card */}
+      <div className="rounded-2xl p-5" style={{ background: "#0f1629", border: "1px solid #1e293b" }}>
+        <SectionHeader icon="filter_alt" title="Filters" color="#6366f1" />
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Search */}
           <div className="relative">
-            <span className="material-symbols-outlined absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 text-base sm:text-lg">search</span>
+            <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-lg">search</span>
             <input
               type="text"
               placeholder="Search courses by title or code..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-9 sm:pl-10 pr-4 py-2.5 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200"
+              className="w-full pl-10 pr-4 py-2.5 text-sm rounded-xl bg-gray-800/50 text-white border border-gray-700 placeholder-gray-500 focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition-all"
             />
           </div>
           <select
             value={selectedDepartment}
             onChange={(e) => setSelectedDepartment(e.target.value)}
-            className="w-full px-4 py-2.5 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200"
+            className="w-full px-4 py-2.5 text-sm rounded-xl bg-gray-800/50 text-white border border-gray-700 focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition-all cursor-pointer"
           >
             <option value="all">All Departments</option>
             {departments.map(dept => (
@@ -218,66 +223,54 @@ const ManageCourses = () => {
         </div>
       </div>
 
-      {/* Courses Table */}
+      {/* Courses Table - READ ONLY (No Actions) */}
       {isLoading ? (
-        <div className="text-center py-12">
-          <svg className="animate-spin h-8 w-8 text-indigo-600 mx-auto" viewBox="0 0 24 24" fill="none">
-            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
-            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
-          </svg>
-          <p className="text-gray-500 dark:text-gray-400 mt-2 text-sm">Loading courses...</p>
+        <div className="text-center py-16 rounded-2xl" style={{ background: "#0f1629", border: "1px solid #1e293b" }}>
+          <LoadingSpinner />
+          <p className="text-gray-500 mt-3 text-sm">Loading courses...</p>
         </div>
       ) : (
-        <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden">
+        <div className="rounded-2xl overflow-hidden" style={{ background: "#0f1629", border: "1px solid #1e293b" }}>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
-              <thead className="bg-gray-50 dark:bg-gray-700/50 border-b border-gray-200 dark:border-gray-600">
+              <thead style={{ background: "#0a0f1e", borderBottom: "1px solid #1e293b" }}>
                 <tr>
-                  <th className="px-3 sm:px-4 py-3 text-left font-semibold text-gray-600 dark:text-gray-400 uppercase text-xs tracking-wider">Course</th>
-                  <th className="px-3 sm:px-4 py-3 text-left font-semibold text-gray-600 dark:text-gray-400 uppercase text-xs tracking-wider hidden sm:table-cell">Department</th>
-                  <th className="px-3 sm:px-4 py-3 text-left font-semibold text-gray-600 dark:text-gray-400 uppercase text-xs tracking-wider hidden md:table-cell">Instructor</th>
-                  <th className="px-3 sm:px-4 py-3 text-left font-semibold text-gray-600 dark:text-gray-400 uppercase text-xs tracking-wider hidden lg:table-cell">Students</th>
-                  <th className="px-3 sm:px-4 py-3 text-left font-semibold text-gray-600 dark:text-gray-400 uppercase text-xs tracking-wider">Status</th>
-                  <th className="px-3 sm:px-4 py-3 text-center font-semibold text-gray-600 dark:text-gray-400 uppercase text-xs tracking-wider">Actions</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Course</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider hidden sm:table-cell">Department</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider hidden md:table-cell">Instructor</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider hidden lg:table-cell">Students</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Status</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+              <tbody className="divide-y" style={{ borderColor: "#1e293b" }}>
                 {filteredCourses.map((course) => (
-                  <tr key={course._id} className="hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors duration-150 group">
-                    <td className="px-3 sm:px-4 py-3">
+                  <tr key={course._id} className="hover:bg-white/5 transition-colors duration-150">
+                    <td className="px-4 py-3">
                       <div>
-                        <span className="font-medium text-gray-900 dark:text-white text-sm block">{course.title}</span>
-                        <span className="text-gray-500 dark:text-gray-400 text-xs">{course.code}</span>
+                        <p className="font-semibold text-white text-sm">{course.title}</p>
+                        <p className="text-gray-500 text-xs font-mono mt-0.5">{course.code}</p>
                       </div>
                     </td>
-                    <td className="px-3 sm:px-4 py-3 text-gray-600 dark:text-gray-400 text-sm hidden sm:table-cell">
-                      {course.department || "N/A"}
+                    <td className="px-4 py-3 text-gray-400 text-sm hidden sm:table-cell">
+                      {course.department || "—"}
                     </td>
-                    <td className="px-3 sm:px-4 py-3 text-gray-600 dark:text-gray-400 text-sm hidden md:table-cell">
-                      {course.teacher?.fullName || "N/A"}
+                    <td className="px-4 py-3 text-gray-400 text-sm hidden md:table-cell">
+                      {course.teacher?.fullName || "—"}
                     </td>
-                    <td className="px-3 sm:px-4 py-3 text-gray-600 dark:text-gray-400 text-sm hidden lg:table-cell">
+                    <td className="px-4 py-3 text-gray-400 text-sm hidden lg:table-cell">
                       {course.enrolledCount || 0}
                     </td>
-                    <td className="px-3 sm:px-4 py-3">
-                      <span className={`px-2 py-0.5 rounded-full text-[10px] sm:text-xs font-medium ${
+                    <td className="px-4 py-3">
+                      <span className={`inline-block px-2 py-1 rounded-full text-[10px] font-medium ${
                         course.isPublished
-                          ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300"
-                          : "bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400"
-                      }`}>
+                          ? "text-emerald-400"
+                          : "text-gray-500"
+                      }`} style={{
+                        background: course.isPublished ? "#22c55e22" : "#1e293b",
+                        border: `1px solid ${course.isPublished ? "#22c55e44" : "#334155"}`
+                      }}>
                         {course.isPublished ? "Published" : "Draft"}
                       </span>
-                    </td>
-                    <td className="px-3 sm:px-4 py-3">
-                      <div className="flex justify-center gap-1 sm:gap-2">
-                        <button
-                          onClick={() => handleDeleteCourse(course)}
-                          className="p-1.5 sm:p-2 text-gray-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg transition-all duration-200 hover:scale-110"
-                          title="Delete course"
-                        >
-                          <span className="material-symbols-outlined text-sm sm:text-base">delete</span>
-                        </button>
-                      </div>
                     </td>
                   </tr>
                 ))}
@@ -285,15 +278,32 @@ const ManageCourses = () => {
             </table>
           </div>
 
+          {/* Empty State */}
           {filteredCourses.length === 0 && (
-            <div className="text-center py-8 sm:py-12">
-              <span className="material-symbols-outlined text-5xl sm:text-6xl text-gray-300 dark:text-gray-600">menu_book</span>
-              <h3 className="text-base sm:text-lg font-medium text-gray-900 dark:text-white mb-2 mt-3">No courses found</h3>
-              <p className="text-sm text-gray-500 dark:text-gray-400">Try adjusting your search or filter criteria</p>
+            <div className="text-center py-16">
+              <span className="material-symbols-outlined text-5xl text-gray-700 mb-3 block">menu_book</span>
+              <h3 className="text-base font-semibold text-gray-400 mb-1">No courses found</h3>
+              <p className="text-sm text-gray-600">Try adjusting your search or filter criteria</p>
             </div>
           )}
         </div>
       )}
+
+      {/* Info Banner */}
+      <div className="rounded-xl p-3 flex items-start gap-2" style={{ background: "#0a0f1e", border: "1px solid #1e293b" }}>
+        <span className="material-symbols-outlined text-xs text-indigo-400 mt-0.5">info</span>
+        <p className="text-[10px] text-gray-500 leading-relaxed">
+          <span className="text-indigo-400 font-semibold">Course management:</span> View all courses across departments. Course creation and editing are managed by teachers. Admins have read-only access to course data.
+        </p>
+      </div>
+
+      <style>{`
+        @keyframes fadeIn {
+          from { opacity: 0; transform: translateY(8px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fadeIn { animation: fadeIn 0.3s ease-out; }
+      `}</style>
     </div>
   );
 };

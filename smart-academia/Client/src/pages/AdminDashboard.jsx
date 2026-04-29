@@ -4,15 +4,18 @@ import ManageTeachers from "../components/dashboard/AdminDashboard/Admin tabs/Ma
 import ManageStudents from "../components/dashboard/AdminDashboard/Admin tabs/ManageStudents";
 import ManageCourses from "../components/dashboard/AdminDashboard/Admin tabs/ManageCourses";
 import ProfileManagement from '../components/dashboard/AdminDashboard/Admin tabs/Profilemanagement';
+import Notifications from "../components/dashboard/AdminDashboard/Admin tabs/Notifications";
+import NotificationBell from "../components/notifications/NotificationBell";
+import FloatingButtons from '../components/sections/LandingPage/FloatingButtons';
+import Dashboard from "../components/dashboard/AdminDashboard/Admin tabs/Dashboard";
 
 const AdminDashboard = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [activeMenu, setActiveMenu] = useState('teachers');
-  const [user, setUser] = useState({ fullName: "", role: "", avatar: "" });
+  const [user, setUser] = useState({ fullName: "", role: "", avatar: "", employeeId: "" });
 
-  // ✅ Create a reusable function to load user
   const loadUserFromStorage = () => {
     const userData = JSON.parse(localStorage.getItem("user") || "{}");
     setUser(userData);
@@ -22,13 +25,11 @@ const AdminDashboard = () => {
     loadUserFromStorage();
   }, []);
 
-  // ✅ Listen for profile updates
   useEffect(() => {
     window.addEventListener("profileUpdated", loadUserFromStorage);
     return () => window.removeEventListener("profileUpdated", loadUserFromStorage);
   }, []);
 
-  // ✅ Read ?tab= from URL query params
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     const tab = params.get("tab");
@@ -37,12 +38,13 @@ const AdminDashboard = () => {
     }
   }, [location.search]);
 
-  // Menu items
   const menuItems = [
+    { icon: "dashboard", label: "Dahboard", key: "dashboard" },
     { icon: "supervisor_account", label: "Manage Teachers", key: 'teachers' },
     { icon: "groups", label: "Manage Students", key: 'students' },
     { icon: "menu_book", label: "Manage Courses", key: 'courses' },
-    { icon: "person", label: "My Profile", key: 'profile' }
+    { icon: "person", label: "My Profile", key: 'profile' },
+    { icon: "notifications", label: "Notifications", key: "notifications" },
   ];
 
   const handleMenuClick = (menuKey) => {
@@ -57,158 +59,188 @@ const AdminDashboard = () => {
     navigate("/login");
   };
 
-  const handleNotifications = () => {
-    console.log('Notifications');
-  };
-
-  // Render active tab content
   const renderActiveTab = () => {
     switch (activeMenu) {
-      case 'teachers':
-        return <ManageTeachers />;
-      case 'students':
-        return <ManageStudents />;
-      case 'courses':
-        return <ManageCourses />;
-      case 'profile':
-        return <ProfileManagement />;
-      default:
-        return <ManageTeachers />;
+      
+      case 'dashboard': return <Dashboard/>;
+      case 'teachers': return <ManageTeachers />;
+      case 'students': return <ManageStudents />;
+      case 'courses': return <ManageCourses />;
+      case 'profile': return <ProfileManagement />;
+      case 'notifications': return <Notifications />;
+      default: return <ManageTeachers />;
     }
   };
 
-  // ✅ Use dynamic values
   const displayName = user.fullName || user.name || "Admin User";
   const userRole = user.role || "Administrator";
-  const userAvatar = user.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(displayName)}&background=4f46e5&color=fff`;
+  const employeeId = user.employeeId || "N/A";
+  const userAvatar = user.avatar || null;
+  const userInitial = displayName.charAt(0).toUpperCase();
+
+  const colors = {
+    bg: "#0a0b10",
+    sidebar: "#0c0e1e",
+    card: "#0f1629",
+    border: "#1e293b",
+    accent: "#6366f1",
+    accent2: "#a855f7",
+    amber: "#f59e0b",
+    green: "#22c55e",
+    text: "#e2e8f0",
+    muted: "#64748b",
+    hover: "#1e293b",
+  };
+
+  // Glowing button component for sidebar
+  const SidebarButton = ({ item }) => {
+    const isActive = activeMenu === item.key;
+    return (
+      <button
+        onClick={() => handleMenuClick(item.key)}
+        className="flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 group relative overflow-hidden w-full"
+        style={isActive
+          ? { background: `${colors.accent}18`, color: "#c7d2fe", border: `1px solid ${colors.accent}33`, boxShadow: `0 0 20px ${colors.accent}15` }
+          : { color: colors.muted }
+        }
+      >
+        <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-lg"
+          style={{ background: `radial-gradient(ellipse at 50% 0%, ${colors.accent}10 0%, transparent 70%)` }}
+        />
+        <span className="material-symbols-outlined text-xl transition-transform duration-200 group-hover:scale-110 relative z-10">
+          {item.icon}
+        </span>
+        <p className="text-sm font-medium relative z-10">{item.label}</p>
+        {isActive && (
+          <div className="ml-auto w-1.5 h-1.5 rounded-full animate-pulse relative z-10" style={{ background: colors.accent }} />
+        )}
+      </button>
+    );
+  };
+
+  // Glowing icon button for header
+  const HeaderIconButton = ({ onClick, icon, className = "" }) => (
+    <button
+      onClick={onClick}
+      className={`p-2 rounded-lg transition-all duration-200 relative overflow-hidden ${className}`}
+      style={{ color: colors.muted }}
+    >
+      <div className="absolute inset-0 opacity-0 hover:opacity-100 transition-opacity duration-300 rounded-lg"
+        style={{ background: `radial-gradient(ellipse at 50% 50%, ${colors.accent}15 0%, transparent 70%)` }}
+      />
+      <span className="material-symbols-outlined text-xl relative z-10">{icon}</span>
+    </button>
+  );
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 font-sans text-gray-900 dark:text-white transition-colors duration-300">
+    <div style={{ background: colors.bg, minHeight: "100vh", fontFamily: "'Lexend', sans-serif", color: colors.text }}>
       <div className="relative flex min-h-screen w-full">
+        
         {/* Mobile Overlay */}
         {sidebarOpen && (
-          <div 
-            className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden"
+          <div
+            className="fixed inset-0 bg-black/70 backdrop-blur-sm z-40 lg:hidden"
             onClick={() => setSidebarOpen(false)}
           />
         )}
 
         {/* Sidebar */}
-        <aside className={`flex flex-col w-64 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 fixed  inset-y-0 left-0 z-50 transform transition-transform duration-300 ease-in-out h-screen overflow-y-auto ${
-          sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
-        }`}>
+        <aside
+          className={`flex flex-col w-64 fixed inset-y-0 left-0 z-50 transform transition-transform duration-300 ease-in-out h-screen overflow-y-auto ${
+            sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
+          }`}
+          style={{ background: colors.sidebar, borderRight: `1px solid ${colors.border}` }}
+        >
           {/* Logo */}
-          <div className="flex items-center gap-2 sm:gap-3 px-4 sm:px-6 py-4 border-b border-gray-200 dark:border-gray-700 shrink-0">
-            <span className="material-symbols-outlined text-blue-600 text-2xl sm:text-3xl animate-pulse">school</span>
-            <h1 className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white">SmartAcademia</h1>
-            <button 
+          <div className="flex items-center gap-3 px-5 py-5 shrink-0" style={{ borderBottom: `1px solid ${colors.border}` }}>
+            <div className="w-9 h-9 rounded-lg flex items-center justify-center" style={{ background: `${colors.accent}22`, border: `1px solid ${colors.accent}44` }}>
+             <svg className="w-12 h-12 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 14l9-5-9-5-9 5 9 5zm0 0l9-5-9 5-9-5m9 5v5m0-5v5m0 0l-9-5m9 5l9-5" />
+              </svg>
+            </div>
+            <h1 className="text-lg font-bold text-white tracking-tight">Smart<span style={{ color: colors.accent }}>Academia</span></h1>
+            <button
               onClick={() => setSidebarOpen(false)}
-              className="lg:hidden ml-auto text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+              className="lg:hidden ml-auto text-gray-500 hover:text-white"
             >
               <span className="material-symbols-outlined text-xl">close</span>
             </button>
           </div>
 
           {/* Navigation */}
-          <div className="flex-1 overflow-y-auto py-4 sm:py-6">
-            <div className="flex flex-col gap-1 px-3">
+          <div className="flex-1 py-4 overflow-y-auto">
+            <div className="flex flex-col gap-0.5 px-3">
               {menuItems.map((item) => (
-                <button
-                  key={item.key}
-                  onClick={() => handleMenuClick(item.key)}
-                  className={`flex items-center gap-3 px-3 py-2.5 sm:py-3 rounded-lg transition-all duration-200 ${
-                    activeMenu === item.key
-                      ? "bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 font-semibold shadow-sm"
-                      : "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-white"
-                  } group`}
-                >
-                  <span className={`material-symbols-outlined text-xl transition-transform duration-200 ${
-                    activeMenu === item.key ? "scale-110" : "group-hover:scale-110"
-                  }`}>
-                    {item.icon}
-                  </span>
-                  <p className="text-sm font-medium">{item.label}</p>
-                  {activeMenu === item.key && (
-                    <div className="ml-auto w-1.5 h-1.5 bg-indigo-600 rounded-full animate-pulse" />
-                  )}
-                </button>
+                <SidebarButton key={item.key} item={item} />
               ))}
             </div>
           </div>
 
-          {/* ✅ User Profile - Clickable */}
-          <div className="border-t border-gray-200 dark:border-gray-700 p-4 shrink-0">
-            <div 
-              className="flex items-center gap-3 group cursor-pointer p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-200"
+          {/* User Profile */}
+          <div className="p-4 shrink-0" style={{ borderTop: `1px solid ${colors.border}` }}>
+            <div
+              className="flex items-center gap-3 p-2.5 rounded-lg cursor-pointer transition-all duration-200 hover:bg-white/5 relative overflow-hidden group"
               onClick={() => handleMenuClick('profile')}
             >
-              <div 
-                className="bg-center bg-no-repeat aspect-square bg-cover rounded-full w-10 h-10 ring-2 ring-gray-200 dark:ring-gray-600 group-hover:ring-indigo-200 dark:group-hover:ring-indigo-400 transition-all duration-200"
-                style={{ backgroundImage: `url("${userAvatar}")` }}
+              <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-lg"
+                style={{ background: `radial-gradient(ellipse at 50% 0%, ${colors.accent}10 0%, transparent 70%)` }}
               />
-              <div className="flex-1 min-w-0">
-                <h1 className="text-sm font-medium text-gray-900 dark:text-white truncate">
-                  {displayName}
-                </h1>
-                <p className="text-xs text-gray-500 dark:text-gray-400 truncate capitalize">
-                  {userRole}
-                </p>
+              {userAvatar ? (
+                <div
+                  className="w-10 h-10 rounded-full bg-center bg-no-repeat bg-cover flex-shrink-0 relative z-10"
+                  style={{ backgroundImage: `url("${userAvatar}")` }}
+                />
+              ) : (
+                <div className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold text-white flex-shrink-0 relative z-10"
+                  style={{ background: `linear-gradient(135deg, ${colors.accent}, ${colors.accent2})` }}>
+                  {userInitial}
+                </div>
+              )}
+              <div className="flex-1 min-w-0 relative z-10">
+                <p className="text-sm font-semibold text-white truncate">{displayName}</p>
+                <p className="text-xs text-gray-500 truncate">{userRole} · ID: {employeeId}</p>
               </div>
-              <span className="material-symbols-outlined text-gray-400 text-base group-hover:text-indigo-500 transition-colors duration-200">
-                expand_more
-              </span>
+              <span className="material-symbols-outlined text-gray-500 text-sm relative z-10">expand_more</span>
             </div>
           </div>
         </aside>
 
         {/* Main Content */}
         <div className="flex-1 flex flex-col lg:ml-64 min-w-0">
+          
           {/* Header */}
-          <header className="flex items-center justify-between border-b border-gray-200 dark:border-gray-700 px-4 sm:px-6 lg:px-8 py-3 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm sticky top-0 z-30">
-            {/* Left Section */}
-            <div className="flex items-center gap-3 sm:gap-4">
-              <button 
-                onClick={() => setSidebarOpen(true)}
-                className="lg:hidden p-2 rounded-lg text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 transition-all duration-200"
-              >
-                <span className="material-symbols-outlined text-xl">menu</span>
-              </button>
-              <div className="flex items-center gap-2 lg:hidden">
-                <span className="material-symbols-outlined text-indigo-600 text-xl">school</span>
-                <h1 className="text-base sm:text-lg font-semibold text-gray-900 dark:text-white">SmartAcademia</h1>
-              </div>
+          <header
+            className="flex items-center justify-between px-5 py-3 sticky top-0 z-30 backdrop-blur-md"
+            style={{ background: `${colors.bg}ee`, borderBottom: `1px solid ${colors.border}` }}
+          >
+            <div className="flex items-center gap-3">
+              <HeaderIconButton onClick={() => setSidebarOpen(true)} icon="menu" className="lg:hidden" />
             </div>
-            
-            {/* Right Section */}
-            <div className="flex items-center gap-2 sm:gap-4">
-              {/* Notifications */}
-              <button 
-                onClick={handleNotifications}
-                className="relative p-2 rounded-lg text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 transition-all duration-200 hover:scale-105"
-              >
-                <span className="material-symbols-outlined text-xl sm:text-2xl">notifications</span>
-                <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-red-500 rounded-full animate-pulse"></span>
-              </button>
-              
-              {/* Logout */}
-              <button 
-                onClick={handleLogout}
-                className="p-2 rounded-lg text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 transition-all duration-200 hover:scale-105"
-              >
-                <span className="material-symbols-outlined text-xl sm:text-2xl">logout</span>
-              </button>
-              
-              {/* ✅ Header Avatar - Clickable */}
-              <div 
-                className="bg-center bg-no-repeat aspect-square bg-cover rounded-full w-8 h-8 sm:w-10 sm:h-10 ring-2 ring-gray-200 dark:ring-gray-600 hover:ring-indigo-300 dark:hover:ring-indigo-400 transition-all duration-200 cursor-pointer hover:scale-105"
-                style={{ backgroundImage: `url("${userAvatar}")` }}
+
+            <div className="flex items-center gap-3">
+              <NotificationBell />
+              <HeaderIconButton onClick={handleLogout} icon="logout" />
+              <div
+                className="cursor-pointer transition-transform hover:scale-105 relative z-10"
                 onClick={() => handleMenuClick('profile')}
-              />
+              >
+                {userAvatar ? (
+                  <div
+                    className="w-9 h-9 rounded-full bg-center bg-no-repeat bg-cover ring-2 ring-offset-2 ring-offset-transparent"
+                    style={{ backgroundImage: `url("${userAvatar}")`, ringColor: colors.accent }}
+                  />
+                ) : (
+                  <div className="w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold text-white"
+                    style={{ background: `linear-gradient(135deg, ${colors.accent}, ${colors.accent2})` }}>
+                    {userInitial}
+                  </div>
+                )}
+              </div>
             </div>
           </header>
 
           {/* Main Content */}
-          <main className="flex-1 p-4 sm:p-5 md:p-6 lg:p-8 overflow-x-auto">
+          <main className="flex-1 p-5 lg:p-8 overflow-x-auto">
             <div className="animate-fadeIn">
               {renderActiveTab()}
             </div>
@@ -216,21 +248,31 @@ const AdminDashboard = () => {
         </div>
       </div>
 
-      {/* Add animation styles */}
+      {/* Floating Buttons - AI Assistant */}
+      <FloatingButtons
+        showScrollTop={false}
+        onScrollToTop={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+        onChatClick={() => window.open('/student/dashboard?tab=ai-assistant', '_blank')}
+        chatTooltip="AI Assistant"
+        scrollTooltip="Scroll to Top"
+        chatIcon="smart_toy"
+        scrollIcon="arrow_upward"
+        chatPosition="bottom-4 right-4 sm:bottom-6 sm:right-6 md:bottom-8 md:right-8"
+        scrollPosition="bottom-20 right-4 sm:bottom-24 sm:right-6 md:bottom-28 md:right-8"
+        chatColor="from-indigo-600 to-indigo-700"
+        scrollColor="from-indigo-600 to-indigo-700"
+      />
+
       <style>{`
         @keyframes fadeIn {
-          from {
-            opacity: 0;
-            transform: translateY(10px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
+          from { opacity: 0; transform: translateY(8px); }
+          to { opacity: 1; transform: translateY(0); }
         }
-        .animate-fadeIn {
-          animation: fadeIn 0.3s ease-out;
-        }
+        .animate-fadeIn { animation: fadeIn 0.3s ease-out; }
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #334155; }
       `}</style>
     </div>
   );

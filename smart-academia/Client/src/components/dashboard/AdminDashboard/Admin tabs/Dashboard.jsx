@@ -3,6 +3,74 @@ import { Chart } from 'chart.js/auto';
 
 const API = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
+// ── Section Header ────────────────────────────────────────────
+const SectionHeader = ({ icon, title, color = "#6366f1" }) => (
+  <div className="flex items-center gap-3 mb-4">
+    <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: `${color}22`, border: `1px solid ${color}44` }}>
+      <span className="material-symbols-outlined text-sm" style={{ color }}>{icon}</span>
+    </div>
+    <h3 className="text-xs font-bold text-white tracking-wide uppercase">{title}</h3>
+    <div className="flex-1 h-px" style={{ background: `linear-gradient(90deg, ${color}44, transparent)` }} />
+  </div>
+);
+
+// ── Mini Bar ──────────────────────────────────────────────────
+const MiniBar = ({ value = 0, color = "#6366f1", height = 6 }) => (
+  <div className="w-full rounded-full overflow-hidden" style={{ height, background: "#1e293b" }}>
+    <div
+      className="h-full rounded-full"
+      style={{
+        width: `${Math.min(Math.max(value, 0), 100)}%`,
+        background: `linear-gradient(90deg, ${color}cc, ${color})`,
+        boxShadow: `0 0 8px ${color}66`,
+        transition: "width 1s cubic-bezier(.4,0,.2,1)"
+      }}
+    />
+  </div>
+);
+
+// ── Progress Stat Card (with progress bar and ratio) ──────────
+const ProgressStatCard = ({ icon, label, value, total, color, isLoading }) => {
+  const percentage = total > 0 ? Math.round((value / total) * 100) : 0;
+  
+  return (
+    <div className="relative rounded-2xl overflow-hidden p-5 flex flex-col gap-3 group" style={{ background: "#0f1629", border: `1px solid ${color}33` }}>
+      <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500" style={{ background: `radial-gradient(ellipse at 50% 0%, ${color}15 0%, transparent 70%)` }} />
+      <div className="flex items-start justify-between">
+        <div className="w-11 h-11 rounded-xl flex items-center justify-center" style={{ background: `${color}22`, border: `1px solid ${color}44` }}>
+          <span className="material-symbols-outlined text-xl" style={{ color }}>{icon}</span>
+        </div>
+        <span className="text-xs font-bold" style={{ color }}>{percentage}%</span>
+      </div>
+      <div>
+        {isLoading ? (
+          <div className="h-9 w-20 bg-gray-800 rounded-lg animate-pulse" />
+        ) : (
+          <>
+            <p className="text-3xl font-black text-white tracking-tight" style={{ textShadow: `0 0 20px ${color}66` }}>
+              {value.toLocaleString()}
+            </p>
+            <p className="text-xs text-gray-500 mt-0.5">
+              <span className="text-gray-400">out of</span> {total.toLocaleString()}
+            </p>
+          </>
+        )}
+        <p className="text-xs text-gray-400 font-medium mt-1">{label}</p>
+      </div>
+      <MiniBar value={percentage} color={color} />
+    </div>
+  );
+};
+
+// ── Loading Spinner ───────────────────────────────────────────
+const LoadingSpinner = () => (
+  <div className="relative w-12 h-12 mx-auto">
+    <div className="absolute inset-0 rounded-full border-4 border-indigo-900" />
+    <div className="absolute inset-0 rounded-full border-4 border-transparent border-t-indigo-500 animate-spin" />
+    <div className="absolute inset-2 rounded-full border-4 border-transparent border-t-purple-500 animate-spin" style={{ animationDirection: "reverse", animationDuration: "0.8s" }} />
+  </div>
+);
+
 const Dashboard = () => {
   const token = localStorage.getItem("token");
   const barChartRef = useRef(null);
@@ -11,16 +79,22 @@ const Dashboard = () => {
   const pieChartInstance = useRef(null);
 
   const [stats, setStats] = useState({
-    totalStudents:    0,
-    totalTeachers:    0,
-    totalCourses:     0,
+    totalStudents: 0,
+    totalTeachers: 0,
+    totalCourses: 0,
     totalEnrollments: 0,
   });
   const [isLoading, setIsLoading] = useState(true);
-  const [error, setError]   = useState("");
+  const [error, setError] = useState("");
 
   const user = JSON.parse(localStorage.getItem("user") || "{}");
   const displayName = user.fullName || user.name || "Admin User";
+
+  // Target values for progress bars (max capacity or goals)
+  const MAX_TEACHERS_TARGET = 50;
+  const MAX_STUDENTS_TARGET = 100;
+  const MAX_COURSES_TARGET = 200;
+  const MAX_ENROLLMENTS_TARGET = 5000;
 
   useEffect(() => {
     fetchStats();
@@ -46,30 +120,10 @@ const Dashboard = () => {
   };
 
   const statCards = [
-    {
-      icon: "school",
-      title: "Total Teachers",
-      value: stats.totalTeachers,
-      color: "bg-indigo-100 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-500",
-    },
-    {
-      icon: "groups",
-      title: "Total Students",
-      value: stats.totalStudents,
-      color: "bg-green-100 dark:bg-green-900/50 text-green-600 dark:text-green-500",
-    },
-    {
-      icon: "menu_book",
-      title: "Total Courses",
-      value: stats.totalCourses,
-      color: "bg-amber-100 dark:bg-amber-900/50 text-amber-600 dark:text-amber-500",
-    },
-    {
-      icon: "trending_up",
-      title: "Total Enrollments",
-      value: stats.totalEnrollments,
-      color: "bg-rose-100 dark:bg-rose-900/50 text-rose-600 dark:text-rose-500",
-    },
+    { icon: "school", title: "Total Teachers", value: stats.totalTeachers, total: MAX_TEACHERS_TARGET, color: "#6366f1" },
+    { icon: "groups", title: "Total Students", value: stats.totalStudents, total: MAX_STUDENTS_TARGET, color: "#22c55e" },
+    { icon: "menu_book", title: "Total Courses", value: stats.totalCourses, total: MAX_COURSES_TARGET, color: "#f59e0b" },
+    { icon: "trending_up", title: "Total Enrollments", value: stats.totalEnrollments, total: MAX_ENROLLMENTS_TARGET, color: "#ef4444" },
   ];
 
   // Initialize charts once stats are loaded
@@ -91,9 +145,9 @@ const Dashboard = () => {
               stats.totalCourses,
               stats.totalEnrollments,
             ],
-            backgroundColor: ['#4f46e5', '#10b981', '#f59e0b', '#ef4444'],
+            backgroundColor: ['#6366f1', '#22c55e', '#f59e0b', '#ef4444'],
             borderRadius: 8,
-            hoverBackgroundColor: ['#6366f1', '#34d399', '#fbbf24', '#f87171'],
+            hoverBackgroundColor: ['#818cf8', '#4ade80', '#fbbf24', '#f87171'],
           }]
         },
         options: {
@@ -102,18 +156,22 @@ const Dashboard = () => {
           scales: {
             y: {
               beginAtZero: true,
-              grid: { color: 'rgba(0,0,0,0.1)' },
-              ticks: { font: { size: 11 } }
+              grid: { color: '#1e293b' },
+              ticks: { font: { size: 11, color: '#94a3b8' } }
             },
             x: {
               grid: { display: false },
-              ticks: { font: { size: 11 } }
+              ticks: { font: { size: 11, color: '#94a3b8' } }
             }
           },
           plugins: {
             legend: { display: false },
             tooltip: {
-              backgroundColor: 'rgba(0,0,0,0.8)',
+              backgroundColor: '#0f1629',
+              titleColor: '#e2e8f0',
+              bodyColor: '#94a3b8',
+              borderColor: '#6366f144',
+              borderWidth: 1,
               cornerRadius: 8,
             }
           },
@@ -125,8 +183,7 @@ const Dashboard = () => {
     if (pieChartRef.current) {
       if (pieChartInstance.current) pieChartInstance.current.destroy();
       const pieCtx = pieChartRef.current.getContext('2d');
-      // Derive a simple enrollment ratio: enrolled vs not enrolled students
-      const enrolled  = Math.min(stats.totalEnrollments, stats.totalStudents);
+      const enrolled = Math.min(stats.totalEnrollments, stats.totalStudents);
       const notEnrolled = Math.max(0, stats.totalStudents - enrolled);
       pieChartInstance.current = new Chart(pieCtx, {
         type: 'pie',
@@ -134,9 +191,9 @@ const Dashboard = () => {
           labels: ['Enrolled Students', 'Not Yet Enrolled', 'Teachers'],
           datasets: [{
             data: [enrolled, notEnrolled, stats.totalTeachers],
-            backgroundColor: ['#10b981', '#ef4444', '#4f46e5'],
+            backgroundColor: ['#22c55e', '#ef4444', '#6366f1'],
             borderWidth: 2,
-            borderColor: '#ffffff',
+            borderColor: '#0f1629',
             hoverOffset: 8,
           }]
         },
@@ -146,7 +203,12 @@ const Dashboard = () => {
           plugins: {
             legend: {
               position: 'bottom',
-              labels: { usePointStyle: true, padding: 15, font: { size: 11 } }
+              labels: {
+                usePointStyle: true,
+                padding: 15,
+                font: { size: 11, family: "'Lexend', sans-serif" },
+                color: '#94a3b8'
+              }
             }
           },
           animation: { duration: 1000, easing: 'easeOutQuart', animateScale: true }
@@ -161,79 +223,76 @@ const Dashboard = () => {
   }, [isLoading, stats]);
 
   return (
-    <div className="space-y-6 sm:space-y-8">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
-        <div className="flex flex-col gap-1">
-          <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 dark:text-white leading-tight">
-            Admin Dashboard
-          </h1>
-          <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400">
-            Welcome back, {displayName}! Here's the system overview.
-          </p>
+    <div className="space-y-6" style={{ fontFamily: "'Lexend', sans-serif" }}>
+      
+      {/* Hero Section */}
+      <div className="relative rounded-2xl overflow-hidden p-6" style={{ background: "linear-gradient(135deg, #0c0e1e 0%, #131b35 50%, #0d1527 100%)", border: "1px solid #1e293b" }}>
+        <div className="absolute top-0 left-1/4 w-48 h-48 rounded-full blur-3xl opacity-20" style={{ background: "#6366f1" }} />
+        <div className="absolute bottom-0 right-1/4 w-48 h-48 rounded-full blur-3xl opacity-15" style={{ background: "#a855f7" }} />
+        
+        <div className="relative flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <div className="flex items-center gap-2 mb-1">
+              <span className="w-2 h-2 rounded-full animate-pulse" style={{ background: "#6366f1" }} />
+              <p className="text-xs font-semibold text-indigo-400 uppercase tracking-widest">Admin Portal · Overview</p>
+            </div>
+            <h1 className="text-2xl sm:text-3xl font-black text-white leading-tight tracking-tight">
+              Admin Dashboard
+            </h1>
+            <p className="text-sm text-gray-400 mt-1">
+              Welcome back, <span className="text-indigo-400 font-semibold">{displayName}</span>! Here's the system overview.
+            </p>
+          </div>
+          
+          <button
+            onClick={fetchStats}
+            className="flex items-center justify-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition-all hover:scale-105"
+            style={{ background: "#6366f122", color: "#818cf8", border: "1px solid #6366f144" }}
+          >
+            <span className="material-symbols-outlined text-base">refresh</span>
+            Refresh
+          </button>
         </div>
-        <button
-          onClick={fetchStats}
-          className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-indigo-600 bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-900/20 dark:text-indigo-400 rounded-lg transition-colors w-full sm:w-auto justify-center"
-        >
-          <span className="material-symbols-outlined text-base">refresh</span>
-          Refresh
-        </button>
       </div>
 
+      {/* Error Banner */}
       {error && (
-        <div className="p-3 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700 flex items-center gap-2">
-          <span className="material-symbols-outlined text-red-600 text-base">error</span>
-          <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
+        <div className="rounded-xl p-3 flex items-center gap-2" style={{ background: "#ef444422", border: "1px solid #ef444444" }}>
+          <span className="material-symbols-outlined text-sm text-red-400">error</span>
+          <p className="text-sm text-red-400">{error}</p>
         </div>
       )}
 
-      {/* Stats Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 md:gap-5">
+      {/* Stats Grid using ProgressStatCards with ratio display */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {statCards.map((stat, index) => (
-          <div
+          <ProgressStatCard
             key={index}
-            className="bg-white dark:bg-gray-800 rounded-xl p-3 sm:p-4 md:p-5 border border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-md transition-all duration-300 hover:scale-105 group"
-          >
-            <div className="flex items-start gap-2 sm:gap-3 md:gap-4">
-              <div className={`flex items-center justify-center w-10 h-10 sm:w-11 sm:h-11 md:w-12 md:h-12 rounded-lg ${stat.color} group-hover:scale-110 transition-transform duration-200 flex-shrink-0`}>
-                <span className="material-symbols-outlined text-xl sm:text-2xl">{stat.icon}</span>
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-gray-600 dark:text-gray-400 text-xs sm:text-sm font-medium mb-0.5 sm:mb-1">
-                  {stat.title}
-                </p>
-                <p className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900 dark:text-white">
-                  {isLoading ? (
-                    <span className="animate-pulse bg-gray-200 dark:bg-gray-700 rounded h-8 w-12 inline-block" />
-                  ) : (
-                    stat.value.toLocaleString()
-                  )}
-                </p>
-              </div>
-            </div>
-          </div>
+            icon={stat.icon}
+            label={stat.title}
+            value={stat.value}
+            total={stat.total}
+            color={stat.color}
+            isLoading={isLoading}
+          />
         ))}
       </div>
 
-      {/* Charts */}
+      {/* Charts Section */}
       <div>
-        <h2 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-white mb-4 sm:mb-6">
-          Platform Overview
-        </h2>
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 sm:gap-6">
+        <SectionHeader icon="bar_chart" title="Platform Overview" color="#6366f1" />
+        
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
           {/* Bar Chart */}
-          <div className="lg:col-span-2 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm p-4 sm:p-5 md:p-6 hover:shadow-md transition-all duration-300">
-            <h3 className="text-base sm:text-lg font-semibold text-gray-900 dark:text-white mb-3 sm:mb-4">
+          <div className="lg:col-span-2 rounded-2xl p-5" style={{ background: "#0f1629", border: "1px solid #1e293b" }}>
+            <h3 className="text-sm font-bold text-white mb-4 flex items-center gap-2">
+              <span className="material-symbols-outlined text-indigo-400 text-base">show_chart</span>
               Platform Statistics
             </h3>
-            <div className="h-56 sm:h-64 md:h-72 lg:h-80">
+            <div className="h-72 lg:h-80">
               {isLoading ? (
                 <div className="h-full flex items-center justify-center">
-                  <svg className="animate-spin h-8 w-8 text-indigo-600" viewBox="0 0 24 24" fill="none">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
-                  </svg>
+                  <LoadingSpinner />
                 </div>
               ) : (
                 <canvas ref={barChartRef} />
@@ -242,16 +301,14 @@ const Dashboard = () => {
           </div>
 
           {/* Pie Chart */}
-          <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm p-4 sm:p-5 md:p-6 hover:shadow-md transition-all duration-300">
-            <h3 className="text-base sm:text-lg font-semibold text-gray-900 dark:text-white mb-3 sm:mb-4">
+          <div className="rounded-2xl p-5" style={{ background: "#0f1629", border: "1px solid #1e293b" }}>
+            <h3 className="text-sm font-bold text-white mb-4 flex items-center gap-2">
+              <span className="material-symbols-outlined text-purple-400 text-base">pie_chart</span>
               User Distribution
             </h3>
-            <div className="h-56 sm:h-64 md:h-72 lg:h-80 flex items-center justify-center">
+            <div className="h-72 lg:h-80 flex items-center justify-center">
               {isLoading ? (
-                <svg className="animate-spin h-8 w-8 text-indigo-600" viewBox="0 0 24 24" fill="none">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
-                </svg>
+                <LoadingSpinner />
               ) : (
                 <canvas ref={pieChartRef} />
               )}
@@ -259,6 +316,22 @@ const Dashboard = () => {
           </div>
         </div>
       </div>
+
+      {/* Info Banner */}
+      <div className="rounded-xl p-3 flex items-start gap-2" style={{ background: "#0a0f1e", border: "1px solid #1e293b" }}>
+        <span className="material-symbols-outlined text-xs text-indigo-400 mt-0.5">info</span>
+        <p className="text-[10px] text-gray-500 leading-relaxed">
+          <span className="text-indigo-400 font-semibold">Admin insight:</span> Track key metrics with progress bars showing capacity. Targets: {MAX_TEACHERS_TARGET} teachers, {MAX_STUDENTS_TARGET} students, {MAX_COURSES_TARGET} courses, {MAX_ENROLLMENTS_TARGET} enrollments.
+        </p>
+      </div>
+
+      <style>{`
+        @keyframes fadeIn {
+          from { opacity: 0; transform: translateY(8px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fadeIn { animation: fadeIn 0.3s ease-out; }
+      `}</style>
     </div>
   );
 };
