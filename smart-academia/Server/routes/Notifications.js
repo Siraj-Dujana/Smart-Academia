@@ -1,4 +1,4 @@
-// routes/notifications.js
+// routes/Notifications.js
 const express = require("express");
 const router  = express.Router();
 const {
@@ -11,7 +11,7 @@ const {
   clearAllRead,
   sendAnnouncementNotification,
   sendDeadlineNotification,
-  
+
   // Admin endpoints
   getAdminNotifications,
   markAdminAsRead,
@@ -26,27 +26,28 @@ const { protect, authorize } = require("../middleware/authMiddleware");
 router.use(protect);
 
 // ─────────────────────────────────────────────────────────────
-// STUDENT + TEACHER ROUTES (existing)
+// STUDENT + TEACHER ROUTES
 // ─────────────────────────────────────────────────────────────
-router.get("/",             getNotifications);
-router.get("/unread-count", getUnreadCount);
-router.put("/read-all",     markAllAsRead);
+router.get("/",              getNotifications);
+router.get("/unread-count",  getUnreadCount);
+router.put("/read-all",      markAllAsRead);
 router.delete("/clear-read", clearAllRead);
-router.put("/:id/read",     markAsRead);
-router.delete("/:id",       deleteNotification);
+router.put("/:id/read",      markAsRead);
+router.delete("/:id",        deleteNotification);
 
-// Teacher only: Send notification to course students
+// Teacher only
 router.post("/announcement", authorize("teacher"), sendAnnouncementNotification);
 router.post("/deadline",     authorize("teacher"), sendDeadlineNotification);
 
 // ─────────────────────────────────────────────────────────────
-// ADMIN ROUTES (new)
+// ADMIN ROUTES  — prefix is /admin (no duplication)
+// These are mounted as /api/notifications/admin/...
 // ─────────────────────────────────────────────────────────────
-router.get("/admin/notifications",          authorize("admin"), getAdminNotifications);
-router.put("/admin/notifications/read-all", authorize("admin"), markAdminAllAsRead);
-router.delete("/admin/notifications/clear-read", authorize("admin"), clearAdminRead);
-router.put("/admin/notifications/:id/read", authorize("admin"), markAdminAsRead);
-router.delete("/admin/notifications/:id",   authorize("admin"), deleteAdminNotification);
-router.post("/admin/broadcast",             authorize("admin"), adminBroadcast);
+router.get("/admin",                    authorize("admin"), getAdminNotifications);
+router.put("/admin/read-all",           authorize("admin"), markAdminAllAsRead);
+router.delete("/admin/clear-read",      authorize("admin"), clearAdminRead);
+router.put("/admin/:id/read",           authorize("admin"), markAdminAsRead);
+router.delete("/admin/:id",             authorize("admin"), deleteAdminNotification);
+router.post("/admin/broadcast",         authorize("admin"), adminBroadcast);
 
 module.exports = router;
