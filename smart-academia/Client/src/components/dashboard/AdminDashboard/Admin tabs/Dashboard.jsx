@@ -91,8 +91,8 @@ const Dashboard = () => {
   const displayName = user.fullName || user.name || "Admin User";
 
   // Target values for progress bars (max capacity or goals)
-  const MAX_TEACHERS_TARGET = 50;
-  const MAX_STUDENTS_TARGET = 100;
+  const MAX_TEACHERS_TARGET = 100;
+  const MAX_STUDENTS_TARGET = 500;
   const MAX_COURSES_TARGET = 200;
   const MAX_ENROLLMENTS_TARGET = 5000;
 

@@ -5,6 +5,7 @@ const Enrollment     = require("../models/Enrollment");
 const LessonProgress = require("../models/LessonProgress");
 const User           = require("../models/User");
 const { notifyEnrollment, notifyUnenrollment,  notifyCourseCreated,  notifyCourseDeleted } = require("../utils/notificationHooks");
+const { get } = require("mongoose");
 
 // =============================================
 // TEACHER — Create a new course
@@ -15,6 +16,19 @@ const createCourse = async (req, res) => {
 
     if (!title || !description || !code || !department) {
       return res.status(400).json({ message: "Title, description, code and department are required" });
+    }
+
+    // ✅ CHECK: How many courses does this teacher already have?
+    const existingCoursesCount = await Course.countDocuments({ teacher: req.user._id });
+    
+    // ✅ MAX COURSES LIMIT - Set to 1 (or change as needed)
+    const MAX_COURSES_PER_TEACHER = 10;
+    
+    if (existingCoursesCount >= MAX_COURSES_PER_TEACHER) {
+      return res.status(400).json({ 
+        message: `You have reached the maximum limit of ${MAX_COURSES_PER_TEACHER} course(s). You cannot create more courses.`,
+        limitReached: true
+      });
     }
 
     const codeExists = await Course.findOne({ code: code.toUpperCase().trim() });
@@ -49,6 +63,26 @@ const createCourse = async (req, res) => {
     if (error.code === 11000) {
       return res.status(400).json({ message: "Course code already exists" });
     }
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+// =============================================
+// TEACHER — Get course limit info
+// =============================================
+const getCourseLimitInfo = async (req, res) => {
+  try {
+    const existingCoursesCount = await Course.countDocuments({ teacher: req.user._id });
+    const MAX_COURSES_PER_TEACHER = 1;
+    
+    res.status(200).json({
+      currentCourses: existingCoursesCount,
+      maxCourses: MAX_COURSES_PER_TEACHER,
+      canCreateMore: existingCoursesCount < MAX_COURSES_PER_TEACHER,
+      remainingSlots: Math.max(0, MAX_COURSES_PER_TEACHER - existingCoursesCount)
+    });
+  } catch (error) {
+    console.error("Get course limit info error:", error);
     res.status(500).json({ message: "Server error" });
   }
 };
@@ -357,4 +391,5 @@ module.exports = {
   unenrollCourse,
   getAllCourses,
   getCourseById,
+  getCourseLimitInfo,
 };

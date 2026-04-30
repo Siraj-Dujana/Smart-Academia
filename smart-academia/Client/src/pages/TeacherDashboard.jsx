@@ -8,8 +8,8 @@ import Announcements    from "../components/dashboard/TeacherDashboard/Teacher T
 import AITutor          from "../components/dashboard/TeacherDashboard/Teacher Tabs/AITutor";
 import FloatingButtons  from "../components/sections/LandingPage/FloatingButtons";
 import ProfileManagement from '../components/dashboard/TeacherDashboard/Teacher Tabs/Profilemanagement';
-import SendNotifications from "../components/dashboard/TeacherDashboard/Teacher Tabs/SendNotifications"; // ✅ ADDED
-import NotificationBell from "../components/notifications/NotificationBell"; // ✅ ADDED
+import SendNotifications from "../components/dashboard/TeacherDashboard/Teacher Tabs/SendNotifications";
+import NotificationBell from "../components/notifications/NotificationBell";
 import { useNavigate, useLocation }  from "react-router-dom";
 
 const TeacherDashboard = () => {
@@ -19,7 +19,6 @@ const TeacherDashboard = () => {
   const [activeMenu,  setActiveMenu]  = useState("dashboard");
   const [user, setUser] = useState({ fullName: "", specialization: "", avatar: "", employeeId: "" });
 
-  // ✅ Create a reusable function to load user
   const loadUserFromStorage = () => {
     const userData = JSON.parse(localStorage.getItem("user") || "{}");
     setUser(userData);
@@ -29,13 +28,11 @@ const TeacherDashboard = () => {
     loadUserFromStorage();
   }, []);
 
-  // ✅ Listen for profile updates
   useEffect(() => {
     window.addEventListener("profileUpdated", loadUserFromStorage);
     return () => window.removeEventListener("profileUpdated", loadUserFromStorage);
   }, []);
 
-  // Read ?tab= from URL query params and switch to that tab
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     const tab = params.get("tab");
@@ -45,15 +42,15 @@ const TeacherDashboard = () => {
   }, [location.search]);
 
   const menuItems = [
-    { icon: "dashboard",    label: "Dashboard",         key: "dashboard"       },
-    { icon: "book",         label: "Course Management", key: "courses"         },
-    { icon: "menu_book",    label: "Lesson Management", key: "lessons"         },
-    { icon: "grading",      label: "Grade Labs",        key: "lab-submissions" },
-    { icon: "bar_chart",    label: "Student Progress",  key: "progress"        },
-    { icon: "campaign",     label: "Announcements",     key: "announcements"   },
-    { icon: "smart_toy",    label: "AI Tutor",          key: "ai-tutor"        },
-    { icon: "send",         label: "Send Notifications", key: "send-notifications" }, // ✅ ADDED
-    { icon: "person",       label: "My Profile",        key: "profile"         }
+    { icon: "dashboard",    label: "Dashboard",         key: "dashboard",        color: "#6366f1" },
+    { icon: "book",         label: "Course Management", key: "courses",          color: "#22c55e" },
+    { icon: "menu_book",    label: "Lesson Management", key: "lessons",          color: "#f59e0b" },
+    { icon: "grading",      label: "Grade Labs",        key: "lab-submissions",  color: "#a855f7" },
+    { icon: "bar_chart",    label: "Student Progress",  key: "progress",         color: "#3b82f6" },
+    { icon: "campaign",     label: "Announcements",     key: "announcements",    color: "#ef4444" },
+    { icon: "smart_toy",    label: "AI Tutor",          key: "ai-tutor",         color: "#14b8a6" },
+    { icon: "send",         label: "Send Notifications",key: "send-notifications",color: "#f59e0b" },
+    { icon: "person",       label: "My Profile",        key: "profile",          color: "#6366f1" }
   ];
 
   const handleMenuClick = (key) => {
@@ -77,144 +74,164 @@ const TeacherDashboard = () => {
       case "progress":          return <StudentProgress />;
       case "announcements":     return <Announcements />;
       case "ai-tutor":          return <AITutor />;
-      case "send-notifications": return <SendNotifications />; // ✅ ADDED
+      case "send-notifications": return <SendNotifications />;
       case "profile":           return <ProfileManagement />;
       default:                  return <Dashboard />;
     }
   };
 
-  // ✅ Use dynamic values
   const displayName = user.fullName || "Teacher";
   const userInitial = displayName.charAt(0).toUpperCase();
   const userSpecialization = user.specialization || "Educator";
   const teacherId = user.employeeId || "";
   const userAvatar = user.avatar || null;
 
+  const colors = {
+    bg: "#0a0b10",
+    sidebar: "#0c0e1e",
+    card: "#0f1629",
+    border: "#1e293b",
+    accent: "#6366f1",
+    accent2: "#a855f7",
+    text: "#e2e8f0",
+    muted: "#64748b",
+  };
+
+  // Sidebar button component
+  const SidebarButton = ({ item }) => {
+    const isActive = activeMenu === item.key;
+    return (
+      <button
+        onClick={() => handleMenuClick(item.key)}
+        className="flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 group relative overflow-hidden w-full"
+        style={isActive
+          ? { background: `${colors.accent}18`, color: "#c7d2fe", border: `1px solid ${colors.accent}33`, boxShadow: `0 0 20px ${colors.accent}15` }
+          : { color: colors.muted }
+        }
+      >
+        <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-lg"
+          style={{ background: `radial-gradient(ellipse at 50% 0%, ${colors.accent}10 0%, transparent 70%)` }}
+        />
+        <span className="material-symbols-outlined text-xl transition-transform duration-200 group-hover:scale-110 relative z-10">
+          {item.icon}
+        </span>
+        <p className="text-sm font-medium relative z-10">{item.label}</p>
+        {isActive && (
+          <div className="ml-auto w-1.5 h-1.5 rounded-full animate-pulse relative z-10" style={{ background: colors.accent }} />
+        )}
+      </button>
+    );
+  };
+
+  // Header icon button component
+  const HeaderIconButton = ({ onClick, icon, className = "" }) => (
+    <button
+      onClick={onClick}
+      className={`relative p-2 rounded-lg transition-all duration-200 hover:scale-105 group ${className}`}
+      style={{ color: colors.muted }}
+    >
+      <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-lg"
+        style={{ background: `radial-gradient(ellipse at 50% 50%, ${colors.accent}15 0%, transparent 70%)` }}
+      />
+      <span className="material-symbols-outlined text-xl relative z-10">{icon}</span>
+    </button>
+  );
+
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 font-sans text-gray-900 dark:text-white transition-colors duration-300">
+    <div style={{ background: colors.bg, minHeight: "100vh", fontFamily: "'Lexend', sans-serif", color: colors.text }}>
       <div className="relative flex min-h-screen w-full">
 
         {/* Mobile overlay */}
         {sidebarOpen && (
           <div
-            className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden"
+            className="fixed inset-0 bg-black/70 backdrop-blur-sm z-40 lg:hidden"
             onClick={() => setSidebarOpen(false)}
           />
         )}
 
         {/* Sidebar */}
-        <aside className={`flex flex-col w-64 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 fixed  inset-y-0 left-0 z-50 transform transition-transform duration-300 ease-in-out h-screen overflow-y-auto ${
+        <aside className={`flex flex-col w-72 fixed inset-y-0 left-0 z-50 transform transition-transform duration-300 ease-in-out h-screen overflow-y-auto ${
           sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
-        }`}>
+        }`} style={{ background: colors.sidebar, borderRight: `1px solid ${colors.border}` }}>
 
           {/* Logo */}
-          <div className="flex items-center gap-2 sm:gap-3 px-4 sm:px-6 py-4 border-b border-gray-200 dark:border-gray-700 shrink-0">
-            <span className="material-symbols-outlined text-blue-600 text-2xl sm:text-3xl animate-pulse">school</span>
-            <h1 className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white">SmartAcademia</h1>
+          <div className="flex items-center gap-3 px-5 py-5 border-b shrink-0" style={{ borderColor: colors.border }}>
+            <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: `${colors.accent}22`, border: `1px solid ${colors.accent}44` }}>
+            <svg className="w-12 h-12 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 14l9-5-9-5-9 5 9 5zm0 0l9-5-9 5-9-5m9 5v5m0-5v5m0 0l-9-5m9 5l9-5" />
+              </svg>
+            </div>
+            <h1 className="text-lg font-bold text-white tracking-tight">Smart<span style={{ color: colors.accent }}>Academia</span></h1>
             <button
               onClick={() => setSidebarOpen(false)}
-              className="lg:hidden ml-auto text-gray-500 hover:text-gray-700 dark:text-gray-400"
+              className="lg:hidden ml-auto text-gray-500 hover:text-white"
             >
               <span className="material-symbols-outlined text-xl">close</span>
             </button>
           </div>
 
-          {/* Nav items */}
-          <div className="flex-1 overflow-y-auto py-3 sm:py-4">
-            <div className="flex flex-col gap-0.5 px-2 sm:px-3">
+          {/* Navigation */}
+          <div className="flex-1 py-4 overflow-y-auto">
+            <div className="flex flex-col gap-0.5 px-3">
               {menuItems.map((item) => (
-                <button
-                  key={item.key}
-                  onClick={() => handleMenuClick(item.key)}
-                  className={`flex items-center gap-2 sm:gap-3 px-2 sm:px-3 py-2.5 sm:py-3 rounded-lg transition-all duration-200 group ${
-                    activeMenu === item.key
-                      ? "bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 font-semibold shadow-sm"
-                      : "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-white"
-                  }`}
-                >
-                  <span className={`material-symbols-outlined text-xl transition-transform duration-200 ${
-                    activeMenu === item.key ? "scale-110" : "group-hover:scale-110"
-                  }`}>{item.icon}</span>
-                  <span className="text-sm font-medium">{item.label}</span>
-                  {activeMenu === item.key && (
-                    <div className="ml-auto w-1.5 h-1.5 bg-indigo-600 rounded-full animate-pulse"/>
-                  )}
-                </button>
+                <SidebarButton key={item.key} item={item} />
               ))}
             </div>
           </div>
 
-          {/* ✅ User profile - Dynamic with avatar & clickable */}
-          <div className="border-t border-gray-200 dark:border-gray-700 p-3 sm:p-4 shrink-0">
-            <div 
-              className="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors cursor-pointer"
+          {/* User Profile - Sidebar Footer */}
+          <div className="p-4 shrink-0" style={{ borderTop: `1px solid ${colors.border}` }}>
+            <div
+              className="flex items-center gap-3 p-2.5 rounded-xl cursor-pointer transition-all duration-200 hover:bg-white/5 relative overflow-hidden group"
               onClick={() => handleMenuClick('profile')}
             >
+              <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-lg"
+                style={{ background: `radial-gradient(ellipse at 50% 0%, ${colors.accent}10 0%, transparent 70%)` }}
+              />
               {userAvatar ? (
                 <div
-                  className="bg-center bg-no-repeat aspect-square bg-cover rounded-full w-10 h-10 ring-2 ring-gray-200 dark:ring-gray-600 flex-shrink-0"
+                  className="w-10 h-10 rounded-full bg-center bg-no-repeat bg-cover flex-shrink-0 relative z-10"
                   style={{ backgroundImage: `url("${userAvatar}")` }}
                 />
               ) : (
-                <div className="flex items-center justify-center w-10 h-10 rounded-full bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 font-bold text-sm flex-shrink-0">
+                <div className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold text-white flex-shrink-0 relative z-10"
+                  style={{ background: `linear-gradient(135deg, ${colors.accent}, ${colors.accent2})` }}>
                   {userInitial}
                 </div>
               )}
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
-                  {displayName}
-                </p>
-                <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
-                  {userSpecialization}{teacherId ? ` • ID: ${teacherId}` : ""}
-                </p>
+              <div className="flex-1 min-w-0 relative z-10">
+                <p className="text-sm font-semibold text-white truncate">{displayName}</p>
+                <p className="text-xs text-gray-500 truncate">{userSpecialization}{teacherId ? ` • ID: ${teacherId}` : ""}</p>
               </div>
+              <span className="material-symbols-outlined text-gray-500 text-sm relative z-10">expand_more</span>
             </div>
           </div>
         </aside>
 
         {/* Main content */}
-        <div className="flex-1 flex flex-col lg:ml-64 min-w-0">
+        <div className="flex-1 flex flex-col lg:ml-72 min-w-0">
 
           {/* Header */}
-          <header className="flex items-center justify-between border-b border-gray-200 dark:border-gray-700 px-4 sm:px-6 lg:px-8 py-3 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm sticky top-0 z-30">
-            {/* Left Section */}
-            <div className="flex items-center gap-3 sm:gap-4">
-              <button
-                onClick={() => setSidebarOpen(true)}
-                className="lg:hidden p-2 rounded-lg text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-              >
-                <span className="material-symbols-outlined text-xl">menu</span>
-              </button>
-              <div className="flex items-center gap-2 lg:hidden">
-                <span className="material-symbols-outlined text-indigo-600 text-xl">school</span>
-                <h1 className="text-base sm:text-lg font-semibold text-gray-900 dark:text-white">SmartAcademia</h1>
-              </div>
+          <header className="flex items-center justify-between px-5 py-3 sticky top-0 z-30 backdrop-blur-md" style={{ background: `${colors.bg}ee`, borderBottom: `1px solid ${colors.border}` }}>
+            <div className="flex items-center gap-3">
+              <HeaderIconButton onClick={() => setSidebarOpen(true)} icon="menu" className="lg:hidden" />
             </div>
 
-            {/* Right Section */}
-            <div className="flex items-center gap-2 sm:gap-3">
-              {/* ✅ Notification Bell */}
+            <div className="flex items-center gap-3">
               <NotificationBell />
-              
-              <button
-                onClick={handleLogout}
-                className="p-2 rounded-lg text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 transition-all hover:scale-105"
-              >
-                <span className="material-symbols-outlined text-xl sm:text-2xl">logout</span>
-              </button>
-              
-              {/* ✅ Header Avatar - Dynamic & Clickable */}
+              <HeaderIconButton onClick={handleLogout} icon="logout" />
               <div
+                className="cursor-pointer transition-transform hover:scale-105 relative z-10"
                 onClick={() => handleMenuClick('profile')}
-                className="cursor-pointer"
               >
                 {userAvatar ? (
                   <div
-                    className="bg-center bg-no-repeat aspect-square bg-cover rounded-full w-8 h-8 sm:w-9 sm:h-9 ring-2 ring-gray-200 dark:ring-gray-600 hover:ring-indigo-300 dark:hover:ring-indigo-400 transition-all hover:scale-105"
-                    style={{ backgroundImage: `url("${userAvatar}")` }}
+                    className="w-9 h-9 rounded-full bg-center bg-no-repeat bg-cover ring-2 ring-offset-2 ring-offset-transparent"
+                    style={{ backgroundImage: `url("${userAvatar}")`, ringColor: colors.accent }}
                   />
                 ) : (
-                  <div className="flex items-center justify-center w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 font-bold text-xs sm:text-sm ring-2 ring-gray-200 dark:ring-gray-600 hover:ring-indigo-300 dark:hover:ring-indigo-400 transition-all hover:scale-105">
+                  <div className="w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold text-white"
+                    style={{ background: `linear-gradient(135deg, ${colors.accent}, ${colors.accent2})` }}>
                     {userInitial}
                   </div>
                 )}
@@ -223,7 +240,7 @@ const TeacherDashboard = () => {
           </header>
 
           {/* Page content */}
-          <main className="flex-1 p-4 sm:p-5 md:p-6 lg:p-8 overflow-x-auto">
+          <main className="flex-1 p-5 lg:p-8 overflow-x-auto">
             <div className="animate-fadeIn">
               {renderActiveTab()}
             </div>
@@ -247,6 +264,10 @@ const TeacherDashboard = () => {
           to { opacity: 1; transform: translateY(0); }
         }
         .animate-fadeIn { animation: fadeIn 0.3s ease-out; }
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #334155; }
       `}</style>
     </div>
   );

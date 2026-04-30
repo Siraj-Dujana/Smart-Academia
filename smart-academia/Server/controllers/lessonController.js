@@ -4,11 +4,11 @@ const Enrollment     = require("../models/Enrollment");
 const Course         = require("../models/Course");
 const Quiz           = require("../models/Quiz");
 const Lab            = require("../models/Lab");
-const User           = require("../models/User");  // ✅ ADDED
+const User           = require("../models/User");
 const cloudinary     = require("../config/cloudinary");
 const multer         = require("multer");
 const path           = require("path");
-const { notifyLessonUnlocked, notifyCourseCompleted } = require("../utils/notificationHooks");  // ✅ ADDED
+const { notifyLessonUnlocked, notifyCourseCompleted } = require("../utils/notificationHooks");
 
 // Multer setup for image/video uploads
 const storage = multer.diskStorage({
@@ -31,28 +31,21 @@ const checkAndUnlockNext = async (studentId, lessonId, courseId) => {
     const lesson = await Lesson.findById(lessonId);
     if (!lesson) return;
 
-     const progress = await LessonProgress.findOne({ student: studentId, lesson: lessonId });
+    const progress = await LessonProgress.findOne({ student: studentId, lesson: lessonId });
     if (!progress || progress.isCompleted) return;
 
-    // Check if quiz/lab actually exist
     const quizExists = !!(await Quiz.findOne({ lesson: lessonId, isPublished: true }));
     const labExists  = !!(await Lab.findOne({  lesson: lessonId, isPublished: true }));
 
-   // A requirement is satisfied if:
-    // - The lesson doesn't require it, OR
-    // - The requirement exists and the student completed it, OR
-    // - The lesson requires it but it doesn't exist (treat as satisfied)
     const quizOk = !lesson.requiresQuiz || progress.quizCompleted || (lesson.requiresQuiz && !quizExists);
     const labOk  = !lesson.requiresLab  || progress.labCompleted  || (lesson.requiresLab  && !labExists);
     const viewOk = progress.lessonViewed;
 
     if (viewOk && quizOk && labOk) {
-      // Mark this lesson as completed
       progress.isCompleted = true;
       progress.completedAt = new Date();
       await progress.save();
 
-      // Unlock the next lesson by creating its progress record
       const nextLesson = await Lesson.findOne({
         course: courseId,
         order: lesson.order + 1,
@@ -76,19 +69,17 @@ const checkAndUnlockNext = async (studentId, lessonId, courseId) => {
           { upsert: true }
         );
 
-        // ✅ NOTIFICATION: Lesson Unlocked
         const student = await User.findById(studentId).select("fullName email");
         await notifyLessonUnlocked({
           studentId,
           lessonTitle: nextLesson.title,
           courseId,
-          sendEmailNotif: false,  // Set to true if you want unlock emails
+          sendEmailNotif: false,
           recipientEmail: student?.email || null,
           recipientName: student?.fullName || null,
         });
       }
 
-      // Update overall enrollment progress
       const totalLessons = await Lesson.countDocuments({ course: courseId, isPublished: true });
       const completedCount = await LessonProgress.countDocuments({
         student: studentId,
@@ -104,7 +95,6 @@ const checkAndUnlockNext = async (studentId, lessonId, courseId) => {
         { progress: overallProgress, isCompleted: overallProgress === 100 }
       );
 
-      // ✅ NOTIFICATION: Course Completed
       if (overallProgress === 100) {
         const course = await Course.findById(courseId);
         const student = await User.findById(studentId).select("fullName email");
@@ -114,7 +104,7 @@ const checkAndUnlockNext = async (studentId, lessonId, courseId) => {
             studentId,
             courseTitle: course.title,
             courseId,
-            sendEmailNotif: true,              // ✅ Send email for course completion!
+            sendEmailNotif: true,
             recipientEmail: student.email,
             recipientName: student.fullName,
           });
@@ -163,10 +153,24 @@ const createLesson = async (req, res) => {
     if (course.teacher.toString() !== req.user._id.toString())
       return res.status(403).json({ message: "Not your course" });
 
+    const existingLessonsCount = await Lesson.countDocuments({ course: course._id });
+    const MAX_LESSONS_PER_COURSE = 10;
+    
+    if (existingLessonsCount >= MAX_LESSONS_PER_COURSE) {
+      return res.status(400).json({ 
+        message: `You have reached the maximum limit of ${MAX_LESSONS_PER_COURSE} lessons per course. You cannot create more lessons.`,
+        limitReached: true,
+        currentLessons: existingLessonsCount,
+        maxLessons: MAX_LESSONS_PER_COURSE
+      });
+    }
+
     const {
       title, description, format, content, videoUrl,
       images, duration, points, requiresQuiz, requiresLab,
+      contentBlocks  // ✅ NEW: receive contentBlocks
     } = req.body;
+    
     if (!title?.trim()) return res.status(400).json({ message: "Lesson title is required" });
 
     const last  = await Lesson.findOne({ course: course._id }).sort({ order: -1 });
@@ -182,13 +186,13 @@ const createLesson = async (req, res) => {
       content:     content  || "",
       videoUrl:    videoUrl || null,
       images:      images   || [],
+      contentBlocks: contentBlocks || [],  // ✅ NEW: save contentBlocks
       duration:    duration || "30 min",
       points:      points   ?? 100,
       requiresQuiz: requiresQuiz !== undefined ? requiresQuiz : true,
       requiresLab:  requiresLab  !== undefined ? requiresLab  : true,
     });
 
-    // For the FIRST lesson, create LessonProgress for all already-enrolled students
     if (order === 1) {
       const enrollments = await Enrollment.find({ course: course._id });
       const ops = enrollments.map(en => ({
@@ -219,6 +223,30 @@ const createLesson = async (req, res) => {
 };
 module.exports.createLesson = createLesson;
 
+// ── TEACHER: Get lesson limit info ──────────────────────────
+const getLessonLimitInfo = async (req, res) => {
+  try {
+    const course = await Course.findById(req.params.courseId);
+    if (!course) return res.status(404).json({ message: "Course not found" });
+    if (course.teacher.toString() !== req.user._id.toString())
+      return res.status(403).json({ message: "Not your course" });
+
+    const existingLessonsCount = await Lesson.countDocuments({ course: course._id });
+    const MAX_LESSONS_PER_COURSE = 20;
+    
+    res.status(200).json({
+      currentLessons: existingLessonsCount,
+      maxLessons: MAX_LESSONS_PER_COURSE,
+      canCreateMore: existingLessonsCount < MAX_LESSONS_PER_COURSE,
+      remainingSlots: Math.max(0, MAX_LESSONS_PER_COURSE - existingLessonsCount)
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+module.exports.getLessonLimitInfo = getLessonLimitInfo;
+
 // ── TEACHER: Update lesson ──────────────────────────────────
 const updateLesson = async (req, res) => {
   try {
@@ -230,7 +258,10 @@ const updateLesson = async (req, res) => {
     [
       "title","description","format","content","videoUrl","images",
       "duration","points","isPublished","requiresQuiz","requiresLab",
-    ].forEach(f => { if (req.body[f] !== undefined) lesson[f] = req.body[f]; });
+      "contentBlocks"  // ✅ NEW: include contentBlocks
+    ].forEach(f => { 
+      if (req.body[f] !== undefined) lesson[f] = req.body[f]; 
+    });
 
     await lesson.save();
     res.status(200).json({ message: "Lesson updated", lesson });
@@ -286,7 +317,27 @@ const getTeacherLessonById = async (req, res) => {
 
     const quiz = await Quiz.findOne({ lesson: lesson._id });
     const lab  = await Lab.findOne({  lesson: lesson._id });
-    res.status(200).json({ lesson, quiz, lab });
+    
+    res.status(200).json({ 
+      lesson: {
+        _id: lesson._id,
+        title: lesson.title,
+        description: lesson.description,
+        order: lesson.order,
+        format: lesson.format,
+        content: lesson.content,
+        videoUrl: lesson.videoUrl,
+        images: lesson.images,
+        contentBlocks: lesson.contentBlocks || [],  // ✅ NEW: send contentBlocks
+        duration: lesson.duration,
+        points: lesson.points,
+        requiresQuiz: lesson.requiresQuiz,
+        requiresLab: lesson.requiresLab,
+        isPublished: lesson.isPublished,
+      }, 
+      quiz, 
+      lab 
+    });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: "Server error" });
@@ -388,17 +439,6 @@ const getLessonContent = async (req, res) => {
     const quiz = await Quiz.findOne({ lesson: lesson._id, isPublished: true });
     const lab  = await Lab.findOne({  lesson: lesson._id, isPublished: true });
 
-    // NEW: if required items don't actually exist, treat them as not required for unlock purposes
-const effectiveRequiresQuiz = lesson.requiresQuiz && !!quiz;
-const effectiveRequiresLab  = lesson.requiresLab  && !!lab;
-
-// If lesson requires quiz/lab but neither data exists, mark it unlockable on view
-if (!effectiveRequiresQuiz && !effectiveRequiresLab) {
-  // Will be handled by checkAndUnlockNext using the real lesson flags
-  // No override needed — existing logic already handles this correctly
-  console.log("lesson is complete");
-}
-
     await checkAndUnlockNext(req.user._id, lesson._id, lesson.course);
 
     const updatedProgress = await LessonProgress.findOne({
@@ -406,7 +446,26 @@ if (!effectiveRequiresQuiz && !effectiveRequiresLab) {
       lesson:  lesson._id,
     });
 
-    res.status(200).json({ lesson, progress: updatedProgress || progress, quiz, lab });
+    res.status(200).json({ 
+      lesson: {
+        _id: lesson._id,
+        title: lesson.title,
+        description: lesson.description,
+        order: lesson.order,
+        format: lesson.format,
+        content: lesson.content,
+        videoUrl: lesson.videoUrl,
+        images: lesson.images,
+        contentBlocks: lesson.contentBlocks || [],  // ✅ NEW: send contentBlocks
+        duration: lesson.duration,
+        points: lesson.points,
+        requiresQuiz: lesson.requiresQuiz,
+        requiresLab: lesson.requiresLab,
+      }, 
+      progress: updatedProgress || progress, 
+      quiz, 
+      lab 
+    });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: "Server error" });

@@ -1,0 +1,21 @@
+total students = 100
+total departmenets= 15
+total semesters active=8
+
+total courses=200
+total teachers=100
+total departmenets=15
+
+notifications:
+total=500
+
+unread=100
+user events=200
+course events=150
+
+
+
+dude for now all the numbers which are on the dashboard are just visibility but they are not connected to the backend okay
+so after the final defense I have to implement its backend as well
+
+for example: if one teacher is allowed to create just one course so he can create just one  if tries to create the 2nd one then system should say that you can't create the course..........

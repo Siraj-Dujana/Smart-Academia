@@ -13,6 +13,7 @@ const {
   getTeacherLessons, getStudentLessons,
   getLessonContent, getTeacherLessonById,
   getCourseProgress, uploadFile, uploadMiddleware,
+  getLessonLimitInfo
 } = require("../controllers/lessonController");
 
 const {

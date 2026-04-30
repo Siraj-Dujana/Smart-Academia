@@ -31,7 +31,7 @@ const LessonSchema = new mongoose.Schema(
       enum: ["text", "video", "mixed"],
       default: "text",
     },
-    // HTML content written by teacher
+    // HTML content written by teacher (legacy)
     content: {
       type: String,
       default: "",
@@ -40,6 +40,20 @@ const LessonSchema = new mongoose.Schema(
     videoUrl: {
       type: String,
       default: null,
+    },
+    // ✅ NEW: Content blocks for modular lesson content
+    contentBlocks: {
+      type: Array,
+      default: [],
+      // Structure of each block:
+      // {
+      //   id: Number,
+      //   type: "text" | "image" | "video",
+      //   content: String (for text blocks),
+      //   url: String (for image/video blocks),
+      //   caption: String (for image/video blocks),
+      //   order: Number
+      // }
     },
     duration: {
       type: String,

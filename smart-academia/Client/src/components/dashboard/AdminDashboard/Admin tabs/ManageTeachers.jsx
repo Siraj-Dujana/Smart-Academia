@@ -79,7 +79,7 @@ const ManageTeachers = () => {
   const departments = ["Computer Science","Mathematics","Physics","Biology","Chemistry","History","Arts","Engineering","Business Administration"];
   
   // Target values for progress bars (max capacity or goals)
-  const MAX_TEACHERS_TARGET = 50;
+  const MAX_TEACHERS_TARGET = 100;
   const MAX_DEPARTMENTS_TARGET = 15;
   const MAX_SPECIALIZATIONS_TARGET = 30;
 

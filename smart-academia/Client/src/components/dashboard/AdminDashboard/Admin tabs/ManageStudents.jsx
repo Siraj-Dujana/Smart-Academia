@@ -79,8 +79,8 @@ const ManageStudents = () => {
   const departments = ["Computer Science","Business Administration","Mechanical Engineering","Fine Arts","Mathematics","Physics","Biology"];
   
   // Target values for progress bars (max capacity or goals)
-  const MAX_STUDENTS_TARGET = 100;
-  const MAX_DEPARTMENTS_TARGET = 20;
+  const MAX_STUDENTS_TARGET = 500;
+  const MAX_DEPARTMENTS_TARGET = 15;
   const MAX_SEMESTERS_TARGET = 8; // 8 semesters total
 
   useEffect(() => { fetchStudents(); }, []);

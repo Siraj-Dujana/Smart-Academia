@@ -13,6 +13,7 @@ const {
   unenrollCourse,
   getAllCourses,
   getCourseById,
+  getCourseLimitInfo
 } = require("../controllers/courseController");
 
 const { protect, authorize } = require("../middleware/authMiddleware");
@@ -39,5 +40,9 @@ router.get("/all",           protect, authorize("admin"), getAllCourses);
 
 // ===== SHARED — must be last to avoid catching /published, /enrolled etc. =====
 router.get("/:id",           protect, getCourseById);
+
+
+// Get teacher's course limit info
+router.get("/my-course-limit", protect, authorize("teacher"), getCourseLimitInfo);
 
 module.exports = router;
