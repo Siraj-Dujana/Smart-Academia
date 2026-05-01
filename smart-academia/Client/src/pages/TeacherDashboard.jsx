@@ -3,8 +3,7 @@ import Dashboard        from "../components/dashboard/TeacherDashboard/Teacher T
 import CourseManagement from "../components/dashboard/TeacherDashboard/Teacher Tabs/CourseManagement";
 import LessonManagement from "../components/dashboard/TeacherDashboard/Teacher Tabs/LessonManagement";
 import LabSubmissions   from "../components/dashboard/TeacherDashboard/Teacher Tabs/LabSubmissions";
-import StudentProgress  from "../components/dashboard/TeacherDashboard/Teacher Tabs/StudentProgress";
-import Announcements    from "../components/dashboard/TeacherDashboard/Teacher Tabs/Announcements";
+import TeacherAnalytics  from "../components/dashboard/TeacherDashboard/Teacher Tabs/TeacherAnalytics";
 import AITutor          from "../components/dashboard/TeacherDashboard/Teacher Tabs/AITutor";
 import FloatingButtons  from "../components/sections/LandingPage/FloatingButtons";
 import ProfileManagement from '../components/dashboard/TeacherDashboard/Teacher Tabs/Profilemanagement';
@@ -47,7 +46,6 @@ const TeacherDashboard = () => {
     { icon: "menu_book",    label: "Lesson Management", key: "lessons",          color: "#f59e0b" },
     { icon: "grading",      label: "Grade Labs",        key: "lab-submissions",  color: "#a855f7" },
     { icon: "bar_chart",    label: "Student Progress",  key: "progress",         color: "#3b82f6" },
-    { icon: "campaign",     label: "Announcements",     key: "announcements",    color: "#ef4444" },
     { icon: "smart_toy",    label: "AI Tutor",          key: "ai-tutor",         color: "#14b8a6" },
     { icon: "send",         label: "Send Notifications",key: "send-notifications",color: "#f59e0b" },
     { icon: "person",       label: "My Profile",        key: "profile",          color: "#6366f1" }
@@ -71,8 +69,7 @@ const TeacherDashboard = () => {
       case "courses":           return <CourseManagement />;
       case "lessons":           return <LessonManagement />;
       case "lab-submissions":   return <LabSubmissions />;
-      case "progress":          return <StudentProgress />;
-      case "announcements":     return <Announcements />;
+      case "progress":          return <TeacherAnalytics />;
       case "ai-tutor":          return <AITutor />;
       case "send-notifications": return <SendNotifications />;
       case "profile":           return <ProfileManagement />;

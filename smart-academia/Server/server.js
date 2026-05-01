@@ -19,7 +19,6 @@ app.use("/api/admin",         require("./routes/admin"));
 app.use("/api/setup",         require("./setup/setupRoute"));
 app.use("/api/assignments",   require("./routes/assignments"));
 app.use("/api/courses",       require("./routes/courses"));
-app.use("/api/announcements", require("./routes/announcements"));
 app.use("/api/student",       require("./routes/student"));
 app.use("/api/profile",       require("./routes/profile"));
 app.use("/api/notifications", require("./routes/Notifications"));

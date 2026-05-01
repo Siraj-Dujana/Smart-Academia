@@ -28,23 +28,55 @@ module.exports.uploadMiddleware = upload.single("file");
 // ── CORE: Unlock next lesson ─────────────────────────────────
 const checkAndUnlockNext = async (studentId, lessonId, courseId) => {
   try {
+    console.log("=== 🔓 checkAndUnlockNext START ===");
+    console.log("studentId:", studentId);
+    console.log("lessonId:", lessonId);
+    console.log("courseId:", courseId);
+
     const lesson = await Lesson.findById(lessonId);
-    if (!lesson) return;
+    if (!lesson) {
+      console.log("❌ Lesson not found!");
+      return;
+    }
+    console.log("Lesson title:", lesson.title);
+    console.log("Lesson order:", lesson.order);
+    console.log("Lesson requiresQuiz:", lesson.requiresQuiz);
+    console.log("Lesson requiresLab:", lesson.requiresLab);
 
     const progress = await LessonProgress.findOne({ student: studentId, lesson: lessonId });
-    if (!progress || progress.isCompleted) return;
+    if (!progress) {
+      console.log("❌ Progress not found for this lesson!");
+      return;
+    }
+    if (progress.isCompleted) {
+      console.log("⚠️ Lesson already completed, skipping...");
+      return;
+    }
 
     const quizExists = !!(await Quiz.findOne({ lesson: lessonId, isPublished: true }));
     const labExists  = !!(await Lab.findOne({  lesson: lessonId, isPublished: true }));
+    
+    console.log("quizExists:", quizExists);
+    console.log("labExists:", labExists);
+    console.log("progress.lessonViewed:", progress.lessonViewed);
+    console.log("progress.quizCompleted:", progress.quizCompleted);
+    console.log("progress.labCompleted:", progress.labCompleted);
 
     const quizOk = !lesson.requiresQuiz || progress.quizCompleted || (lesson.requiresQuiz && !quizExists);
     const labOk  = !lesson.requiresLab  || progress.labCompleted  || (lesson.requiresLab  && !labExists);
     const viewOk = progress.lessonViewed;
 
+    console.log("quizOk:", quizOk);
+    console.log("labOk:", labOk);
+    console.log("viewOk:", viewOk);
+
     if (viewOk && quizOk && labOk) {
+      console.log("✅✅✅ Conditions met! Completing lesson...");
+      
       progress.isCompleted = true;
       progress.completedAt = new Date();
       await progress.save();
+      console.log("✅ Lesson marked as completed!");
 
       const nextLesson = await Lesson.findOne({
         course: courseId,
@@ -53,6 +85,8 @@ const checkAndUnlockNext = async (studentId, lessonId, courseId) => {
       });
 
       if (nextLesson) {
+        console.log("📚 Next lesson found:", nextLesson.title);
+        
         await LessonProgress.findOneAndUpdate(
           { student: studentId, lesson: nextLesson._id },
           {
@@ -68,6 +102,7 @@ const checkAndUnlockNext = async (studentId, lessonId, courseId) => {
           },
           { upsert: true }
         );
+        console.log("✅ Next lesson unlocked!");
 
         const student = await User.findById(studentId).select("fullName email");
         await notifyLessonUnlocked({
@@ -78,8 +113,11 @@ const checkAndUnlockNext = async (studentId, lessonId, courseId) => {
           recipientEmail: student?.email || null,
           recipientName: student?.fullName || null,
         });
+      } else {
+        console.log("⚠️ No next lesson found (this might be the last lesson)");
       }
 
+      // Update overall course progress
       const totalLessons = await Lesson.countDocuments({ course: courseId, isPublished: true });
       const completedCount = await LessonProgress.countDocuments({
         student: studentId,
@@ -90,12 +128,15 @@ const checkAndUnlockNext = async (studentId, lessonId, courseId) => {
         ? Math.round((completedCount / totalLessons) * 100)
         : 0;
 
+      console.log(`Course progress: ${completedCount}/${totalLessons} lessons completed (${overallProgress}%)`);
+
       await Enrollment.findOneAndUpdate(
         { student: studentId, course: courseId },
         { progress: overallProgress, isCompleted: overallProgress === 100 }
       );
 
       if (overallProgress === 100) {
+        console.log("🎉 Course completed!");
         const course = await Course.findById(courseId);
         const student = await User.findById(studentId).select("fullName email");
         
@@ -110,12 +151,20 @@ const checkAndUnlockNext = async (studentId, lessonId, courseId) => {
           });
         }
       }
+    } else {
+      console.log("❌ Conditions NOT met for completion:");
+      console.log("   - viewOk:", viewOk, "(needs true)");
+      console.log("   - quizOk:", quizOk, "(needs true)");
+      console.log("   - labOk:", labOk, "(needs true)");
     }
+    console.log("=== 🔓 checkAndUnlockNext END ===");
   } catch (err) {
     console.error("checkAndUnlockNext error:", err.message);
+    console.error(err.stack);
   }
 };
 module.exports.checkAndUnlockNext = checkAndUnlockNext;
+
 
 // ── TEACHER: Upload image/video to Cloudinary ───────────────
 const uploadFile = async (req, res) => {
@@ -148,6 +197,7 @@ module.exports.uploadFile = uploadFile;
 // ── TEACHER: Create lesson ──────────────────────────────────
 const createLesson = async (req, res) => {
   try {
+
     const course = await Course.findById(req.params.courseId);
     if (!course) return res.status(404).json({ message: "Course not found" });
     if (course.teacher.toString() !== req.user._id.toString())
@@ -192,6 +242,11 @@ const createLesson = async (req, res) => {
       requiresQuiz: requiresQuiz !== undefined ? requiresQuiz : true,
       requiresLab:  requiresLab  !== undefined ? requiresLab  : true,
     });
+
+    // In createLesson function, right after creating the lesson
+      console.log("=== DEBUG: Creating lesson ===");
+      console.log("Received contentBlocks:", JSON.stringify(contentBlocks, null, 2));
+      console.log("Saved lesson contentBlocks:", lesson.contentBlocks);
 
     if (order === 1) {
       const enrollments = await Enrollment.find({ course: course._id });
@@ -247,6 +302,7 @@ const getLessonLimitInfo = async (req, res) => {
 };
 module.exports.getLessonLimitInfo = getLessonLimitInfo;
 
+
 // ── TEACHER: Update lesson ──────────────────────────────────
 const updateLesson = async (req, res) => {
   try {
@@ -255,22 +311,106 @@ const updateLesson = async (req, res) => {
     if (lesson.course.teacher.toString() !== req.user._id.toString())
       return res.status(403).json({ message: "Not your lesson" });
 
+    // Store old values
+    const oldRequiresQuiz = lesson.requiresQuiz;
+    const oldRequiresLab = lesson.requiresLab;
+    const oldContentBlocks = JSON.stringify(lesson.contentBlocks);
+    const oldContent = lesson.content;
+    const oldVideoUrl = lesson.videoUrl;
+    const oldImages = JSON.stringify(lesson.images);
+
+    // Update all fields
     [
       "title","description","format","content","videoUrl","images",
       "duration","points","isPublished","requiresQuiz","requiresLab",
-      "contentBlocks"  // ✅ NEW: include contentBlocks
+      "contentBlocks"
     ].forEach(f => { 
       if (req.body[f] !== undefined) lesson[f] = req.body[f]; 
     });
 
     await lesson.save();
-    res.status(200).json({ message: "Lesson updated", lesson });
+
+    // Check for changes
+    const contentChanged = 
+      oldContentBlocks !== JSON.stringify(lesson.contentBlocks) ||
+      oldContent !== lesson.content ||
+      oldVideoUrl !== lesson.videoUrl ||
+      oldImages !== JSON.stringify(lesson.images);
+    
+    const quizBecameRequired = oldRequiresQuiz === false && lesson.requiresQuiz === true;
+    const labBecameRequired = oldRequiresLab === false && lesson.requiresLab === true;
+    const requirementsBecameStricter = quizBecameRequired || labBecameRequired;
+
+    // ✅ If requirements became stricter OR content changed, reset everything
+    if (contentChanged || requirementsBecameStricter) {
+      console.log("⚠️ Lesson changed! Resetting all student progress for this course...");
+      
+      // 1. Reset progress for THIS lesson
+      await LessonProgress.updateMany(
+        { lesson: lesson._id },
+        { 
+          $set: { 
+            isCompleted: false,
+            quizCompleted: false,
+            labCompleted: false,
+            lessonViewed: false
+          }
+        }
+      );
+      
+      // 2. ✅ IMPORTANT: Lock ALL subsequent lessons (delete their progress records)
+      const subsequentLessons = await Lesson.find({
+        course: lesson.course,
+        order: { $gt: lesson.order },
+        isPublished: true
+      }).select("_id");
+      
+      const subsequentLessonIds = subsequentLessons.map(l => l._id);
+      
+      if (subsequentLessonIds.length > 0) {
+        // Delete progress for all subsequent lessons (this locks them)
+        const deleteResult = await LessonProgress.deleteMany({
+          student: { $in: await LessonProgress.distinct("student", { lesson: lesson._id }) },
+          lesson: { $in: subsequentLessonIds }
+        });
+        console.log(`✅ Locked ${deleteResult.deletedCount} subsequent lesson progress records`);
+      }
+      
+      // 3. Update overall course progress for all students
+      const students = await LessonProgress.distinct("student", { course: lesson.course });
+      
+      for (const studentId of students) {
+        const totalLessons = await Lesson.countDocuments({ course: lesson.course, isPublished: true });
+        const completedCount = await LessonProgress.countDocuments({
+          student: studentId,
+          course: lesson.course,
+          isCompleted: true,
+        });
+        const overallProgress = totalLessons > 0
+          ? Math.round((completedCount / totalLessons) * 100)
+          : 0;
+        
+        await Enrollment.findOneAndUpdate(
+          { student: studentId, course: lesson.course },
+          { progress: overallProgress, isCompleted: overallProgress === 100 }
+        );
+      }
+      
+      console.log("✅ Course progress recalculated");
+    }
+
+    res.status(200).json({ 
+      message: "Lesson updated successfully", 
+      lesson,
+      progressReset: true
+    });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: "Server error" });
   }
 };
 module.exports.updateLesson = updateLesson;
+
 
 // ── TEACHER: Delete lesson ──────────────────────────────────
 const deleteLesson = async (req, res) => {

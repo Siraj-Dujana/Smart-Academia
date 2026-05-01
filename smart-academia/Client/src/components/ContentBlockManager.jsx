@@ -1,5 +1,151 @@
 // components/ContentBlockManager.jsx
-import React from 'react';
+import React, { useRef, useEffect, useState } from 'react';
+
+// ── Simple Rich Text Editor for Text Blocks ───────────────────
+const RichTextEditorForBlock = ({ value, onChange, onImageUpload, uploading, placeholder }) => {
+  const editorRef = useRef(null);
+  const [isFocused, setIsFocused] = useState(false);
+
+  useEffect(() => {
+    if (editorRef.current && editorRef.current.innerHTML !== value && !isFocused) {
+      editorRef.current.innerHTML = value || '';
+    }
+  }, [value, isFocused]);
+
+  const execCommand = (command, valueArg = null) => {
+    document.execCommand(command, false, valueArg);
+    editorRef.current?.focus();
+    if (onChange) {
+      onChange(editorRef.current?.innerHTML || '');
+    }
+  };
+
+  const handleImageUpload = () => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/*';
+    input.onchange = async (e) => {
+      const file = e.target.files[0];
+      if (file && onImageUpload) {
+        onImageUpload(file, (url) => {
+          execCommand('insertHTML', `<img src="${url}" alt="Image" style="max-width:100%; border-radius:8px; margin:12px 0;" />`);
+        });
+      }
+    };
+    input.click();
+  };
+
+  const insertLink = () => {
+    const url = prompt('Enter URL:', 'https://');
+    if (url) {
+      execCommand('createLink', url);
+    }
+  };
+
+  const handleInput = () => {
+    if (onChange) {
+      onChange(editorRef.current?.innerHTML || '');
+    }
+  };
+
+  const handleFocus = () => {
+    setIsFocused(true);
+  };
+
+  const handleBlur = () => {
+    setIsFocused(false);
+    if (onChange) {
+      onChange(editorRef.current?.innerHTML || '');
+    }
+  };
+
+  const ToolbarButton = ({ onClick, icon, title }) => (
+    <button
+      onMouseDown={(e) => { e.preventDefault(); onClick(); }}
+      className="p-1.5 rounded transition-all hover:scale-105 text-gray-400 hover:text-white"
+      title={title}
+    >
+      <span className="material-symbols-outlined text-sm">{icon}</span>
+    </button>
+  );
+
+  return (
+    <div className="rounded-xl overflow-hidden" style={{ background: "#1e293b", border: "1px solid #334155" }}>
+      {/* Toolbar */}
+      <div className="flex flex-wrap gap-0.5 p-2 border-b" style={{ background: "#0a0f1e", borderColor: "#334155" }}>
+        <ToolbarButton onClick={() => execCommand('bold')} icon="format_bold" title="Bold" />
+        <ToolbarButton onClick={() => execCommand('italic')} icon="format_italic" title="Italic" />
+        <ToolbarButton onClick={() => execCommand('underline')} icon="format_underline" title="Underline" />
+        <ToolbarButton onClick={() => execCommand('strikeThrough')} icon="format_strikethrough" title="Strikethrough" />
+        
+        <div className="w-px h-6 bg-gray-700 mx-1" />
+        
+        <ToolbarButton onClick={() => execCommand('insertOrderedList')} icon="format_list_numbered" title="Numbered List" />
+        <ToolbarButton onClick={() => execCommand('insertUnorderedList')} icon="format_list_bulleted" title="Bullet List" />
+        
+        <div className="w-px h-6 bg-gray-700 mx-1" />
+        
+        <ToolbarButton onClick={() => execCommand('justifyLeft')} icon="format_align_left" title="Align Left" />
+        <ToolbarButton onClick={() => execCommand('justifyCenter')} icon="format_align_center" title="Align Center" />
+        <ToolbarButton onClick={() => execCommand('justifyRight')} icon="format_align_right" title="Align Right" />
+        
+        <div className="w-px h-6 bg-gray-700 mx-1" />
+        
+        <ToolbarButton onClick={insertLink} icon="insert_link" title="Insert Link" />
+        <ToolbarButton onClick={handleImageUpload} icon="image" title="Insert Image" />
+        <ToolbarButton onClick={() => execCommand('removeFormat')} icon="format_clear" title="Clear Formatting" />
+      </div>
+
+      {/* Editor Area */}
+      <div
+        ref={editorRef}
+        contentEditable
+        onInput={handleInput}
+        onFocus={handleFocus}
+        onBlur={handleBlur}
+        className="p-4 min-h-[200px] outline-none text-gray-300"
+        style={{ fontFamily: "'Lexend', sans-serif", lineHeight: '1.6' }}
+        data-placeholder={placeholder || "Write your text content here..."}
+      />
+      
+      {uploading && (
+        <div className="p-2 text-center border-t" style={{ borderColor: "#334155" }}>
+          <div className="relative w-6 h-6 mx-auto">
+            <div className="absolute inset-0 rounded-full border-2 border-indigo-900" />
+            <div className="absolute inset-0 rounded-full border-2 border-transparent border-t-indigo-500 animate-spin" />
+          </div>
+          <p className="text-xs text-gray-400 mt-1">Uploading image...</p>
+        </div>
+      )}
+
+      <style>{`
+        [contenteditable=true] {
+          caret-color: #818cf8;
+        }
+        [contenteditable=true]:empty:before {
+          content: attr(data-placeholder);
+          color: #64748b;
+        }
+        [contenteditable=true] img {
+          max-width: 100%;
+          border-radius: 8px;
+          margin: 12px 0;
+        }
+        [contenteditable=true] a {
+          color: #818cf8;
+          text-decoration: underline;
+        }
+        [contenteditable=true] ul, [contenteditable=true] ol {
+          padding-left: 24px;
+          margin: 8px 0;
+        }
+        [contenteditable=true] li {
+          margin: 4px 0;
+        }
+      `}</style>
+    </div>
+  );
+};
 
 const ContentBlockManager = ({ blocks, onChange, onImageUpload, onVideoUpload, uploading }) => {
 
@@ -58,12 +204,12 @@ const ContentBlockManager = ({ blocks, onChange, onImageUpload, onVideoUpload, u
       case 'text':
         return (
           <div className="space-y-2">
-            <textarea
+            <RichTextEditorForBlock
               value={block.content}
-              onChange={(e) => updateBlock(block.id, 'content', e.target.value)}
-              placeholder="Write your text content here..."
-              className="w-full px-4 py-3 text-sm rounded-xl bg-gray-800/50 text-white border border-gray-700 focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition-all resize-y"
-              rows={6}
+              onChange={(value) => updateBlock(block.id, 'content', value)}
+              onImageUpload={onImageUpload}
+              uploading={uploading}
+              placeholder="Write your text content here... Use the toolbar to format text, add lists, links, and images."
             />
           </div>
         );
@@ -199,14 +345,14 @@ const ContentBlockManager = ({ blocks, onChange, onImageUpload, onVideoUpload, u
   return (
     <div className="space-y-4">
       {/* Add Block Buttons */}
-      <div className="flex gap-3 mb-4">
+      <div className="flex flex-wrap gap-3 mb-4">
         <button
           onClick={() => addBlock('text')}
           className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all hover:scale-105"
           style={{ background: "#6366f122", color: "#818cf8", border: "1px solid #6366f144" }}
         >
           <span className="material-symbols-outlined text-base">article</span>
-          Add Text
+          Add Text Block
         </button>
         <button
           onClick={() => addBlock('image')}
@@ -214,7 +360,7 @@ const ContentBlockManager = ({ blocks, onChange, onImageUpload, onVideoUpload, u
           style={{ background: "#22c55e22", color: "#4ade80", border: "1px solid #22c55e44" }}
         >
           <span className="material-symbols-outlined text-base">image</span>
-          Add Image
+          Add Image Block
         </button>
         <button
           onClick={() => addBlock('video')}
@@ -222,7 +368,7 @@ const ContentBlockManager = ({ blocks, onChange, onImageUpload, onVideoUpload, u
           style={{ background: "#a855f722", color: "#c084fc", border: "1px solid #a855f744" }}
         >
           <span className="material-symbols-outlined text-base">smart_display</span>
-          Add Video
+          Add Video Block
         </button>
       </div>
 

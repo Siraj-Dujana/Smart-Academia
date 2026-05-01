@@ -1,5 +1,8 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import rehypeRaw from 'rehype-raw';
 
 const API = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
@@ -63,6 +66,127 @@ const StatusBadge = ({ status, type = "quiz" }) => {
   );
 };
 
+// ── Content Block Renderer for Student View (Enhanced with Markdown + HTML) ──
+const ContentBlockRenderer = ({ block }) => {
+  if (!block) return null;
+
+  switch (block.type) {
+    case 'text':
+      const content = block.content || '';
+      
+      // Check if content contains HTML tags
+      const hasHtml = /<[^>]*>/.test(content);
+      // Check if content contains Markdown syntax
+      const hasMarkdown = /[#*`\[\]>\-]/.test(content);
+      
+      // If it has HTML tags, render as HTML directly
+      if (hasHtml) {
+        return (
+          <div className="prose prose-sm dark:prose-invert max-w-none my-4">
+            <div 
+              className="text-gray-300 leading-relaxed"
+              dangerouslySetInnerHTML={{ __html: content }} 
+            />
+          </div>
+        );
+      }
+      
+      // If it has Markdown syntax, render with ReactMarkdown
+      if (hasMarkdown && content.length > 0) {
+        return (
+          <div className="prose prose-sm dark:prose-invert max-w-none my-4">
+            <ReactMarkdown
+              remarkPlugins={[remarkGfm]}
+              rehypePlugins={[rehypeRaw]}
+              components={{
+                h1: ({ children }) => <h1 className="text-2xl font-bold text-white mt-4 mb-2">{children}</h1>,
+                h2: ({ children }) => <h2 className="text-xl font-bold text-white mt-3 mb-2">{children}</h2>,
+                h3: ({ children }) => <h3 className="text-lg font-bold text-white mt-2 mb-1">{children}</h3>,
+                p: ({ children }) => <p className="my-2 leading-relaxed text-gray-300">{children}</p>,
+                strong: ({ children }) => <strong className="font-bold text-white">{children}</strong>,
+                em: ({ children }) => <em className="italic text-gray-300">{children}</em>,
+                code: ({ children, inline }) => inline ? (
+                  <code className="bg-gray-800 px-1 py-0.5 rounded text-indigo-400 text-xs font-mono">{children}</code>
+                ) : (
+                  <pre className="bg-gray-900 p-3 rounded-lg overflow-x-auto my-3">
+                    <code className="text-sm text-green-400 font-mono">{children}</code>
+                  </pre>
+                ),
+                ul: ({ children }) => <ul className="list-disc ml-6 my-2 text-gray-300">{children}</ul>,
+                ol: ({ children }) => <ol className="list-decimal ml-6 my-2 text-gray-300">{children}</ol>,
+                li: ({ children }) => <li className="my-1">{children}</li>,
+                blockquote: ({ children }) => <blockquote className="border-l-4 border-indigo-500 pl-4 my-2 italic text-gray-400">{children}</blockquote>,
+                a: ({ href, children }) => <a href={href} className="text-indigo-400 hover:text-indigo-300 underline" target="_blank" rel="noopener noreferrer">{children}</a>,
+                img: ({ src, alt }) => <img src={src} alt={alt} className="max-w-full rounded-xl my-3" />,
+                hr: () => <hr className="my-4 border-gray-700" />,
+              }}
+            >
+              {content}
+            </ReactMarkdown>
+          </div>
+        );
+      }
+      
+      // Plain text fallback
+      return (
+        <div className="prose prose-sm dark:prose-invert max-w-none my-4">
+          <p className="text-gray-300 leading-relaxed whitespace-pre-wrap">
+            {content}
+          </p>
+        </div>
+      );
+    
+    case 'image':
+      return (
+        <figure className="my-6">
+          <img 
+            src={block.url} 
+            alt={block.caption || "Lesson image"} 
+            className="w-full rounded-xl max-h-[500px] object-contain bg-gray-900"
+            onError={(e) => { e.target.style.display = 'none'; }}
+          />
+          {block.caption && (
+            <figcaption className="text-center text-xs text-gray-500 mt-2 italic">
+              {block.caption}
+            </figcaption>
+          )}
+        </figure>
+      );
+    
+    case 'video':
+      return (
+        <figure className="my-6">
+          <div className="rounded-xl overflow-hidden bg-black">
+            {block.url && (block.url.includes('youtube.com') || block.url.includes('youtu.be')) ? (
+              <iframe
+                src={block.url.replace('watch?v=', 'embed/').replace('youtu.be/', 'www.youtube.com/embed/')}
+                className="w-full aspect-video"
+                allowFullScreen
+                title="Lesson video"
+              />
+            ) : block.url && (block.url.includes('.mp4') || block.url.includes('.webm')) ? (
+              <video controls className="w-full">
+                <source src={block.url} />
+              </video>
+            ) : (
+              <div className="aspect-video flex items-center justify-center">
+                <span className="material-symbols-outlined text-5xl text-gray-500">play_circle</span>
+              </div>
+            )}
+          </div>
+          {block.caption && (
+            <figcaption className="text-center text-xs text-gray-500 mt-2 italic">
+              {block.caption}
+            </figcaption>
+          )}
+        </figure>
+      );
+    
+    default:
+      return null;
+  }
+};
+
 const apiFetch = (url, opts = {}) => {
   const token = localStorage.getItem("token");
   return fetch(`${API}${url}`, {
@@ -76,7 +200,7 @@ const apiFetch = (url, opts = {}) => {
 };
 
 // ─────────────────────────────────────────────
-// QUIZ SECTION
+// QUIZ SECTION (FULL IMPLEMENTATION)
 // ─────────────────────────────────────────────
 const QuizSection = ({ quiz, courseId, lessonId, onCompleted }) => {
   const [questions, setQuestions] = useState([]);
@@ -382,7 +506,7 @@ const QuizSection = ({ quiz, courseId, lessonId, onCompleted }) => {
 };
 
 // ─────────────────────────────────────────────
-// LAB SECTION
+// LAB SECTION (FULL IMPLEMENTATION)
 // ─────────────────────────────────────────────
 const LabSection = ({ lab, lessonId, courseId, onCompleted }) => {
   const [answer, setAnswer] = useState("");
@@ -500,7 +624,6 @@ const LabSection = ({ lab, lessonId, courseId, onCompleted }) => {
 
   return (
     <div className="rounded-xl overflow-hidden" style={{ background: "#0f1629", border: "1px solid #1e293b" }}>
-      {/* Header */}
       <div className="px-5 py-4" style={{ background: "#0a0f1e", borderBottom: "1px solid #1e293b" }}>
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="flex items-center gap-3">
@@ -536,7 +659,6 @@ const LabSection = ({ lab, lessonId, courseId, onCompleted }) => {
         </div>
       </div>
 
-      {/* Tabs */}
       <div className="flex gap-1 p-1.5" style={{ background: "#0a0f1e", borderBottom: "1px solid #1e293b" }}>
         <button className={`flex-1 flex items-center justify-center gap-1.5 py-2 px-2 rounded-lg text-xs font-semibold transition-all`} style={tabClass("instructions")} onClick={() => setActiveTab("instructions")}>
           <span className="material-symbols-outlined text-sm">info</span>
@@ -554,302 +676,48 @@ const LabSection = ({ lab, lessonId, courseId, onCompleted }) => {
         )}
       </div>
 
-      {/* Tab content */}
       <div className="p-5 space-y-4">
-        {/* INSTRUCTIONS TAB */}
         {activeTab === "instructions" && (
           <>
-            {lab.description && (
-              <p className="text-sm text-gray-300 leading-relaxed">{lab.description}</p>
-            )}
+            {lab.description && <p className="text-sm text-gray-300 leading-relaxed">{lab.description}</p>}
             <div className="p-4 rounded-xl" style={{ background: "#3b82f622", border: "1px solid #3b82f644" }}>
-              <p className="text-xs font-bold text-blue-400 mb-2 flex items-center gap-1">
-                <span className="material-symbols-outlined text-sm">list</span>
-                Step-by-step instructions
-              </p>
-              <div className="space-y-1">
-                {lab.instructions.split("\n").filter(Boolean).map((step, i) => (
-                  <p key={i} className="text-xs text-gray-300 leading-relaxed">{step}</p>
-                ))}
-              </div>
+              <p className="text-xs font-bold text-blue-400 mb-2 flex items-center gap-1"><span className="material-symbols-outlined text-sm">list</span>Step-by-step instructions</p>
+              <div className="space-y-1">{lab.instructions.split("\n").filter(Boolean).map((step, i) => <p key={i} className="text-xs text-gray-300 leading-relaxed">{step}</p>)}</div>
             </div>
-
-            {lab.outputExample && (
-              <div className="p-4 rounded-xl" style={{ background: "#1e293b", border: "1px solid #334155" }}>
-                <p className="text-xs text-gray-400 mb-2 font-medium">Expected output</p>
-                <pre className="text-xs text-green-400 font-mono whitespace-pre-wrap">{lab.outputExample}</pre>
-              </div>
-            )}
-
-            {lab.labType === "programming" && lab.testCases?.length > 0 && (
-              <div className="p-4 rounded-xl" style={{ background: "#1e293b", border: "1px solid #334155" }}>
-                <p className="text-xs text-gray-400 mb-3 font-medium">Test cases</p>
-                <div className="space-y-2">
-                  {lab.testCases.map((tc, i) => (
-                    <div key={i} className="flex flex-wrap items-center gap-2 text-xs font-mono">
-                      <span className="text-gray-500">Input:</span>
-                      <code className="px-2 py-0.5 rounded" style={{ background: "#0f1629", color: "#4ade80" }}>{tc.input}</code>
-                      <span className="text-gray-500">→</span>
-                      <code className="px-2 py-0.5 rounded" style={{ background: "#0f1629", color: "#60a5fa" }}>{tc.expectedOutput}</code>
-                      {tc.description && <span className="text-gray-500 italic">{tc.description}</span>}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            <button
-              onClick={handleAiExplain}
-              disabled={loadingExpl}
-              className="flex items-center justify-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition-all hover:scale-105 disabled:opacity-50 w-full"
-              style={{ background: "#a855f722", color: "#c084fc", border: "1px solid #a855f744" }}
-            >
-              {loadingExpl ? (
-                <><LoadingSpinner size="sm" /><span>Getting AI explanation...</span></>
-              ) : (
-                <><span className="material-symbols-outlined text-sm">auto_awesome</span>AI Explain this lab</>
-              )}
-            </button>
-
-            {showExplain && explanation && (
-              <div className="rounded-xl overflow-hidden" style={{ background: "#0f1629", border: "1px solid #a855f744" }}>
-                <div className="flex items-center justify-between px-4 py-3" style={{ background: "#a855f722", borderBottom: "1px solid #a855f744" }}>
-                  <p className="text-sm font-bold text-purple-400">AI Explanation</p>
-                  <button onClick={() => setShowExplain(false)} className="text-purple-400 hover:text-purple-300">
-                    <span className="material-symbols-outlined text-sm">close</span>
-                  </button>
-                </div>
-                <div className="p-4 space-y-3">
-                  {explanation.steps?.length > 0 && (
-                    <div>
-                      <p className="text-sm font-semibold text-white mb-3 flex items-center gap-1.5">
-                        <span className="material-symbols-outlined text-purple-400 text-base">strategy</span>
-                        Approach
-                      </p>
-                      <ol className="space-y-2">
-                        {explanation.steps.map((s, i) => (
-                          <li key={i} className="flex gap-3 p-3 rounded-lg" style={{ background: "#a855f710", border: "1px solid #a855f730" }}>
-                            <span className="flex items-center justify-center w-6 h-6 rounded-full flex-shrink-0 text-xs font-bold" style={{ background: "#a855f722", color: "#c084fc" }}>{i + 1}</span>
-                            <span className="text-sm text-gray-300 leading-relaxed">{typeof s === "object" ? (s.instruction || s.step || s.text || JSON.stringify(s)) : s}</span>
-                          </li>
-                        ))}
-                      </ol>
-                    </div>
-                  )}
-                  {explanation.concepts?.length > 0 && (
-                    <div>
-                      <p className="text-xs font-semibold text-gray-400 mb-2">Key concepts</p>
-                      <div className="flex flex-wrap gap-2">
-                        {explanation.concepts.map((c, i) => (
-                          <span key={i} className="text-[10px] px-2 py-1 rounded-full" style={{ background: "#a855f722", color: "#c084fc" }}>{c}</span>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-
-            <button
-              onClick={() => setActiveTab("submit")}
-              className="w-full py-2.5 rounded-xl text-sm font-bold text-white transition-all hover:scale-105 flex items-center justify-center gap-2"
-              style={{ background: "linear-gradient(135deg, #6366f1, #818cf8)" }}
-            >
-              <span className="material-symbols-outlined text-sm">upload</span>
-              Go to submission
-            </button>
+            {lab.outputExample && (<div className="p-4 rounded-xl" style={{ background: "#1e293b", border: "1px solid #334155" }}><p className="text-xs text-gray-400 mb-2 font-medium">Expected output</p><pre className="text-xs text-green-400 font-mono whitespace-pre-wrap">{lab.outputExample}</pre></div>)}
+            {lab.labType === "programming" && lab.testCases?.length > 0 && (<div className="p-4 rounded-xl" style={{ background: "#1e293b", border: "1px solid #334155" }}><p className="text-xs text-gray-400 mb-3 font-medium">Test cases</p><div className="space-y-2">{lab.testCases.map((tc, i) => (<div key={i} className="flex flex-wrap items-center gap-2 text-xs font-mono"><span className="text-gray-500">Input:</span><code className="px-2 py-0.5 rounded" style={{ background: "#0f1629", color: "#4ade80" }}>{tc.input}</code><span className="text-gray-500">→</span><code className="px-2 py-0.5 rounded" style={{ background: "#0f1629", color: "#60a5fa" }}>{tc.expectedOutput}</code>{tc.description && <span className="text-gray-500 italic">{tc.description}</span>}</div>))}</div></div>)}
+            <button onClick={handleAiExplain} disabled={loadingExpl} className="flex items-center justify-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition-all hover:scale-105 disabled:opacity-50 w-full" style={{ background: "#a855f722", color: "#c084fc", border: "1px solid #a855f744" }}>{loadingExpl ? <><LoadingSpinner size="sm" /><span>Getting AI explanation...</span></> : <><span className="material-symbols-outlined text-sm">auto_awesome</span>AI Explain this lab</>}</button>
+            {showExplain && explanation && (<div className="rounded-xl overflow-hidden" style={{ background: "#0f1629", border: "1px solid #a855f744" }}><div className="flex items-center justify-between px-4 py-3" style={{ background: "#a855f722", borderBottom: "1px solid #a855f744" }}><p className="text-sm font-bold text-purple-400">AI Explanation</p><button onClick={() => setShowExplain(false)} className="text-purple-400 hover:text-purple-300"><span className="material-symbols-outlined text-sm">close</span></button></div><div className="p-4 space-y-3">{explanation.steps?.length > 0 && (<div><p className="text-sm font-semibold text-white mb-3 flex items-center gap-1.5"><span className="material-symbols-outlined text-purple-400 text-base">strategy</span>Approach</p><ol className="space-y-2">{explanation.steps.map((s, i) => (<li key={i} className="flex gap-3 p-3 rounded-lg" style={{ background: "#a855f710", border: "1px solid #a855f730" }}><span className="flex items-center justify-center w-6 h-6 rounded-full flex-shrink-0 text-xs font-bold" style={{ background: "#a855f722", color: "#c084fc" }}>{i + 1}</span><span className="text-sm text-gray-300 leading-relaxed">{typeof s === "object" ? (s.instruction || s.step || s.text || JSON.stringify(s)) : s}</span></li>))}</ol></div>)}{explanation.concepts?.length > 0 && (<div><p className="text-xs font-semibold text-gray-400 mb-2">Key concepts</p><div className="flex flex-wrap gap-2">{explanation.concepts.map((c, i) => (<span key={i} className="text-[10px] px-2 py-1 rounded-full" style={{ background: "#a855f722", color: "#c084fc" }}>{c}</span>))}</div></div>)}</div></div>)}
+            <button onClick={() => setActiveTab("submit")} className="w-full py-2.5 rounded-xl text-sm font-bold text-white transition-all hover:scale-105 flex items-center justify-center gap-2" style={{ background: "linear-gradient(135deg, #6366f1, #818cf8)" }}><span className="material-symbols-outlined text-sm">upload</span>Go to submission</button>
           </>
         )}
 
-        {/* SUBMIT TAB */}
         {activeTab === "submit" && (
           <>
-            {error && (
-              <div className="rounded-xl p-3 flex items-center gap-2" style={{ background: "#ef444422", border: "1px solid #ef444444" }}>
-                <span className="material-symbols-outlined text-sm text-red-400">error</span>
-                <p className="text-sm text-red-400">{error}</p>
-              </div>
-            )}
-            {success && (
-              <div className="rounded-xl p-3 flex items-center gap-2" style={{ background: "#22c55e22", border: "1px solid #22c55e44" }}>
-                <span className="material-symbols-outlined text-sm text-emerald-400">check_circle</span>
-                <p className="text-sm text-emerald-400">{success}</p>
-              </div>
-            )}
-
-            {submitted && (
-              <div className="rounded-xl p-3 flex items-center gap-2" style={{ background: "#6366f122", border: "1px solid #6366f144" }}>
-                <span className="material-symbols-outlined text-sm text-indigo-400">info</span>
-                <p className="text-sm text-indigo-400">Already submitted — you can resubmit to update your answer.</p>
-              </div>
-            )}
-
-            <div>
-              <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
-                {lab.labType === "programming" ? "Your code" : "Your answer"}
-              </label>
-              <textarea
-                value={answer}
-                onChange={(e) => setAnswer(e.target.value)}
-                rows={lab.labType === "programming" ? 12 : 7}
-                placeholder={lab.labType === "programming" ? "Write your code solution here..." : "Write your answer here..."}
-                className={`w-full px-4 py-3 text-sm rounded-xl bg-gray-800/50 text-white border border-gray-700 focus:ring-2 focus:ring-indigo-500 focus:border-transparent resize-none outline-none transition-all ${lab.labType === "programming" ? "font-mono" : ""}`}
-              />
-            </div>
-
-            <div className="rounded-xl p-4 border-2 border-dashed" style={{ borderColor: "#334155" }}>
-              <div className="flex flex-col sm:flex-row items-center gap-3">
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept=".pdf,application/pdf"
-                  onChange={(e) => {
-                    const f = e.target.files[0];
-                    if (!f) return;
-                    if (f.type !== "application/pdf") { setError("Only PDF files are accepted"); e.target.value = ""; return; }
-                    if (f.size > 20 * 1024 * 1024) { setError("PDF must be under 20 MB"); e.target.value = ""; return; }
-                    setError("");
-                    setPdfFile(f);
-                  }}
-                  className="hidden"
-                />
-                <button
-                  type="button"
-                  onClick={() => fileInputRef.current?.click()}
-                  className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all hover:scale-105"
-                  style={{ background: "#6366f122", color: "#818cf8", border: "1px solid #6366f144" }}
-                >
-                  <span className="material-symbols-outlined text-base">picture_as_pdf</span>
-                  Upload PDF
-                </button>
-                {pdfFile ? (
-                  <div className="flex items-center gap-2 text-sm text-emerald-400">
-                    <span className="material-symbols-outlined text-base">check_circle</span>
-                    <span className="max-w-[180px] truncate">{pdfFile.name}</span>
-                    <button onClick={() => { setPdfFile(null); if (fileInputRef.current) fileInputRef.current.value = ""; }} className="text-red-400 hover:text-red-500">
-                      <span className="material-symbols-outlined text-sm">close</span>
-                    </button>
-                  </div>
-                ) : submission?.pdfUrl ? (
-                  <button onClick={() => setShowPdf(true)} className="flex items-center gap-2 text-sm text-indigo-400 hover:text-indigo-300">
-                    <span className="material-symbols-outlined text-base">description</span>
-                    View previously submitted PDF
-                  </button>
-                ) : null}
-              </div>
-              <p className="text-[10px] text-gray-500 mt-3 text-center">PDF only · max 20 MB</p>
-            </div>
-
-            <button
-              onClick={handleSubmit}
-              disabled={submitting}
-              className="w-full py-3 rounded-xl text-sm font-bold text-white transition-all hover:scale-105 disabled:opacity-50 flex items-center justify-center gap-2"
-              style={{ background: "linear-gradient(135deg, #6366f1, #818cf8)" }}
-            >
-              {submitting ? (
-                <><LoadingSpinner size="sm" /><span>Submitting...</span></>
-              ) : (
-                <><span className="material-symbols-outlined text-base">upload</span>{submitted ? "Resubmit" : "Submit Lab"}</>
-              )}
-            </button>
+            {error && <div className="rounded-xl p-3 flex items-center gap-2" style={{ background: "#ef444422", border: "1px solid #ef444444" }}><span className="material-symbols-outlined text-sm text-red-400">error</span><p className="text-sm text-red-400">{error}</p></div>}
+            {success && <div className="rounded-xl p-3 flex items-center gap-2" style={{ background: "#22c55e22", border: "1px solid #22c55e44" }}><span className="material-symbols-outlined text-sm text-emerald-400">check_circle</span><p className="text-sm text-emerald-400">{success}</p></div>}
+            {submitted && <div className="rounded-xl p-3 flex items-center gap-2" style={{ background: "#6366f122", border: "1px solid #6366f144" }}><span className="material-symbols-outlined text-sm text-indigo-400">info</span><p className="text-sm text-indigo-400">Already submitted — you can resubmit to update your answer.</p></div>}
+            <div><label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">{lab.labType === "programming" ? "Your code" : "Your answer"}</label><textarea value={answer} onChange={(e) => setAnswer(e.target.value)} rows={lab.labType === "programming" ? 12 : 7} placeholder={lab.labType === "programming" ? "Write your code solution here..." : "Write your answer here..."} className={`w-full px-4 py-3 text-sm rounded-xl bg-gray-800/50 text-white border border-gray-700 focus:ring-2 focus:ring-indigo-500 focus:border-transparent resize-none outline-none transition-all ${lab.labType === "programming" ? "font-mono" : ""}`} /></div>
+            <div className="rounded-xl p-4 border-2 border-dashed" style={{ borderColor: "#334155" }}><div className="flex flex-col sm:flex-row items-center gap-3"><input ref={fileInputRef} type="file" accept=".pdf,application/pdf" onChange={(e) => { const f = e.target.files[0]; if (!f) return; if (f.type !== "application/pdf") { setError("Only PDF files are accepted"); e.target.value = ""; return; } if (f.size > 20 * 1024 * 1024) { setError("PDF must be under 20 MB"); e.target.value = ""; return; } setError(""); setPdfFile(f); }} className="hidden" /><button type="button" onClick={() => fileInputRef.current?.click()} className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all hover:scale-105" style={{ background: "#6366f122", color: "#818cf8", border: "1px solid #6366f144" }}><span className="material-symbols-outlined text-base">picture_as_pdf</span>Upload PDF</button>{pdfFile ? (<div className="flex items-center gap-2 text-sm text-emerald-400"><span className="material-symbols-outlined text-base">check_circle</span><span className="max-w-[180px] truncate">{pdfFile.name}</span><button onClick={() => { setPdfFile(null); if (fileInputRef.current) fileInputRef.current.value = ""; }} className="text-red-400 hover:text-red-500"><span className="material-symbols-outlined text-sm">close</span></button></div>) : submission?.pdfUrl ? (<button onClick={() => setShowPdf(true)} className="flex items-center gap-2 text-sm text-indigo-400 hover:text-indigo-300"><span className="material-symbols-outlined text-base">description</span>View previously submitted PDF</button>) : null}</div><p className="text-[10px] text-gray-500 mt-3 text-center">PDF only · max 20 MB</p></div>
+            <button onClick={handleSubmit} disabled={submitting} className="w-full py-3 rounded-xl text-sm font-bold text-white transition-all hover:scale-105 disabled:opacity-50 flex items-center justify-center gap-2" style={{ background: "linear-gradient(135deg, #6366f1, #818cf8)" }}>{submitting ? <><LoadingSpinner size="sm" /><span>Submitting...</span></> : <><span className="material-symbols-outlined text-base">upload</span>{submitted ? "Resubmit" : "Submit Lab"}</>}</button>
           </>
         )}
 
-        {/* RESULT TAB */}
         {activeTab === "result" && submission && (
           <>
-            {submission.status === "graded" ? (
-              <>
-                <div className={`rounded-xl p-4`} style={{ background: "#22c55e22", border: "1px solid #22c55e44" }}>
-                  <div className="flex items-center gap-4">
-                    <div className="flex items-center justify-center w-14 h-14 rounded-full text-2xl font-black" style={{ background: "#22c55e22", color: "#4ade80" }}>
-                      {submission.marks}
-                    </div>
-                    <div>
-                      <p className="text-sm font-bold text-white">
-                        {submission.marks} / {lab.totalMarks || 100} marks
-                      </p>
-                      <p className="text-xs text-gray-500">
-                        {Math.round((submission.marks / (lab.totalMarks || 100)) * 100)}% score
-                        {submission.gradedAt && ` · Graded ${new Date(submission.gradedAt).toLocaleDateString()}`}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                {submission.feedback && (
-                  <div className="p-4 rounded-xl" style={{ background: "#3b82f622", border: "1px solid #3b82f644" }}>
-                    <p className="text-xs font-bold text-blue-400 mb-2 flex items-center gap-1">
-                      <span className="material-symbols-outlined text-sm">feedback</span>
-                      Instructor feedback
-                    </p>
-                    <p className="text-sm text-gray-300 leading-relaxed">{submission.feedback}</p>
-                  </div>
-                )}
-              </>
-            ) : (
-              <div className="rounded-xl p-4 flex items-center gap-3" style={{ background: "#6366f122", border: "1px solid #6366f144" }}>
-                <span className="material-symbols-outlined text-indigo-400 text-2xl">pending</span>
-                <div>
-                  <p className="text-sm font-semibold text-indigo-400">Submitted — awaiting review</p>
-                  <p className="text-xs text-gray-500 mt-0.5">Submitted {new Date(submission.submittedAt).toLocaleString()}</p>
-                </div>
-              </div>
-            )}
-
-            {submission.answer && (
-              <div>
-                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Your submitted answer</p>
-                <pre className={`text-xs p-4 rounded-xl overflow-x-auto max-h-40 ${lab.labType === "programming" ? "font-mono" : "whitespace-pre-wrap font-sans"}`} style={{ background: "#1e293b", border: "1px solid #334155", color: "#cbd5e1" }}>
-                  {submission.answer}
-                </pre>
-              </div>
-            )}
-
-            {submission.pdfUrl && (
-              <button
-                onClick={() => setShowPdf(true)}
-                className="flex items-center justify-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition-all hover:scale-105"
-                style={{ background: "#6366f122", color: "#818cf8", border: "1px solid #6366f144" }}
-              >
-                <span className="material-symbols-outlined text-base">picture_as_pdf</span>
-                View submitted PDF — {submission.pdfFileName || "submission.pdf"}
-              </button>
-            )}
-
-            <button
-              onClick={() => setActiveTab("submit")}
-              className="w-full py-2.5 rounded-xl text-sm font-bold transition-all hover:scale-105"
-              style={{ background: "#6366f122", color: "#818cf8", border: "1px solid #6366f144" }}
-            >
-              {submission.status === "graded" ? "Resubmit" : "Update submission"}
-            </button>
+            {submission.status === "graded" ? (<><div className={`rounded-xl p-4`} style={{ background: "#22c55e22", border: "1px solid #22c55e44" }}><div className="flex items-center gap-4"><div className="flex items-center justify-center w-14 h-14 rounded-full text-2xl font-black" style={{ background: "#22c55e22", color: "#4ade80" }}>{submission.marks}</div><div><p className="text-sm font-bold text-white">{submission.marks} / {lab.totalMarks || 100} marks</p><p className="text-xs text-gray-500">{Math.round((submission.marks / (lab.totalMarks || 100)) * 100)}% score{submission.gradedAt && ` · Graded ${new Date(submission.gradedAt).toLocaleDateString()}`}</p></div></div></div>{submission.feedback && (<div className="p-4 rounded-xl" style={{ background: "#3b82f622", border: "1px solid #3b82f644" }}><p className="text-xs font-bold text-blue-400 mb-2 flex items-center gap-1"><span className="material-symbols-outlined text-sm">feedback</span>Instructor feedback</p><p className="text-sm text-gray-300 leading-relaxed">{submission.feedback}</p></div>)}</>) : (<div className="rounded-xl p-4 flex items-center gap-3" style={{ background: "#6366f122", border: "1px solid #6366f144" }}><span className="material-symbols-outlined text-indigo-400 text-2xl">pending</span><div><p className="text-sm font-semibold text-indigo-400">Submitted — awaiting review</p><p className="text-xs text-gray-500 mt-0.5">Submitted {new Date(submission.submittedAt).toLocaleString()}</p></div></div>)}
+            {submission.answer && (<div><p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Your submitted answer</p><pre className={`text-xs p-4 rounded-xl overflow-x-auto max-h-40 ${lab.labType === "programming" ? "font-mono" : "whitespace-pre-wrap font-sans"}`} style={{ background: "#1e293b", border: "1px solid #334155", color: "#cbd5e1" }}>{submission.answer}</pre></div>)}
+            {submission.pdfUrl && (<button onClick={() => setShowPdf(true)} className="flex items-center justify-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition-all hover:scale-105" style={{ background: "#6366f122", color: "#818cf8", border: "1px solid #6366f144" }}><span className="material-symbols-outlined text-base">picture_as_pdf</span>View submitted PDF — {submission.pdfFileName || "submission.pdf"}</button>)}
+            <button onClick={() => setActiveTab("submit")} className="w-full py-2.5 rounded-xl text-sm font-bold transition-all hover:scale-105" style={{ background: "#6366f122", color: "#818cf8", border: "1px solid #6366f144" }}>{submission.status === "graded" ? "Resubmit" : "Update submission"}</button>
           </>
         )}
       </div>
 
-      {/* PDF Viewer Modal */}
       {showPdf && submission?.pdfUrl && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={() => setShowPdf(false)}>
           <div className="rounded-2xl w-full flex flex-col overflow-hidden" style={{ maxWidth: "95vw", height: "90vh", background: "#0f1629", border: "1px solid #1e293b" }} onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center justify-between px-5 py-3 flex-shrink-0" style={{ background: "linear-gradient(135deg, #6366f1, #818cf8)" }}>
-              <div>
-                <p className="text-sm font-bold text-white">Lab Submission</p>
-                <p className="text-xs text-indigo-200">{submission.pdfFileName || "submission.pdf"}</p>
-              </div>
-              <div className="flex items-center gap-2">
-                <a href={submission.pdfUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-bold text-indigo-600 bg-white hover:bg-indigo-50 transition-colors">
-                  <span className="material-symbols-outlined text-sm">open_in_new</span>
-                  Open
-                </a>
-                <button onClick={() => setShowPdf(false)} className="text-white hover:bg-white/20 rounded-lg p-1.5">
-                  <span className="material-symbols-outlined">close</span>
-                </button>
-              </div>
-            </div>
-            <div className="flex-1" style={{ minHeight: 0, background: "#1a1a2e" }}>
-              <iframe src={submission.pdfUrl} className="w-full h-full" style={{ border: "none" }} title="Lab PDF Submission" />
-            </div>
+            <div className="flex items-center justify-between px-5 py-3 flex-shrink-0" style={{ background: "linear-gradient(135deg, #6366f1, #818cf8)" }}><div><p className="text-sm font-bold text-white">Lab Submission</p><p className="text-xs text-indigo-200">{submission.pdfFileName || "submission.pdf"}</p></div><div className="flex items-center gap-2"><a href={submission.pdfUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-bold text-indigo-600 bg-white hover:bg-indigo-50 transition-colors"><span className="material-symbols-outlined text-sm">open_in_new</span>Open</a><button onClick={() => setShowPdf(false)} className="text-white hover:bg-white/20 rounded-lg p-1.5"><span className="material-symbols-outlined">close</span></button></div></div>
+            <div className="flex-1" style={{ minHeight: 0, background: "#1a1a2e" }}><iframe src={submission.pdfUrl} className="w-full h-full" style={{ border: "none" }} title="Lab PDF Submission" /></div>
           </div>
         </div>
       )}
@@ -910,6 +778,8 @@ const LessonViewer = () => {
     try {
       const res = await apiFetch(`/api/courses/${courseId}/lessons/${lessonId}/content`);
       const data = await res.json();
+      console.log("=== DEBUG: Received lesson data ===");
+      console.log("contentBlocks from API:", data.lesson?.contentBlocks);
       if (!res.ok) {
         setError(data.message);
         setLessonData(null);
@@ -1132,46 +1002,55 @@ const LessonViewer = () => {
                 )}
               </div>
 
-              {/* Video */}
-              {lessonData.lesson.videoUrl && (
-                <div className="rounded-xl overflow-hidden bg-black aspect-video">
-                  {lessonData.lesson.videoUrl.includes("youtube.com") || lessonData.lesson.videoUrl.includes("youtu.be") ? (
-                    <iframe
-                      src={lessonData.lesson.videoUrl.replace("watch?v=", "embed/").replace("youtu.be/", "www.youtube.com/embed/")}
-                      className="w-full h-full"
-                      allowFullScreen
-                      title={lessonData.lesson.title}
-                    />
-                  ) : (
-                    <video controls className="w-full h-full" src={lessonData.lesson.videoUrl} />
-                  )}
-                </div>
-              )}
-
-              {/* Images */}
-              {lessonData.lesson.images?.length > 0 && (
-                <div className={`grid gap-4 ${lessonData.lesson.images.length === 1 ? "grid-cols-1" : "grid-cols-2"}`}>
-                  {lessonData.lesson.images.map((img, i) => (
-                    <figure key={i} className="rounded-xl overflow-hidden" style={{ background: "#0f1629", border: "1px solid #1e293b" }}>
-                      <img src={img.url} alt={img.caption || `Image ${i + 1}`} className="w-full object-cover max-h-64" />
-                      {img.caption && (
-                        <figcaption className="px-3 py-2 text-[10px] text-gray-500 text-center" style={{ background: "#0a0f1e", borderTop: "1px solid #1e293b" }}>
-                          {img.caption}
-                        </figcaption>
-                      )}
-                    </figure>
+              {/* CONTENT BLOCKS - Enhanced with Markdown + HTML support */}
+              {lessonData?.lesson?.contentBlocks && lessonData.lesson.contentBlocks.length > 0 ? (
+                <div className="space-y-6">
+                  {lessonData.lesson.contentBlocks.map((block, idx) => (
+                    <ContentBlockRenderer key={block.id || idx} block={block} />
                   ))}
                 </div>
-              )}
+              ) : (
+                // Fallback to legacy content
+                <>
+                  {lessonData.lesson.videoUrl && (
+                    <div className="rounded-xl overflow-hidden bg-black aspect-video">
+                      {lessonData.lesson.videoUrl.includes("youtube.com") || lessonData.lesson.videoUrl.includes("youtu.be") ? (
+                        <iframe
+                          src={lessonData.lesson.videoUrl.replace("watch?v=", "embed/").replace("youtu.be/", "www.youtube.com/embed/")}
+                          className="w-full h-full"
+                          allowFullScreen
+                          title={lessonData.lesson.title}
+                        />
+                      ) : (
+                        <video controls className="w-full h-full" src={lessonData.lesson.videoUrl} />
+                      )}
+                    </div>
+                  )}
 
-              {/* Text content */}
-              {lessonData.lesson.content && (
-                <div className="rounded-2xl p-6" style={{ background: "#0a0f1e", border: "1px solid #1e293b" }}>
-                  <div
-                    className="prose prose-sm dark:prose-invert max-w-none text-gray-300"
-                    dangerouslySetInnerHTML={{ __html: lessonData.lesson.content }}
-                  />
-                </div>
+                  {lessonData.lesson.images?.length > 0 && (
+                    <div className={`grid gap-4 ${lessonData.lesson.images.length === 1 ? "grid-cols-1" : "grid-cols-2"}`}>
+                      {lessonData.lesson.images.map((img, i) => (
+                        <figure key={i} className="rounded-xl overflow-hidden" style={{ background: "#0f1629", border: "1px solid #1e293b" }}>
+                          <img src={img.url} alt={img.caption || `Image ${i + 1}`} className="w-full object-cover max-h-64" />
+                          {img.caption && (
+                            <figcaption className="px-3 py-2 text-[10px] text-gray-500 text-center" style={{ background: "#0a0f1e", borderTop: "1px solid #1e293b" }}>
+                              {img.caption}
+                            </figcaption>
+                          )}
+                        </figure>
+                      ))}
+                    </div>
+                  )}
+
+                  {lessonData.lesson.content && (
+                    <div className="rounded-2xl p-6" style={{ background: "#0a0f1e", border: "1px solid #1e293b" }}>
+                      <div
+                        className="prose prose-sm dark:prose-invert max-w-none text-gray-300"
+                        dangerouslySetInnerHTML={{ __html: lessonData.lesson.content }}
+                      />
+                    </div>
+                  )}
+                </>
               )}
 
               {/* Progress Checklist */}
@@ -1241,8 +1120,7 @@ const LessonViewer = () => {
                 </div>
               ) : lessonData.progress?.isCompleted && !lessons.some((l) => l.order === lessonData.lesson.order + 1) ? (
                 <div className="mt-4 p-5 rounded-2xl text-center" style={{ background: "linear-gradient(135deg, #22c55e22, #16a34a22)", border: "1px solid #22c55e44" }}>
-                  <span className="material-symbols-outlined text-emerald-400 text-4xl mb-3 block">school</span>
-                  <p className="font-bold text-emerald-400 text-base">🎓 Course Complete!</p>
+                  <p className="font-bold text-emerald-400 text-base">Course Complete!</p>
                   <p className="text-sm text-emerald-400/80 mt-1">You have finished all lessons in this course. Well done!</p>
                   <button onClick={() => navigate("/student/dashboard")} className="mt-4 px-5 py-2 rounded-xl text-sm font-bold text-white transition-all hover:scale-105" style={{ background: "linear-gradient(135deg, #22c55e, #16a34a)" }}>
                     Back to Dashboard

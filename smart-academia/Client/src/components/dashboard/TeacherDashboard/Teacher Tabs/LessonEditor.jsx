@@ -1,5 +1,8 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import rehypeRaw from 'rehype-raw';
 
 const API = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
@@ -27,9 +30,332 @@ const apiFetch = (url, opts = {}) => {
   });
 };
 
+// ── Rich Text Editor for Text Blocks with Markdown + HTML ──
+const RichTextEditorForBlock = ({ value, onChange, onImageUpload, uploading, placeholder }) => {
+  const editorRef = useRef(null);
+  const [isFocused, setIsFocused] = useState(false);
+  const [mode, setMode] = useState('visual');
+  const [markdownText, setMarkdownText] = useState('');
+
+  useEffect(() => {
+    if (mode === 'markdown' && value) {
+      let md = value
+        .replace(/<h1>(.*?)<\/h1>/g, '# $1\n\n')
+        .replace(/<h2>(.*?)<\/h2>/g, '## $1\n\n')
+        .replace(/<h3>(.*?)<\/h3>/g, '### $1\n\n')
+        .replace(/<strong>(.*?)<\/strong>/g, '**$1**')
+        .replace(/<b>(.*?)<\/b>/g, '**$1**')
+        .replace(/<em>(.*?)<\/em>/g, '*$1*')
+        .replace(/<i>(.*?)<\/i>/g, '*$1*')
+        .replace(/<ul>(.*?)<\/ul>/gs, (match, content) => {
+          return content.replace(/<li>(.*?)<\/li>/g, '- $1\n');
+        })
+        .replace(/<ol>(.*?)<\/ol>/gs, (match, content) => {
+          let index = 1;
+          return content.replace(/<li>(.*?)<\/li>/g, () => `${index++}. $1\n`);
+        })
+        .replace(/<p>(.*?)<\/p>/g, '$1\n\n')
+        .replace(/<br\s*\/?>/g, '\n')
+        .replace(/&lt;/g, '<')
+        .replace(/&gt;/g, '>')
+        .replace(/&amp;/g, '&');
+      setMarkdownText(md);
+    }
+  }, [mode, value]);
+
+  const execCommand = (command, valueArg = null) => {
+    document.execCommand(command, false, valueArg);
+    editorRef.current?.focus();
+    if (onChange && mode === 'visual') {
+      onChange(editorRef.current?.innerHTML || '');
+    }
+  };
+
+  const handleImageUpload = () => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/*';
+    input.onchange = async (e) => {
+      const file = e.target.files[0];
+      if (file && onImageUpload) {
+        onImageUpload(file, (url) => {
+          if (mode === 'visual') {
+            execCommand('insertHTML', `<img src="${url}" alt="Image" style="max-width:100%; border-radius:8px; margin:12px 0;" />`);
+          } else {
+            setMarkdownText(prev => prev + `\n![Image](${url})\n`);
+          }
+        });
+      }
+    };
+    input.click();
+  };
+
+  const insertLink = () => {
+    const url = prompt('Enter URL:', 'https://');
+    if (url) {
+      if (mode === 'visual') {
+        execCommand('createLink', url);
+      } else {
+        const text = prompt('Enter link text:', url);
+        setMarkdownText(prev => prev + `[${text || url}](${url}) `);
+      }
+    }
+  };
+
+  const handleVisualInput = () => {
+    if (onChange && mode === 'visual') {
+      onChange(editorRef.current?.innerHTML || '');
+    }
+  };
+
+  const handleMarkdownChange = (e) => {
+    const md = e.target.value;
+    setMarkdownText(md);
+    if (onChange) {
+      onChange(md);
+    }
+  };
+
+  const insertMarkdown = (prefix, suffix = '') => {
+    const textarea = document.querySelector('.markdown-editor');
+    if (textarea) {
+      const start = textarea.selectionStart;
+      const end = textarea.selectionEnd;
+      const selected = markdownText.substring(start, end);
+      const newText = markdownText.substring(0, start) + prefix + selected + suffix + markdownText.substring(end);
+      setMarkdownText(newText);
+      onChange(newText);
+      setTimeout(() => {
+        textarea.focus();
+        textarea.setSelectionRange(start + prefix.length, end + prefix.length);
+      }, 10);
+    }
+  };
+
+  const ToolbarButton = ({ onClick, icon, title }) => (
+    <button
+      onMouseDown={(e) => { e.preventDefault(); onClick(); }}
+      className="p-1.5 rounded transition-all hover:scale-105 text-gray-400 hover:text-white"
+      title={title}
+    >
+      <span className="material-symbols-outlined text-sm">{icon}</span>
+    </button>
+  );
+
+  const MarkdownPreview = ({ content }) => {
+    if (!content) return <p className="text-gray-500 italic">No content to preview</p>;
+    
+    return (
+      <ReactMarkdown
+        remarkPlugins={[remarkGfm]}
+        rehypePlugins={[rehypeRaw]}
+        components={{
+          h1: ({ children }) => <h1 className="text-2xl font-bold text-white mt-4 mb-2">{children}</h1>,
+          h2: ({ children }) => <h2 className="text-xl font-bold text-white mt-3 mb-2">{children}</h2>,
+          h3: ({ children }) => <h3 className="text-lg font-bold text-white mt-2 mb-1">{children}</h3>,
+          p: ({ children }) => <p className="my-2 leading-relaxed text-gray-300">{children}</p>,
+          strong: ({ children }) => <strong className="font-bold text-white">{children}</strong>,
+          em: ({ children }) => <em className="italic text-gray-300">{children}</em>,
+          code: ({ children, inline }) => inline ? (
+            <code className="bg-gray-800 px-1 py-0.5 rounded text-indigo-400 text-xs font-mono">{children}</code>
+          ) : (
+            <pre className="bg-gray-900 p-3 rounded-lg overflow-x-auto my-3">
+              <code className="text-sm text-green-400 font-mono">{children}</code>
+            </pre>
+          ),
+          ul: ({ children }) => <ul className="list-disc ml-6 my-2 text-gray-300">{children}</ul>,
+          ol: ({ children }) => <ol className="list-decimal ml-6 my-2 text-gray-300">{children}</ol>,
+          li: ({ children }) => <li className="my-1">{children}</li>,
+          blockquote: ({ children }) => <blockquote className="border-l-4 border-indigo-500 pl-4 my-2 italic text-gray-400">{children}</blockquote>,
+          a: ({ href, children }) => <a href={href} className="text-indigo-400 hover:text-indigo-300 underline" target="_blank" rel="noopener noreferrer">{children}</a>,
+          img: ({ src, alt }) => <img src={src} alt={alt} className="max-w-full rounded-xl my-3" />,
+          hr: () => <hr className="my-4 border-gray-700" />,
+          table: ({ children }) => <div className="overflow-x-auto my-3"><table className="min-w-full border-collapse border border-gray-700">{children}</table></div>,
+          th: ({ children }) => <th className="border border-gray-700 px-3 py-2 bg-gray-800 text-white font-semibold">{children}</th>,
+          td: ({ children }) => <td className="border border-gray-700 px-3 py-2 text-gray-300">{children}</td>,
+        }}
+      >
+        {content}
+      </ReactMarkdown>
+    );
+  };
+
+  return (
+    <div className="rounded-xl overflow-hidden" style={{ background: "#1e293b", border: "1px solid #334155" }}>
+      <div className="flex items-center justify-between p-2 border-b flex-wrap gap-2" style={{ background: "#0a0f1e", borderColor: "#334155" }}>
+        <div className="flex gap-1">
+          <button
+            onClick={() => setMode('visual')}
+            className={`px-3 py-1 rounded-lg text-xs font-medium transition-all ${mode === 'visual' ? 'bg-indigo-500/20 text-indigo-400' : 'text-gray-500 hover:text-gray-300'}`}
+          >
+             Visual Editor
+          </button>
+          <button
+            onClick={() => setMode('markdown')}
+            className={`px-3 py-1 rounded-lg text-xs font-medium transition-all ${mode === 'markdown' ? 'bg-indigo-500/20 text-indigo-400' : 'text-gray-500 hover:text-gray-300'}`}
+          >
+             Markdown
+          </button>
+        </div>
+        <span className="text-[10px] text-gray-600">
+          {mode === 'visual' ? 'Rich text with toolbar' : 'Write Markdown, see live preview'}
+        </span>
+      </div>
+
+      {mode === 'visual' ? (
+        <>
+          <div className="flex flex-wrap gap-0.5 p-2 border-b" style={{ background: "#0a0f1e", borderColor: "#334155" }}>
+            <ToolbarButton onClick={() => execCommand('bold')} icon="format_bold" title="Bold" />
+            <ToolbarButton onClick={() => execCommand('italic')} icon="format_italic" title="Italic" />
+            <ToolbarButton onClick={() => execCommand('underline')} icon="u" title="Underline" />
+            <ToolbarButton onClick={() => execCommand('strikeThrough')} icon="format_strikethrough" title="Strikethrough" />
+            <div className="w-px h-6 bg-gray-700 mx-1 hidden sm:block" />
+            <ToolbarButton onClick={() => execCommand('insertOrderedList')} icon="format_list_numbered" title="Numbered List" />
+            <ToolbarButton onClick={() => execCommand('insertUnorderedList')} icon="format_list_bulleted" title="Bullet List" />
+            <div className="w-px h-6 bg-gray-700 mx-1 hidden sm:block" />
+            <ToolbarButton onClick={() => execCommand('justifyLeft')} icon="format_align_left" title="Align Left" />
+            <ToolbarButton onClick={() => execCommand('justifyCenter')} icon="format_align_center" title="Align Center" />
+            <ToolbarButton onClick={() => execCommand('justifyRight')} icon="format_align_right" title="Align Right" />
+            <div className="w-px h-6 bg-gray-700 mx-1 hidden sm:block" />
+            <ToolbarButton onClick={insertLink} icon="insert_link" title="Insert Link" />
+            <ToolbarButton onClick={handleImageUpload} icon="image" title="Insert Image" />
+            <ToolbarButton onClick={() => execCommand('removeFormat')} icon="format_clear" title="Clear Formatting" />
+          </div>
+
+          <div
+            ref={editorRef}
+            contentEditable
+            onInput={handleVisualInput}
+            onFocus={() => setIsFocused(true)}
+            onBlur={() => setIsFocused(false)}
+            className="p-4 min-h-[200px] outline-none text-gray-300"
+            style={{ fontFamily: "'Lexend', sans-serif", lineHeight: '1.6' }}
+            data-placeholder={placeholder || "Write your text content here..."}
+          />
+        </>
+      ) : (
+        <>
+          <div className="flex flex-wrap gap-0.5 p-2 border-b" style={{ background: "#0a0f1e", borderColor: "#334155" }}>
+            <ToolbarButton onClick={() => insertMarkdown('**', '**')} icon="format_bold" title="Bold" />
+            <ToolbarButton onClick={() => insertMarkdown('*', '*')} icon="format_italic" title="Italic" />
+            <ToolbarButton onClick={() => insertMarkdown('~~', '~~')} icon="format_strikethrough" title="Strikethrough" />
+            <div className="w-px h-6 bg-gray-700 mx-1 hidden sm:block" />
+            <ToolbarButton onClick={() => insertMarkdown('- ')} icon="format_list_bulleted" title="Bullet List" />
+            <ToolbarButton onClick={() => insertMarkdown('1. ')} icon="format_list_numbered" title="Numbered List" />
+            <div className="w-px h-6 bg-gray-700 mx-1 hidden sm:block" />
+            <ToolbarButton onClick={() => insertMarkdown('# ')} icon="title" title="Heading 1" />
+            <ToolbarButton onClick={() => insertMarkdown('## ')} icon="title" title="Heading 2" />
+            <ToolbarButton onClick={() => insertMarkdown('### ')} icon="title" title="Heading 3" />
+            <div className="w-px h-6 bg-gray-700 mx-1 hidden sm:block" />
+            <ToolbarButton onClick={() => insertMarkdown('[', '](url)')} icon="insert_link" title="Insert Link" />
+            <ToolbarButton onClick={handleImageUpload} icon="image" title="Insert Image" />
+            <ToolbarButton onClick={() => insertMarkdown('```\n', '\n```')} icon="code" title="Code Block" />
+            <ToolbarButton onClick={() => insertMarkdown('> ')} icon="format_quote" title="Quote" />
+          </div>
+
+          <div className="flex flex-col lg:grid lg:grid-cols-2 gap-0">
+            <div className="border-b lg:border-b-0 lg:border-r" style={{ borderColor: "#334155" }}>
+              <textarea
+                value={markdownText}
+                onChange={handleMarkdownChange}
+                placeholder="# Heading 1\n\n**Bold text** *italic text*\n\n- Bullet list\n- Another item\n\n1. Numbered list\n2. Second item\n\n[Link to Google](https://google.com)\n\n```python\nprint('Hello World')\n```"
+                className="custom-scrollbar markdown-editor w-full p-4 min-h-[600px] outline-none text-gray-300 font-mono text-sm resize-y"
+                style={{ background: "#1e293b", fontFamily: "'Courier New', monospace" }}
+              />
+            </div>
+            
+            <div className="custom-scrollbar p-4 overflow-y-auto max-h-[600px]" style={{ background: "#0f1629" }}>
+              <p className=" text-[10px] text-gray-500 mb-2 sticky top-0 bg-[#0f1629] py-1">Live Preview:</p>
+              <MarkdownPreview content={markdownText} />
+            </div>
+          </div>
+        </>
+      )}
+      
+      {uploading && (
+        <div className="p-2 text-center border-t" style={{ borderColor: "#334155" }}>
+          <div className="relative w-6 h-6 mx-auto">
+            <div className="absolute inset-0 rounded-full border-2 border-indigo-900" />
+            <div className="absolute inset-0 rounded-full border-2 border-transparent border-t-indigo-500 animate-spin" />
+          </div>
+          <p className="text-xs text-gray-400 mt-1">Uploading image...</p>
+        </div>
+      )}
+
+      <style>{`
+        [contenteditable=true] {
+          caret-color: #818cf8;
+        }
+        [contenteditable=true]:empty:before {
+          content: attr(data-placeholder);
+          color: #64748b;
+        }
+        [contenteditable=true] img {
+          max-width: 100%;
+          border-radius: 8px;
+          margin: 12px 0;
+        }
+        [contenteditable=true] a {
+          color: #818cf8;
+          text-decoration: underline;
+        }
+        [contenteditable=true] ul, [contenteditable=true] ol {
+          padding-left: 24px;
+          margin: 8px 0;
+        }
+        [contenteditable=true] li {
+          margin: 4px 0;
+        }
+        .markdown-editor {
+          resize: vertical;
+        }
+        input::-webkit-outer-spin-button,
+        input::-webkit-inner-spin-button {
+          -webkit-appearance: none;
+          margin: 0;
+        }
+        @media (max-width: 768px) {
+          .material-symbols-outlined {
+            font-size: 18px;
+          }
+        }
+           /* Custom scrollbar for both panels */
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: #1e293b;
+    border-radius: 10px;
+  }
+  
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    background: linear-gradient(135deg, #6366f1, #a855f7);
+    border-radius: 10px;
+  }
+  
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(135deg, #818cf8, #c084fc);
+  }
+  
+  /* For Firefox */
+  .custom-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: #6366f1 #1e293b;
+  }
+  
+  /* Make textarea scrollbar always visible on right */
+  .markdown-editor {
+    resize: none;
+  }
+      `}</style>
+    </div>
+  );
+};
+
 // ── Content Block Manager Component ───────────────────────────
 const ContentBlockManager = ({ blocks, onChange, onImageUpload, onVideoUpload, uploading }) => {
-
   const addBlock = (type) => {
     const newBlock = {
       id: Date.now(),
@@ -85,12 +411,12 @@ const ContentBlockManager = ({ blocks, onChange, onImageUpload, onVideoUpload, u
       case 'text':
         return (
           <div className="space-y-2">
-            <textarea
+            <RichTextEditorForBlock
               value={block.content}
-              onChange={(e) => updateBlock(block.id, 'content', e.target.value)}
-              placeholder="Write your text content here..."
-              className="w-full px-4 py-3 text-sm rounded-xl bg-gray-800/50 text-white border border-gray-700 focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition-all resize-y"
-              rows={6}
+              onChange={(value) => updateBlock(block.id, 'content', value)}
+              onImageUpload={onImageUpload}
+              uploading={uploading}
+              placeholder="Write your text content here... Use the toolbar to format text, add lists, links, and images."
             />
           </div>
         );
@@ -124,7 +450,7 @@ const ContentBlockManager = ({ blocks, onChange, onImageUpload, onVideoUpload, u
                     }}
                   />
                   <span className="material-symbols-outlined text-3xl text-gray-500 mb-2">cloud_upload</span>
-                  <p className="text-sm text-gray-400">Click to upload image</p>
+                  <p className="text-sm text-gray-400 text-center">Click to upload image</p>
                 </label>
                 <div className="relative">
                   <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-lg">link</span>
@@ -194,7 +520,7 @@ const ContentBlockManager = ({ blocks, onChange, onImageUpload, onVideoUpload, u
                     }}
                   />
                   <span className="material-symbols-outlined text-3xl text-gray-500 mb-2">cloud_upload</span>
-                  <p className="text-sm text-gray-400">Click to upload video</p>
+                  <p className="text-sm text-gray-400 text-center">Click to upload video</p>
                 </label>
                 <div className="relative">
                   <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-lg">link</span>
@@ -202,7 +528,7 @@ const ContentBlockManager = ({ blocks, onChange, onImageUpload, onVideoUpload, u
                     type="text"
                     value={block.url}
                     onChange={(e) => updateBlock(block.id, 'url', e.target.value)}
-                    placeholder="Or paste video URL (YouTube, or direct link)..."
+                    placeholder="Or paste video URL (YouTube, Vimeo, or direct link)..."
                     className="w-full pl-10 pr-4 py-2.5 text-sm rounded-xl bg-gray-800/50 text-white border border-gray-700 focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition-all"
                   />
                 </div>
@@ -225,7 +551,6 @@ const ContentBlockManager = ({ blocks, onChange, onImageUpload, onVideoUpload, u
 
   return (
     <div className="space-y-4">
-      {/* Add Block Buttons */}
       <div className="flex flex-wrap gap-3 mb-4">
         <button
           onClick={() => addBlock('text')}
@@ -233,7 +558,7 @@ const ContentBlockManager = ({ blocks, onChange, onImageUpload, onVideoUpload, u
           style={{ background: "#6366f122", color: "#818cf8", border: "1px solid #6366f144" }}
         >
           <span className="material-symbols-outlined text-base">article</span>
-          Add Text
+          <span className="hidden sm:inline">Add Text Block</span>
         </button>
         <button
           onClick={() => addBlock('image')}
@@ -241,7 +566,7 @@ const ContentBlockManager = ({ blocks, onChange, onImageUpload, onVideoUpload, u
           style={{ background: "#22c55e22", color: "#4ade80", border: "1px solid #22c55e44" }}
         >
           <span className="material-symbols-outlined text-base">image</span>
-          Add Image
+          <span className="hidden sm:inline">Add Image Block</span>
         </button>
         <button
           onClick={() => addBlock('video')}
@@ -249,11 +574,10 @@ const ContentBlockManager = ({ blocks, onChange, onImageUpload, onVideoUpload, u
           style={{ background: "#a855f722", color: "#c084fc", border: "1px solid #a855f744" }}
         >
           <span className="material-symbols-outlined text-base">smart_display</span>
-          Add Video
+          <span className="hidden sm:inline">Add Video Block</span>
         </button>
       </div>
 
-      {/* Blocks List */}
       {blocks.length === 0 ? (
         <div className="text-center py-12 rounded-xl" style={{ background: "#1e293b", border: "1px solid #334155" }}>
           <span className="material-symbols-outlined text-4xl text-gray-500 mb-2 block">add_circle</span>
@@ -264,11 +588,10 @@ const ContentBlockManager = ({ blocks, onChange, onImageUpload, onVideoUpload, u
         blocks.map((block, index) => (
           <div
             key={block.id}
-            className="rounded-xl p-4 transition-all hover:shadow-lg"
+            className="rounded-xl p-3 sm:p-4 transition-all hover:shadow-lg"
             style={{ background: "#1e293b", border: "1px solid #334155" }}
           >
-            {/* Block Header */}
-            <div className="flex items-center justify-between mb-3 pb-2 border-b" style={{ borderColor: "#334155" }}>
+            <div className="flex items-center justify-between mb-3 pb-2 border-b flex-wrap gap-2" style={{ borderColor: "#334155" }}>
               <div className="flex items-center gap-2">
                 <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium ${
                   block.type === 'text' ? 'text-indigo-400 bg-indigo-500/20' :
@@ -305,7 +628,6 @@ const ContentBlockManager = ({ blocks, onChange, onImageUpload, onVideoUpload, u
               </div>
             </div>
 
-            {/* Block Content */}
             {renderBlock(block)}
           </div>
         ))
@@ -340,9 +662,7 @@ const LessonEditor = () => {
     requiresQuiz: true, requiresLab: true, isPublished: false,
   });
   
-  // Content blocks state
   const [contentBlocks, setContentBlocks] = useState([]);
-  
   const [quiz, setQuiz] = useState(null);
   const [quizForm, setQuizForm] = useState({ timeLimit: 30, passingScore: 70, maxAttempts: 3, shuffleQuestions: true });
   const [questions, setQuestions] = useState([]);
@@ -399,7 +719,6 @@ const LessonEditor = () => {
         isPublished: data.lesson.isPublished !== false,
       });
       
-      // Load content blocks if saved as JSON
       if (data.lesson.contentBlocks && Array.isArray(data.lesson.contentBlocks)) {
         setContentBlocks(data.lesson.contentBlocks);
       }
@@ -673,11 +992,13 @@ const LessonEditor = () => {
         
         {sidebarOpen && <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-40 lg:hidden" onClick={() => setSidebarOpen(false)} />}
 
-        {/* Sidebar */}
-        <aside className={`flex flex-col w-72 fixed lg:static inset-y-0 left-0 z-50 transform transition-transform duration-300 ease-in-out h-screen overflow-y-auto ${sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`} style={{ background: colors.sidebar, borderRight: `1px solid ${colors.border}` }}>
+        {/* Sidebar - Responsive */}
+        <aside className={`flex flex-col w-72 lg:w-64 fixed inset-y-0 left-0 z-50 transform transition-transform duration-300 ease-in-out h-screen overflow-y-auto ${sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`} style={{ background: colors.sidebar, borderRight: `1px solid ${colors.border}` }}>
           <div className="flex items-center gap-3 px-5 py-5 border-b shrink-0" style={{ borderColor: colors.border }}>
             <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: `${colors.accent}22`, border: `1px solid ${colors.accent}44` }}>
-              <span className="material-symbols-outlined text-xl" style={{ color: colors.accent }}>school</span>
+              <svg className="w-12 h-12 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 14l9-5-9-5-9 5 9 5zm0 0l9-5-9 5-9-5m9 5v5m0-5v5m0 0l-9-5m9 5l9-5" />
+              </svg>
             </div>
             <h1 className="text-lg font-bold text-white tracking-tight">Smart<span style={{ color: colors.accent }}>Academia</span></h1>
             <button onClick={() => setSidebarOpen(false)} className="lg:hidden ml-auto text-gray-500 hover:text-white"><span className="material-symbols-outlined text-xl">close</span></button>
@@ -687,7 +1008,7 @@ const LessonEditor = () => {
             <div className="flex flex-col gap-0.5 px-3">
               <button onClick={() => navigate("/teacher/dashboard?tab=lessons")} className="flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all hover:bg-white/5" style={{ color: colors.muted }}>
                 <span className="material-symbols-outlined text-xl">arrow_back</span>
-                <span className="text-sm font-medium">Back to Lessons</span>
+                <span className="text-sm font-medium hidden lg:inline">Back to Lessons</span>
               </button>
             </div>
           </div>
@@ -696,43 +1017,58 @@ const LessonEditor = () => {
             <div className="flex items-center gap-3 p-2.5 rounded-xl">
               {userAvatar ? <div className="w-10 h-10 rounded-full bg-center bg-no-repeat bg-cover" style={{ backgroundImage: `url("${userAvatar}")` }} />
                 : <div className="flex items-center justify-center w-10 h-10 rounded-full text-sm font-bold text-white" style={{ background: `linear-gradient(135deg, ${colors.accent}, ${colors.accent2})` }}>{userInitial}</div>}
-              <div className="flex-1 min-w-0"><p className="text-sm font-semibold text-white truncate">{displayName}</p><p className="text-xs text-gray-500">Teacher</p></div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold text-white truncate">{displayName}</p>
+                <p className="text-xs text-gray-500">Teacher</p>
+              </div>
             </div>
           </div>
         </aside>
 
-        {/* Main Content */}
-        <div className="flex-1 flex flex-col lg:ml-0 min-w-0">
-          <header className="flex items-center justify-between px-5 py-3 sticky top-0 z-30 backdrop-blur-md" style={{ background: `${colors.bg}ee`, borderBottom: `1px solid ${colors.border}` }}>
-            <div className="flex items-center gap-4">
-              <button onClick={() => setSidebarOpen(true)} className="lg:hidden p-2 rounded-lg hover:bg-white/5" style={{ color: colors.muted }}><span className="material-symbols-outlined text-xl">menu</span></button>
+        {/* Main Content - Responsive */}
+        <div className="flex-1 flex flex-col lg:ml-64 min-w-0">
+          <header className="flex items-center justify-between px-4 sm:px-5 py-3 sticky top-0 z-30 backdrop-blur-md" style={{ background: `${colors.bg}ee`, borderBottom: `1px solid ${colors.border}` }}>
+            <div className="flex items-center gap-2 sm:gap-4">
+              <button onClick={() => setSidebarOpen(true)} className="lg:hidden p-2 rounded-lg hover:bg-white/5" style={{ color: colors.muted }}>
+                <span className="material-symbols-outlined text-xl">menu</span>
+              </button>
               <div>
-                <h1 className="text-lg font-bold text-white">{isEdit ? "Edit Lesson" : "Create New Lesson"}</h1>
+                <h1 className="text-base sm:text-lg font-bold text-white">{isEdit ? "Edit Lesson" : "Create New Lesson"}</h1>
                 {savedLessonId && <p className="text-xs text-emerald-400">✓ Lesson saved — now add Quiz & Lab</p>}
               </div>
             </div>
-            <button onClick={handleLogout} className="p-2 rounded-lg transition-all hover:scale-105" style={{ color: colors.muted }}><span className="material-symbols-outlined text-xl">logout</span></button>
+            <button onClick={handleLogout} className="p-2 rounded-lg transition-all hover:scale-105" style={{ color: colors.muted }}>
+              <span className="material-symbols-outlined text-xl">logout</span>
+            </button>
           </header>
 
-          <main className="flex-1 p-6 lg:p-8 overflow-y-auto">
-            {error && <div className="mb-4 p-3 rounded-xl flex items-center gap-2" style={{ background: "#ef444422", border: "1px solid #ef444444" }}><span className="material-symbols-outlined text-sm text-red-400">error</span><span className="flex-1 text-sm text-red-400">{error}</span><button onClick={() => setError("")} className="text-red-400 hover:text-red-300">×</button></div>}
-            {success && <div className="mb-4 p-3 rounded-xl flex items-center gap-2" style={{ background: "#22c55e22", border: "1px solid #22c55e44" }}><span className="material-symbols-outlined text-sm text-emerald-400">check_circle</span><span className="flex-1 text-sm text-emerald-400">{success}</span></div>}
+          <main className="flex-1 p-4 sm:p-6 lg:p-8 overflow-y-auto">
+            {error && <div className="mb-4 p-3 rounded-xl flex items-center gap-2" style={{ background: "#ef444422", border: "1px solid #ef444444" }}>
+              <span className="material-symbols-outlined text-sm text-red-400">error</span>
+              <span className="flex-1 text-sm text-red-400">{error}</span>
+              <button onClick={() => setError("")} className="text-red-400 hover:text-red-300">×</button>
+            </div>}
+            {success && <div className="mb-4 p-3 rounded-xl flex items-center gap-2" style={{ background: "#22c55e22", border: "1px solid #22c55e44" }}>
+              <span className="material-symbols-outlined text-sm text-emerald-400">check_circle</span>
+              <span className="flex-1 text-sm text-emerald-400">{success}</span>
+            </div>}
 
             <div className="rounded-2xl overflow-hidden" style={{ background: colors.card, border: `1px solid ${colors.border}` }}>
-              {/* Tabs */}
-              <div className="flex overflow-x-auto" style={{ borderBottom: `1px solid ${colors.border}`, background: "#0a0f1e" }}>
+              {/* Tabs - Horizontal scroll on mobile */}
+              <div className="flex overflow-x-auto no-scrollbar" style={{ borderBottom: `1px solid ${colors.border}`, background: "#0a0f1e" }}>
                 {tabs.map(t => (
                   <button key={t.key} onClick={() => { setError(""); setSuccess(""); setTab(t.key); }}
-                    className={`flex items-center gap-1.5 px-5 py-3 text-sm font-medium whitespace-nowrap border-b-2 transition-all ${tab === t.key ? "border-indigo-500 text-indigo-400" : "border-transparent text-gray-500 hover:text-gray-300"}`}>
-                    <span className="material-symbols-outlined text-base">{t.icon}</span><span>{t.label}</span>
+                    className={`flex items-center gap-1.5 px-3 sm:px-5 py-3 text-xs sm:text-sm font-medium whitespace-nowrap border-b-2 transition-all ${tab === t.key ? "border-indigo-500 text-indigo-400" : "border-transparent text-gray-500 hover:text-gray-300"}`}>
+                    <span className="material-symbols-outlined text-base sm:text-base">{t.icon}</span>
+                    <span className="hidden sm:inline">{t.label}</span>
                   </button>
                 ))}
               </div>
 
-              <div className="p-6">
-                {/* CONTENT TAB - WITH CONTENT BLOCK MANAGER */}
+              <div className="p-4 sm:p-6">
+                {/* CONTENT TAB */}
                 {tab === "content" && (
-                  <div className="space-y-5 max-w-4xl">
+                  <div className="space-y-5 max-w-4xl mx-auto">
                     <div>
                       <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Lesson Title *</label>
                       <input 
@@ -754,7 +1090,6 @@ const LessonEditor = () => {
                       />
                     </div>
 
-                    {/* Content Block Manager */}
                     <div>
                       <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Lesson Content</label>
                       <ContentBlockManager 
@@ -782,16 +1117,18 @@ const LessonEditor = () => {
 
                 {/* QUIZ TAB */}
                 {tab === "quiz" && (
-                  <div className="space-y-5 max-w-4xl">
+                  <div className="space-y-5 max-w-4xl mx-auto">
                     {!lesson.requiresQuiz && (
                       <div className="rounded-xl p-3 flex items-center gap-2" style={{ background: "#f59e0b22", border: "1px solid #f59e0b44" }}>
                         <span className="material-symbols-outlined text-sm text-amber-400">warning</span>
                         <p className="text-sm text-amber-400">Quiz requirement is <strong>disabled</strong> in Settings. Enable "Requires Quiz" in the Settings tab to make it visible and required.</p>
                       </div>
                     )}
-                    {!savedLessonId && <div className="rounded-xl p-3" style={{ background: "#f59e0b22", border: "1px solid #f59e0b44" }}><p className="text-sm text-amber-400">Save lesson content first.</p></div>}
+                    {!savedLessonId && <div className="rounded-xl p-3" style={{ background: "#f59e0b22", border: "1px solid #f59e0b44" }}>
+                      <p className="text-sm text-amber-400">Save lesson content first.</p>
+                    </div>}
                     
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div><label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Time Limit (min)</label><input type="number" value={quizForm.timeLimit} min={5} onChange={e => setQuizForm(p => ({ ...p, timeLimit: Number(e.target.value) }))} className="w-full px-4 py-2.5 text-sm rounded-xl bg-gray-800/50 text-white border border-gray-700 focus:ring-2 focus:ring-indigo-500" /></div>
                       <div><label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Passing Score (%)</label><input type="number" value={quizForm.passingScore} min={0} max={100} onChange={e => setQuizForm(p => ({ ...p, passingScore: Number(e.target.value) }))} className="w-full px-4 py-2.5 text-sm rounded-xl bg-gray-800/50 text-white border border-gray-700" /></div>
                       <div><label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Max Attempts</label><input type="number" value={quizForm.maxAttempts} min={1} max={5} onChange={e => setQuizForm(p => ({ ...p, maxAttempts: Number(e.target.value) }))} className="w-full px-4 py-2.5 text-sm rounded-xl bg-gray-800/50 text-white border border-gray-700" /></div>
@@ -804,7 +1141,7 @@ const LessonEditor = () => {
                       <>
                         <div className="rounded-xl p-4 space-y-3" style={{ background: "#a855f722", border: "1px solid #a855f744" }}>
                           <p className="text-sm font-bold text-purple-400">🤖 AI Question Generator</p>
-                          <div className="grid grid-cols-3 gap-2">
+                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                             <input value={aiTopic} onChange={e => setAiTopic(e.target.value)} placeholder="Topic" className="px-3 py-2 text-sm rounded-xl bg-gray-800/50 text-white border border-gray-700 focus:ring-2 focus:ring-purple-500" />
                             <select value={aiDiff} onChange={e => setAiDiff(e.target.value)} className="px-3 py-2 text-sm rounded-xl bg-gray-800/50 text-white border border-gray-700 focus:ring-2 focus:ring-purple-500"><option value="easy">Easy</option><option value="medium">Medium</option><option value="hard">Hard</option></select>
                             <input type="number" value={aiCount} min={1} max={15} onChange={e => setAiCount(Number(e.target.value))} className="px-3 py-2 text-sm rounded-xl bg-gray-800/50 text-white border border-gray-700 focus:ring-2 focus:ring-purple-500" />
@@ -818,8 +1155,8 @@ const LessonEditor = () => {
                           <div className="space-y-2">
                             <p className="text-sm font-semibold text-gray-400">{questions.length} Questions</p>
                             {questions.map((q, i) => (
-                              <div key={q._id} className="p-3 rounded-xl flex justify-between items-start" style={{ background: "#1e293b", border: "1px solid #334155" }}>
-                                <div><p className="text-sm font-medium text-white">{i+1}. {q.questionText}</p><p className="text-xs text-emerald-400 mt-1">✓ {q.correctAnswer}</p></div>
+                              <div key={q._id} className="p-3 rounded-xl flex flex-col sm:flex-row justify-between items-start gap-2 sm:items-center" style={{ background: "#1e293b", border: "1px solid #334155" }}>
+                                <div className="flex-1"><p className="text-sm font-medium text-white">{i+1}. {q.questionText}</p><p className="text-xs text-emerald-400 mt-1">✓ {q.correctAnswer}</p></div>
                                 <button onClick={() => deleteQuestion(q._id)} className="text-gray-500 hover:text-red-400"><span className="material-symbols-outlined text-sm">delete</span></button>
                               </div>
                             ))}
@@ -829,7 +1166,7 @@ const LessonEditor = () => {
                         <div className="rounded-xl p-4 space-y-3" style={{ background: "#1e293b", border: "1px solid #334155" }}>
                           <p className="text-sm font-semibold text-gray-300">Add Question Manually</p>
                           <textarea value={newQ.questionText} onChange={e => setNewQ(p => ({ ...p, questionText: e.target.value }))} placeholder="Question text..." rows={4} className="w-full px-4 py-3 text-sm rounded-xl bg-gray-800/50 text-white border border-gray-700 focus:ring-2 focus:ring-indigo-500 resize-y" />
-                          <div className="grid grid-cols-2 gap-3">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                             <select value={newQ.questionType} onChange={e => setNewQ(p => ({ ...p, questionType: e.target.value, correctAnswer: "" }))} className="w-full px-3 py-2 text-sm rounded-xl bg-gray-800/50 text-white border border-gray-700"><option value="mcq">Multiple Choice</option><option value="true_false">True/False</option><option value="short_answer">Short Answer</option></select>
                             <input type="number" value={newQ.points} min={1} onChange={e => setNewQ(p => ({ ...p, points: Number(e.target.value) }))} className="w-full px-3 py-2 text-sm rounded-xl bg-gray-800/50 text-white border border-gray-700" />
                           </div>
@@ -845,24 +1182,31 @@ const LessonEditor = () => {
 
                 {/* LAB TAB */}
                 {tab === "lab" && (
-                  <div className="space-y-5 max-w-4xl">
+                  <div className="space-y-5 max-w-4xl mx-auto">
                     {!lesson.requiresLab && (
                       <div className="rounded-xl p-3 flex items-center gap-2" style={{ background: "#f59e0b22", border: "1px solid #f59e0b44" }}>
                         <span className="material-symbols-outlined text-sm text-amber-400">warning</span>
                         <p className="text-sm text-amber-400">Lab requirement is <strong>disabled</strong> in Settings. Enable "Requires Lab" in the Settings tab to make it visible and required.</p>
                       </div>
                     )}
-                    {!savedLessonId && <div className="rounded-xl p-3" style={{ background: "#f59e0b22", border: "1px solid #f59e0b44" }}><p className="text-sm text-amber-400">Save lesson first.</p></div>}
+                    {!savedLessonId && <div className="rounded-xl p-3" style={{ background: "#f59e0b22", border: "1px solid #f59e0b44" }}>
+                      <p className="text-sm text-amber-400">Save lesson first.</p>
+                    </div>}
                     
                     {savedLessonId && (
-                      <div className="flex justify-end"><button onClick={() => setShowAIGenerator(true)} className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold text-white transition-all hover:scale-105" style={{ background: "linear-gradient(135deg, #a855f7, #d946ef)" }}><span className="material-symbols-outlined">auto_awesome</span>AI Generate Lab</button></div>
+                      <div className="flex justify-end">
+                        <button onClick={() => setShowAIGenerator(true)} className="flex items-center gap-2 px-3 sm:px-4 py-2 rounded-xl text-sm font-bold text-white transition-all hover:scale-105" style={{ background: "linear-gradient(135deg, #a855f7, #d946ef)" }}>
+                          <span className="material-symbols-outlined text-base sm:text-base">auto_awesome</span>
+                          <span className="hidden sm:inline">AI Generate Lab</span>
+                        </button>
+                      </div>
                     )}
                     
                     <div><label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Lab Title *</label><input value={labForm.title} onChange={e => setLabForm(p => ({ ...p, title: e.target.value }))} placeholder="e.g. Python Variables Lab" className="w-full px-4 py-2.5 text-sm rounded-xl bg-gray-800/50 text-white border border-gray-700 focus:ring-2 focus:ring-indigo-500" /></div>
                     
                     <div><label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Description</label><textarea value={labForm.description} onChange={e => setLabForm(p => ({ ...p, description: e.target.value }))} placeholder="Brief description of the lab" rows={3} className="w-full px-4 py-2.5 text-sm rounded-xl bg-gray-800/50 text-white border border-gray-700 focus:ring-2 focus:ring-indigo-500 resize-y" /></div>
 
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div><label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Lab Type</label><select value={labForm.labType} onChange={e => setLabForm(p => ({ ...p, labType: e.target.value }))} className="w-full px-4 py-2.5 text-sm rounded-xl bg-gray-800/50 text-white border border-gray-700"><option value="programming">Programming Lab</option><option value="theory">Theory Lab</option></select></div>
                       <div><label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Difficulty</label><select value={labForm.difficulty} onChange={e => setLabForm(p => ({ ...p, difficulty: e.target.value }))} className="w-full px-4 py-2.5 text-sm rounded-xl bg-gray-800/50 text-white border border-gray-700"><option value="easy">Easy</option><option value="medium">Medium</option><option value="hard">Hard</option></select></div>
                     </div>
@@ -873,17 +1217,17 @@ const LessonEditor = () => {
 
                     {labForm.labType === "programming" && (
                       <>
-                        <div><label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Language</label><select value={labForm.language} onChange={e => setLabForm(p => ({ ...p, language: e.target.value }))} className="w-40 px-4 py-2.5 text-sm rounded-xl bg-gray-800/50 text-white border border-gray-700"><option value="python">Python</option><option value="javascript">JavaScript</option><option value="java">Java</option><option value="cpp">C++</option></select></div>
+                        <div><label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Language</label><select value={labForm.language} onChange={e => setLabForm(p => ({ ...p, language: e.target.value }))} className="w-full sm:w-40 px-4 py-2.5 text-sm rounded-xl bg-gray-800/50 text-white border border-gray-700"><option value="python">Python</option><option value="javascript">JavaScript</option><option value="java">Java</option><option value="cpp">C++</option></select></div>
                         <div><label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Starter Code</label><textarea value={labForm.starterCode} onChange={e => setLabForm(p => ({ ...p, starterCode: e.target.value }))} rows={8} placeholder="def solve():\n    pass" className="w-full px-4 py-4 text-sm font-mono rounded-xl bg-gray-900 text-gray-100 border border-gray-700 focus:ring-2 focus:ring-indigo-500 resize-y min-h-[150px]" /></div>
                       </>
                     )}
 
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div><label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Total Marks</label><input type="number" value={labForm.totalMarks} min={1} onChange={e => setLabForm(p => ({ ...p, totalMarks: Number(e.target.value) }))} className="w-full px-4 py-2.5 text-sm rounded-xl bg-gray-800/50 text-white border border-gray-700" /></div>
                       <div><label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Due Date</label><input type="date" value={labForm.dueDate} onChange={e => setLabForm(p => ({ ...p, dueDate: e.target.value }))} className="w-full px-4 py-2.5 text-sm rounded-xl bg-gray-800/50 text-white border border-gray-700" /></div>
                     </div>
                     
-                    <div className="flex gap-3">
+                    <div className="flex flex-col sm:flex-row gap-3">
                       <button onClick={saveLab} disabled={saving || !savedLessonId} className="flex-1 py-3 rounded-xl text-sm font-bold text-white transition-all hover:scale-105 disabled:opacity-50" style={{ background: "linear-gradient(135deg, #6366f1, #818cf8)" }}>{lab ? "Update Lab" : "Create Lab"}</button>
                       {lab && <button onClick={deleteLab} disabled={saving} className="px-4 py-3 rounded-xl text-sm font-bold text-white transition-all hover:scale-105" style={{ background: "linear-gradient(135deg, #ef4444, #dc2626)" }}>Delete</button>}
                     </div>
@@ -892,8 +1236,8 @@ const LessonEditor = () => {
 
                 {/* SETTINGS TAB */}
                 {tab === "settings" && (
-                  <div className="space-y-5 max-w-4xl">
-                    <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-5 max-w-4xl mx-auto">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div><label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Duration</label><select value={lesson.duration} onChange={e => setLesson(p => ({ ...p, duration: e.target.value }))} className="w-full px-4 py-2.5 text-sm rounded-xl bg-gray-800/50 text-white border border-gray-700"><option>15 min</option><option>30 min</option><option>45 min</option><option>60 min</option><option>90 min</option><option>120 min</option></select></div>
                       <div><label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Points</label><input type="number" value={lesson.points} min={0} onChange={e => setLesson(p => ({ ...p, points: Number(e.target.value) }))} className="w-full px-4 py-2.5 text-sm rounded-xl bg-gray-800/50 text-white border border-gray-700" /></div>
                     </div>
@@ -914,7 +1258,7 @@ const LessonEditor = () => {
         </div>
       </div>
 
-      {/* AI Lab Generator Modal */}
+      {/* AI Lab Generator Modal - Responsive */}
       {showAIGenerator && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={() => setShowAIGenerator(false)}>
           <div className="rounded-2xl shadow-2xl w-full max-w-md overflow-hidden" style={{ background: colors.card, border: `1px solid ${colors.border}` }} onClick={(e) => e.stopPropagation()}>
@@ -928,7 +1272,7 @@ const LessonEditor = () => {
                 <div><label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Difficulty</label><select value={aiLabDifficulty} onChange={(e) => setAiLabDifficulty(e.target.value)} className="w-full px-4 py-2.5 text-sm rounded-xl bg-gray-800/50 text-white border border-gray-700"><option value="easy">Easy</option><option value="medium">Medium</option><option value="hard">Hard</option></select></div>
                 <div><label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Lab Type</label><select value={aiLabType} onChange={(e) => setAiLabType(e.target.value)} className="w-full px-4 py-2.5 text-sm rounded-xl bg-gray-800/50 text-white border border-gray-700"><option value="programming">Programming</option><option value="theory">Theory</option></select></div>
               </div>
-              <div className="flex gap-3 pt-2">
+              <div className="flex flex-col sm:flex-row gap-3 pt-2">
                 <button onClick={() => setShowAIGenerator(false)} className="flex-1 py-2.5 rounded-xl text-sm font-medium transition-all hover:scale-105" style={{ background: "#1e293b", color: "#94a3b8" }}>Cancel</button>
                 <button onClick={handleAIGenerateLab} disabled={isGeneratingLab || !aiLabTopic.trim()} className="flex-1 py-2.5 rounded-xl text-sm font-bold text-white transition-all hover:scale-105 disabled:opacity-50 flex items-center justify-center gap-2" style={{ background: "linear-gradient(135deg, #a855f7, #d946ef)" }}>
                   {isGeneratingLab ? <><Spinner />Generating...</> : "Generate Lab"}

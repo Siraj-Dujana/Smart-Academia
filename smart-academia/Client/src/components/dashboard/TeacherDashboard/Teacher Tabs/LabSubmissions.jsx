@@ -2,6 +2,77 @@ import React, { useState, useEffect } from "react";
 
 const API = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
+// ── Section Header ────────────────────────────────────────────
+const SectionHeader = ({ icon, title, color = "#6366f1" }) => (
+  <div className="flex items-center gap-3 mb-4">
+    <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: `${color}22`, border: `1px solid ${color}44` }}>
+      <span className="material-symbols-outlined text-sm" style={{ color }}>{icon}</span>
+    </div>
+    <h3 className="text-xs font-bold text-white tracking-wide uppercase">{title}</h3>
+    <div className="flex-1 h-px" style={{ background: `linear-gradient(90deg, ${color}44, transparent)` }} />
+  </div>
+);
+
+// ── Mini Bar ──────────────────────────────────────────────────
+const MiniBar = ({ value = 0, color = "#6366f1", height = 6 }) => (
+  <div className="w-full rounded-full overflow-hidden" style={{ height, background: "#1e293b" }}>
+    <div
+      className="h-full rounded-full"
+      style={{
+        width: `${Math.min(Math.max(value, 0), 100)}%`,
+        background: `linear-gradient(90deg, ${color}cc, ${color})`,
+        boxShadow: `0 0 8px ${color}66`,
+        transition: "width 1s cubic-bezier(.4,0,.2,1)"
+      }}
+    />
+  </div>
+);
+
+// ── Progress Stat Card ─────────────────────────────────────────
+const ProgressStatCard = ({ icon, label, value, total, color, isLoading }) => {
+  const percentage = total > 0 ? Math.round((value / total) * 100) : 0;
+  
+  return (
+    <div className="relative rounded-2xl overflow-hidden p-5 flex flex-col gap-3 group" style={{ background: "#0f1629", border: `1px solid ${color}33` }}>
+      <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500" style={{ background: `radial-gradient(ellipse at 50% 0%, ${color}15 0%, transparent 70%)` }} />
+      <div className="flex items-start justify-between">
+        <div className="w-11 h-11 rounded-xl flex items-center justify-center" style={{ background: `${color}22`, border: `1px solid ${color}44` }}>
+          <span className="material-symbols-outlined text-xl" style={{ color }}>{icon}</span>
+        </div>
+        <span className="text-xs font-bold" style={{ color }}>{percentage}%</span>
+      </div>
+      <div>
+        {isLoading ? (
+          <div className="h-9 w-16 bg-gray-800 rounded-lg animate-pulse" />
+        ) : (
+          <>
+            <p className="text-3xl font-black text-white tracking-tight" style={{ textShadow: `0 0 20px ${color}66` }}>
+              {value}
+            </p>
+            <p className="text-xs text-gray-500 mt-0.5">
+              <span className="text-gray-400">out of</span> {total}
+            </p>
+          </>
+        )}
+        <p className="text-xs text-gray-400 font-medium mt-1">{label}</p>
+      </div>
+      <MiniBar value={percentage} color={color} />
+    </div>
+  );
+};
+
+// ── Loading Spinner ───────────────────────────────────────────
+const LoadingSpinner = ({ size = "md" }) => {
+  const dimensions = size === "sm" ? "w-10 h-10" : size === "lg" ? "w-16 h-16" : "w-12 h-12";
+  return (
+    <div className={`relative ${dimensions} mx-auto`}>
+      <div className="absolute inset-0 rounded-full border-4 border-indigo-900" />
+      <div className="absolute inset-0 rounded-full border-4 border-transparent border-t-indigo-500 animate-spin" />
+      <div className="absolute inset-2 rounded-full border-4 border-transparent border-t-purple-500 animate-spin" style={{ animationDirection: "reverse", animationDuration: "0.8s" }} />
+    </div>
+  );
+};
+
 const LabSubmissions = () => {
   const token = localStorage.getItem("token");
 
@@ -18,11 +89,16 @@ const LabSubmissions = () => {
   const [gradeForm,         setGradeForm]         = useState({ marks: "", feedback: "" });
   const [selectedSub,       setSelectedSub]       = useState(null);
   const [showPDFModal,      setShowPDFModal]      = useState(false);
-  const [aiEvaluating,      setAiEvaluating]      = useState(null); // submissionId being AI-evaluated
-  const [aiEvaluation,      setAiEvaluation]      = useState(null); // { score, mistakes, feedback, suggestions }
-  const [filter,            setFilter]            = useState("all"); // all | submitted | graded
+  const [aiEvaluating,      setAiEvaluating]      = useState(null);
+  const [aiEvaluation,      setAiEvaluation]      = useState(null);
+  const [filter,            setFilter]            = useState("all");
   const [searchTerm,        setSearchTerm]        = useState("");
   const [grading, setGrading] = useState(false);
+
+  // Target values for progress bars
+  const MAX_TOTAL_TARGET = 100;
+  const MAX_GRADED_TARGET = 100;
+  const MAX_PENDING_TARGET = 100;
 
   useEffect(() => { fetchCourses(); }, []);
   useEffect(() => { if (selectedCourse) { setSelectedLesson(""); setSelectedLab(null); setSubmissions([]); fetchLessons(); } }, [selectedCourse]);
@@ -113,7 +189,6 @@ const LabSubmissions = () => {
       const data = await res.json();
       if (!res.ok) { setError(data.message); return; }
       setAiEvaluation({ submissionId, ...data.evaluation });
-      // Pre-fill the grade form with AI suggestion
       setGradeForm(p => ({
         marks:    data.evaluation.score ?? p.marks,
         feedback: data.evaluation.feedback ?? p.feedback,
@@ -125,9 +200,9 @@ const LabSubmissions = () => {
 
   const getStatusColor = (status) => {
     switch (status) {
-      case "graded":    return "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300";
-      case "submitted": return "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300";
-      default:          return "bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400";
+      case "graded":    return { bg: "#22c55e22", color: "#4ade80", border: "#22c55e44", label: "Graded" };
+      case "submitted": return { bg: "#f59e0b22", color: "#fbbf24", border: "#f59e0b44", label: "Pending" };
+      default:          return { bg: "#1e293b", color: "#94a3b8", border: "#334155", label: status };
     }
   };
 
@@ -152,14 +227,22 @@ const LabSubmissions = () => {
   };
 
   return (
-    <div className="space-y-5 sm:space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
-        <div>
-          <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 dark:text-white">
+    <div className="space-y-6" style={{ fontFamily: "'Lexend', sans-serif" }}>
+      
+      {/* Hero Section */}
+      <div className="relative rounded-2xl overflow-hidden p-6" style={{ background: "linear-gradient(135deg, #0c0e1e 0%, #131b35 50%, #0d1527 100%)", border: "1px solid #1e293b" }}>
+        <div className="absolute top-0 left-1/4 w-48 h-48 rounded-full blur-3xl opacity-20" style={{ background: "#6366f1" }} />
+        <div className="absolute bottom-0 right-1/4 w-48 h-48 rounded-full blur-3xl opacity-15" style={{ background: "#a855f7" }} />
+        
+        <div className="relative">
+          <div className="flex items-center gap-2 mb-1">
+            <span className="w-2 h-2 rounded-full animate-pulse" style={{ background: "#6366f1" }} />
+            <p className="text-xs font-semibold text-indigo-400 uppercase tracking-widest">Teacher · Lab Grading</p>
+          </div>
+          <h1 className="text-2xl sm:text-3xl font-black text-white leading-tight tracking-tight">
             Grade Lab Submissions
           </h1>
-          <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400 mt-1">
+          <p className="text-sm text-gray-400 mt-1">
             Review and grade student lab submissions
           </p>
         </div>
@@ -167,119 +250,164 @@ const LabSubmissions = () => {
 
       {/* Alerts */}
       {error && (
-        <div className="p-3 rounded-xl bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 flex items-center gap-2">
-          <span className="material-symbols-outlined text-red-500 text-sm">error</span>
-          <p className="text-sm text-red-600 dark:text-red-400 flex-1">{error}</p>
-          <button onClick={() => setError("")} className="text-red-400 hover:text-red-600">
+        <div className="rounded-xl p-3 flex items-center gap-2" style={{ background: "#ef444422", border: "1px solid #ef444444" }}>
+          <span className="material-symbols-outlined text-sm text-red-400">error</span>
+          <p className="text-sm text-red-400 flex-1">{error}</p>
+          <button onClick={() => setError("")} className="text-red-400 hover:text-red-300">
             <span className="material-symbols-outlined text-sm">close</span>
           </button>
         </div>
       )}
       {success && (
-        <div className="p-3 rounded-xl bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 flex items-center gap-2">
-          <span className="material-symbols-outlined text-green-500 text-sm">check_circle</span>
-          <p className="text-sm text-green-600 dark:text-green-400 flex-1">{success}</p>
+        <div className="rounded-xl p-3 flex items-center gap-2" style={{ background: "#22c55e22", border: "1px solid #22c55e44" }}>
+          <span className="material-symbols-outlined text-sm text-emerald-400">check_circle</span>
+          <p className="text-sm text-emerald-400 flex-1">{success}</p>
         </div>
       )}
 
-      {/* Selectors */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4">
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Course</label>
-          <select
-            value={selectedCourse}
-            onChange={e => setSelectedCourse(e.target.value)}
-            className="w-full px-3 py-2.5 text-sm border border-gray-300 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
-          >
-            {courses.length === 0
-              ? <option value="">No courses found</option>
-              : courses.map(c => <option key={c._id} value={c._id}>{c.title}</option>)
-            }
-          </select>
-        </div>
+      {/* Selectors Card */}
+      <div className="rounded-2xl p-5" style={{ background: "#0f1629", border: "1px solid #1e293b" }}>
+        <SectionHeader icon="filter_alt" title="Select Course & Lesson" color="#6366f1" />
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Course</label>
+            <select
+              value={selectedCourse}
+              onChange={e => setSelectedCourse(e.target.value)}
+              className="w-full px-4 py-2.5 text-sm rounded-xl bg-gray-800/50 text-white border border-gray-700 focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition-all cursor-pointer"
+            >
+              {courses.length === 0
+                ? <option value="">No courses found</option>
+                : courses.map(c => <option key={c._id} value={c._id}>{c.title}</option>)
+              }
+            </select>
+          </div>
 
-        <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4">
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Lesson</label>
-          <select
-            value={selectedLesson}
-            onChange={e => setSelectedLesson(e.target.value)}
-            disabled={lessons.length === 0}
-            className="w-full px-3 py-2.5 text-sm border border-gray-300 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
-          >
-            {lessons.length === 0
-              ? <option value="">No lessons available</option>
-              : lessons.map(l => <option key={l._id} value={l._id}>{l.order}. {l.title}</option>)
-            }
-          </select>
+          <div>
+            <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Lesson</label>
+            <select
+              value={selectedLesson}
+              onChange={e => setSelectedLesson(e.target.value)}
+              disabled={lessons.length === 0}
+              className="w-full px-4 py-2.5 text-sm rounded-xl bg-gray-800/50 text-white border border-gray-700 focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+            >
+              {lessons.length === 0
+                ? <option value="">No lessons available</option>
+                : lessons.map(l => <option key={l._id} value={l._id}>{l.order}. {l.title}</option>)
+              }
+            </select>
+          </div>
         </div>
       </div>
 
+      {/* Stats Cards */}
+      {selectedLab && submissions.length > 0 && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <ProgressStatCard 
+            icon="assignment" 
+            label="Total Submissions" 
+            value={stats.total} 
+            total={MAX_TOTAL_TARGET}
+            color="#6366f1"
+            isLoading={isLoading}
+          />
+          <ProgressStatCard 
+            icon="verified" 
+            label="Graded" 
+            value={stats.graded} 
+            total={MAX_GRADED_TARGET}
+            color="#22c55e"
+            isLoading={isLoading}
+          />
+          <ProgressStatCard 
+            icon="pending" 
+            label="Pending" 
+            value={stats.pending} 
+            total={MAX_PENDING_TARGET}
+            color="#f59e0b"
+            isLoading={isLoading}
+          />
+          <div className="relative rounded-2xl overflow-hidden p-5 flex flex-col gap-3 group" style={{ background: "#0f1629", border: "1px solid #a855f733" }}>
+            <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500" style={{ background: "radial-gradient(ellipse at 50% 0%, #a855f715 0%, transparent 70%)" }} />
+            <div className="flex items-start justify-between">
+              <div className="w-11 h-11 rounded-xl flex items-center justify-center" style={{ background: "#a855f722", border: "1px solid #a855f744" }}>
+                <span className="material-symbols-outlined text-xl" style={{ color: "#a855f7" }}>analytics</span>
+              </div>
+            </div>
+            <div>
+              {isLoading ? (
+                <div className="h-9 w-16 bg-gray-800 rounded-lg animate-pulse" />
+              ) : (
+                <>
+                  <p className="text-3xl font-black text-white tracking-tight" style={{ textShadow: "0 0 20px #a855f766" }}>
+                    {stats.avgScore !== null ? `${stats.avgScore}/${selectedLab.totalMarks}` : "—"}
+                  </p>
+                  <p className="text-xs text-gray-500 mt-0.5">
+                    <span className="text-gray-400">avg score</span>
+                  </p>
+                </>
+              )}
+              <p className="text-xs text-gray-400 font-medium mt-1">Average Score</p>
+            </div>
+            <MiniBar value={stats.avgScore !== null ? (stats.avgScore / (selectedLab.totalMarks || 100)) * 100 : 0} color="#a855f7" />
+          </div>
+        </div>
+      )}
+
       {/* No lab message */}
       {selectedLesson && !selectedLab && !isLoading && (
-        <div className="text-center py-12 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700">
-          <span className="material-symbols-outlined text-5xl text-gray-300 dark:text-gray-600">science</span>
-          <p className="text-gray-500 dark:text-gray-400 mt-2 text-sm">No lab created for this lesson yet.</p>
+        <div className="text-center py-16 rounded-2xl" style={{ background: "#0f1629", border: "1px solid #1e293b" }}>
+          <span className="material-symbols-outlined text-5xl text-gray-700 mb-3 block">science</span>
+          <p className="text-sm text-gray-500">No lab created for this lesson yet.</p>
         </div>
       )}
 
       {/* Submissions panel */}
       {selectedLab && (
-        <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
+        <div className="rounded-2xl overflow-hidden" style={{ background: "#0f1629", border: "1px solid #1e293b" }}>
           {/* Lab header */}
-          <div className="px-5 py-4 border-b border-gray-200 dark:border-gray-700 bg-gradient-to-r from-indigo-50 to-blue-50 dark:from-indigo-900/20 dark:to-blue-900/20">
+          <div className="px-5 py-4 border-b" style={{ background: "#0a0f1e", borderColor: "#1e293b" }}>
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
-                <h3 className="text-base font-bold text-gray-900 dark:text-white">{selectedLab.title}</h3>
+                <h3 className="text-base font-bold text-white">{selectedLab.title}</h3>
                 <p className="text-xs text-gray-500 mt-0.5">
                   {selectedLab.labType} · {selectedLab.difficulty} · {selectedLab.totalMarks} pts
                 </p>
               </div>
-              {/* Stats row */}
-              {submissions.length > 0 && (
-                <div className="flex flex-wrap gap-3">
-                  {[
-                    { label: "Total", value: stats.total, color: "text-gray-700 dark:text-gray-300" },
-                    { label: "Graded", value: stats.graded, color: "text-green-700 dark:text-green-300" },
-                    { label: "Pending", value: stats.pending, color: "text-amber-700 dark:text-amber-300" },
-                    ...(stats.avgScore !== null ? [{ label: "Avg score", value: `${stats.avgScore}/${selectedLab.totalMarks}`, color: "text-indigo-700 dark:text-indigo-300" }] : []),
-                  ].map(s => (
-                    <div key={s.label} className="text-center">
-                      <p className={`text-lg font-bold ${s.color}`}>{s.value}</p>
-                      <p className="text-[10px] text-gray-500">{s.label}</p>
-                    </div>
-                  ))}
-                </div>
-              )}
             </div>
           </div>
 
           {/* Filters */}
           {submissions.length > 0 && (
-            <div className="px-5 py-3 border-b border-gray-200 dark:border-gray-700 flex flex-col sm:flex-row gap-3">
+            <div className="px-5 py-3 border-b flex flex-col sm:flex-row gap-3" style={{ borderColor: "#1e293b" }}>
               <div className="relative flex-1">
-                <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">search</span>
+                <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm">search</span>
                 <input
                   type="text"
                   placeholder="Search by student name or ID..."
                   value={searchTerm}
                   onChange={e => setSearchTerm(e.target.value)}
-                  className="w-full pl-9 pr-4 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full pl-9 pr-4 py-2 text-sm rounded-xl bg-gray-800/50 text-white border border-gray-700 focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition-all"
                 />
               </div>
               <div className="flex gap-1.5">
                 {[
-                  { key: "all",       label: "All",     count: stats.total   },
-                  { key: "submitted", label: "Pending", count: stats.pending },
-                  { key: "graded",    label: "Graded",  count: stats.graded  },
+                  { key: "all", label: "All", count: stats.total, color: "#6366f1" },
+                  { key: "submitted", label: "Pending", count: stats.pending, color: "#f59e0b" },
+                  { key: "graded", label: "Graded", count: stats.graded, color: "#22c55e" },
                 ].map(f => (
                   <button
                     key={f.key}
                     onClick={() => setFilter(f.key)}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all hover:scale-105 ${
                       filter === f.key
-                        ? "bg-blue-600 text-white"
-                        : "bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600"
+                        ? "text-white"
+                        : "text-gray-500"
                     }`}
+                    style={filter === f.key
+                      ? { background: `linear-gradient(135deg, ${f.color}, ${f.color}cc)` }
+                      : { background: "#1e293b", border: "1px solid #334155" }
+                    }
                   >
                     {f.label} ({f.count})
                   </button>
@@ -290,304 +418,282 @@ const LabSubmissions = () => {
 
           {/* Loading */}
           {isLoading ? (
-            <div className="text-center py-12">
-              <svg className="animate-spin h-8 w-8 text-blue-600 mx-auto" viewBox="0 0 24 24" fill="none">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
-              </svg>
-              <p className="text-gray-500 mt-2 text-sm">Loading submissions...</p>
+            <div className="text-center py-16">
+              <LoadingSpinner />
+              <p className="text-gray-500 mt-3 text-sm">Loading submissions...</p>
             </div>
           ) : filteredSubmissions.length === 0 ? (
-            <div className="text-center py-12">
-              <span className="material-symbols-outlined text-5xl text-gray-300 dark:text-gray-600">inbox</span>
-              <p className="text-gray-500 dark:text-gray-400 mt-2 text-sm">
+            <div className="text-center py-16">
+              <span className="material-symbols-outlined text-5xl text-gray-700 mb-3 block">inbox</span>
+              <p className="text-sm text-gray-500">
                 {submissions.length === 0 ? "No submissions yet" : "No submissions match your filter"}
               </p>
             </div>
           ) : (
-            <div className="divide-y divide-gray-200 dark:divide-gray-700 max-h-[700px] overflow-y-auto">
-              {filteredSubmissions.map(sub => (
-                <div key={sub._id} className="p-4 sm:p-5 hover:bg-gray-50 dark:hover:bg-gray-700/20 transition-colors">
-                  <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
-                    {/* Student info */}
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-3 mb-3">
-                        <div className="w-10 h-10 rounded-full bg-gradient-to-r from-indigo-500 to-purple-500 flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
-                          {sub.student?.fullName?.charAt(0).toUpperCase() || "?"}
-                        </div>
-                        <div className="min-w-0">
-                          <p className="font-semibold text-gray-900 dark:text-white text-sm sm:text-base truncate">
-                            {sub.student?.fullName || "Unknown Student"}
-                          </p>
-                          <div className="flex flex-wrap items-center gap-2 mt-0.5">
-                            <p className="text-xs text-gray-500">ID: {sub.student?.studentId || "N/A"}</p>
-                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium ${getStatusColor(sub.status)}`}>
-                              {sub.status}
-                            </span>
-                            {sub.marks !== null && sub.marks !== undefined && (
-                              <span className="text-xs font-bold text-indigo-600 dark:text-indigo-400">
-                                {sub.marks} / {selectedLab.totalMarks} pts
+            <div className="divide-y max-h-[700px] overflow-y-auto" style={{ borderColor: "#1e293b" }}>
+              {filteredSubmissions.map(sub => {
+                const statusStyle = getStatusColor(sub.status);
+                return (
+                  <div key={sub._id} className="p-5 hover:bg-white/5 transition-colors">
+                    <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
+                      {/* Student info */}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-3 mb-3">
+                          <div className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0" style={{ background: "linear-gradient(135deg, #6366f1, #818cf8)", color: "white" }}>
+                            {sub.student?.fullName?.charAt(0).toUpperCase() || "?"}
+                          </div>
+                          <div className="min-w-0">
+                            <p className="font-semibold text-white text-sm truncate">
+                              {sub.student?.fullName || "Unknown Student"}
+                            </p>
+                            <div className="flex flex-wrap items-center gap-2 mt-0.5">
+                              <p className="text-xs text-gray-500">ID: {sub.student?.studentId || "N/A"}</p>
+                              <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold`}
+                                style={{ background: statusStyle.bg, border: `1px solid ${statusStyle.border}`, color: statusStyle.color }}>
+                                {statusStyle.label}
                               </span>
+                              {sub.marks !== null && sub.marks !== undefined && (
+                                <span className="text-xs font-bold text-indigo-400">
+                                  {sub.marks} / {selectedLab.totalMarks} pts
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-[10px] text-gray-500 mt-0.5">
+                              Submitted {new Date(sub.submittedAt).toLocaleString()}
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* Submitted answer preview */}
+                        {sub.answer && (
+                          <div className="mt-2 p-3 rounded-xl max-h-32 overflow-y-auto" style={{ background: selectedLab.labType === "programming" ? "#1e293b" : "#0a0f1e", border: "1px solid #334155" }}>
+                            <p className={`text-xs ${selectedLab.labType === "programming" ? "font-mono text-green-400" : "text-gray-400"} whitespace-pre-wrap`}>
+                              {sub.answer.length > 500 ? sub.answer.slice(0, 500) + "..." : sub.answer}
+                            </p>
+                          </div>
+                        )}
+
+                        {/* PDF link */}
+                        {sub.pdfUrl && (
+                          <button
+                            onClick={() => { setSelectedSub(sub); setShowPDFModal(true); }}
+                            className="flex items-center gap-2 mt-2 px-3 py-1.5 rounded-lg text-xs font-medium transition-all hover:scale-105"
+                            style={{ background: "#6366f122", color: "#818cf8", border: "1px solid #6366f144" }}
+                          >
+                            <span className="material-symbols-outlined text-sm">picture_as_pdf</span>
+                            View submitted PDF
+                          </button>
+                        )}
+
+                        {/* Existing feedback */}
+                        {sub.feedback && (
+                          <div className="mt-2 p-3 rounded-xl" style={{ background: "#3b82f622", border: "1px solid #3b82f644" }}>
+                            <p className="text-[10px] font-semibold text-blue-400 mb-0.5">Feedback</p>
+                            <p className="text-xs text-gray-300">{sub.feedback}</p>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Action buttons */}
+                      <div className="flex items-center gap-2 flex-shrink-0 self-start">
+                        <button
+                          onClick={() => handleAiEvaluate(sub._id)}
+                          disabled={!!aiEvaluating}
+                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all hover:scale-105 disabled:opacity-50"
+                          style={{ background: "#a855f722", color: "#c084fc", border: "1px solid #a855f744" }}
+                        >
+                          {aiEvaluating === sub._id ? (
+                            <><div className="relative w-3 h-3"><div className="absolute inset-0 rounded-full border-2 border-indigo-900" /><div className="absolute inset-0 rounded-full border-2 border-transparent border-t-white animate-spin" /></div>Evaluating...</>
+                          ) : (
+                            <><span className="material-symbols-outlined text-sm">auto_awesome</span>AI Evaluate</>
+                          )}
+                        </button>
+                        <button
+                          onClick={() => {
+                            setGradingId(sub._id);
+                            setAiEvaluation(null);
+                            setGradeForm({
+                              marks:    sub.marks ?? "",
+                              feedback: sub.feedback || "",
+                            });
+                          }}
+                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-white transition-all hover:scale-105"
+                          style={{ background: "linear-gradient(135deg, #6366f1, #818cf8)" }}
+                        >
+                          <span className="material-symbols-outlined text-sm">grade</span>
+                          {sub.marks !== null && sub.marks !== undefined ? "Re-grade" : "Grade"}
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* AI Evaluation panel */}
+                    {aiEvaluation?.submissionId === sub._id && (
+                      <div className="mt-3 p-4 rounded-xl" style={{ background: "#a855f722", border: "1px solid #a855f744" }}>
+                        <div className="flex items-center gap-2 mb-3">
+                          <span className="material-symbols-outlined text-purple-400 text-sm">auto_awesome</span>
+                          <p className="text-sm font-bold text-purple-400">AI Evaluation</p>
+                          <span className="ml-auto text-sm font-bold text-purple-400">
+                            Suggested: {aiEvaluation.score} / {selectedLab.totalMarks} pts
+                          </span>
+                        </div>
+                        {aiEvaluation.feedback && (
+                          <p className="text-xs text-gray-300 mb-2 leading-relaxed">{aiEvaluation.feedback}</p>
+                        )}
+                        {aiEvaluation.mistakes?.length > 0 && (
+                          <div className="mb-2">
+                            <p className="text-[10px] font-semibold text-red-400 mb-1">Issues found</p>
+                            {aiEvaluation.mistakes.map((m, i) => (
+                              <p key={i} className="text-[10px] text-gray-400">• {m}</p>
+                            ))}
+                          </div>
+                        )}
+                        {aiEvaluation.suggestions?.length > 0 && (
+                          <div>
+                            <p className="text-[10px] font-semibold text-emerald-400 mb-1">Suggestions</p>
+                            {aiEvaluation.suggestions.map((s, i) => (
+                              <p key={i} className="text-[10px] text-gray-400">• {s}</p>
+                            ))}
+                          </div>
+                        )}
+                        <p className="text-[10px] text-gray-500 mt-2 italic">
+                          AI evaluation is pre-filled below — review and adjust before saving.
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Grade form */}
+                    {gradingId === sub._id && (
+                      <div className="mt-3 p-4 rounded-xl space-y-3" style={{ background: "#6366f122", border: "1px solid #6366f144" }}>
+                        <p className="text-sm font-bold text-indigo-400">Grade Submission</p>
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
+                              Marks (max {selectedLab.totalMarks})
+                            </label>
+                            <input
+                              type="number"
+                              value={gradeForm.marks}
+                              onChange={e => setGradeForm(p => ({ ...p, marks: e.target.value }))}
+                              min={0}
+                              max={selectedLab.totalMarks}
+                              className="w-full px-4 py-2 text-sm rounded-xl bg-gray-800/50 text-white border border-gray-700 focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition-all"
+                            />
+                          </div>
+                          <div className="flex items-end">
+                            {gradeForm.marks !== "" && (
+                              <p className={`text-2xl font-bold ${(Number(gradeForm.marks) / selectedLab.totalMarks) >= 0.5 ? "text-emerald-400" : "text-amber-400"}`}>
+                                {Math.round((Number(gradeForm.marks) / selectedLab.totalMarks) * 100)}%
+                              </p>
                             )}
                           </div>
-                          <p className="text-[10px] text-gray-400 mt-0.5">
-                            Submitted {new Date(sub.submittedAt).toLocaleString()}
-                          </p>
                         </div>
-                      </div>
-
-                      {/* Submitted answer preview */}
-                      {sub.answer && (
-                        <div className={`mt-2 p-3 rounded-lg border border-gray-200 dark:border-gray-600 max-h-32 overflow-y-auto ${
-                          selectedLab.labType === "programming"
-                            ? "bg-gray-900"
-                            : "bg-gray-50 dark:bg-gray-700/30"
-                        }`}>
-                          <p className={`text-xs ${
-                            selectedLab.labType === "programming"
-                              ? "font-mono text-green-400"
-                              : "text-gray-700 dark:text-gray-300"
-                          } whitespace-pre-wrap`}>
-                            {sub.answer.length > 500 ? sub.answer.slice(0, 500) + "..." : sub.answer}
-                          </p>
-                        </div>
-                      )}
-
-                      {/* PDF link */}
-                      {sub.pdfUrl && (
-                        <button
-                          onClick={() => { setSelectedSub(sub); setShowPDFModal(true); }}
-                          className="flex items-center gap-2 mt-2 text-sm text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 bg-indigo-50 dark:bg-indigo-900/20 px-3 py-1.5 rounded-lg border border-indigo-200 dark:border-indigo-700 transition-colors"
-                        >
-                          <span className="material-symbols-outlined text-sm">picture_as_pdf</span>
-                          View submitted PDF
-                        </button>
-                      )}
-
-                      {/* Existing feedback */}
-                      {sub.feedback && (
-                        <div className="mt-2 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-700">
-                          <p className="text-[10px] font-semibold text-blue-600 mb-0.5">Feedback</p>
-                          <p className="text-xs text-gray-700 dark:text-gray-300">{sub.feedback}</p>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Action buttons */}
-                    <div className="flex items-center gap-2 flex-shrink-0 self-start">
-                      <button
-                        onClick={() => handleAiEvaluate(sub._id)}
-                        disabled={!!aiEvaluating}
-                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-purple-600 bg-purple-50 dark:bg-purple-900/20 dark:text-purple-300 hover:bg-purple-100 dark:hover:bg-purple-900/30 border border-purple-200 dark:border-purple-700 transition-colors disabled:opacity-50"
-                        title="Let AI evaluate this submission"
-                      >
-                        {aiEvaluating === sub._id ? (
-                          <><svg className="animate-spin h-3 w-3" viewBox="0 0 24 24" fill="none"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/></svg>Evaluating...</>
-                        ) : (
-                          <><span className="material-symbols-outlined text-sm">auto_awesome</span>AI Evaluate</>
-                        )}
-                      </button>
-                      <button
-                        onClick={() => {
-                          setGradingId(sub._id);
-                          setAiEvaluation(null);
-                          setGradeForm({
-                            marks:    sub.marks ?? "",
-                            feedback: sub.feedback || "",
-                          });
-                        }}
-                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-white bg-indigo-600 hover:bg-indigo-700 transition-colors"
-                      >
-                        <span className="material-symbols-outlined text-sm">grade</span>
-                        {sub.marks !== null && sub.marks !== undefined ? "Re-grade" : "Grade"}
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* AI Evaluation panel */}
-                  {aiEvaluation?.submissionId === sub._id && (
-                    <div className="mt-3 p-4 bg-purple-50 dark:bg-purple-900/10 rounded-xl border border-purple-200 dark:border-purple-700">
-                      <div className="flex items-center gap-2 mb-3">
-                        <span className="material-symbols-outlined text-purple-600 text-sm">auto_awesome</span>
-                        <p className="text-sm font-semibold text-purple-700 dark:text-purple-300">AI Evaluation</p>
-                        <span className="ml-auto text-sm font-bold text-purple-700 dark:text-purple-300">
-                          Suggested: {aiEvaluation.score} / {selectedLab.totalMarks} pts
-                        </span>
-                      </div>
-                      {aiEvaluation.feedback && (
-                        <p className="text-xs text-gray-700 dark:text-gray-300 mb-2 leading-relaxed">{aiEvaluation.feedback}</p>
-                      )}
-                      {aiEvaluation.mistakes?.length > 0 && (
-                        <div className="mb-2">
-                          <p className="text-[10px] font-semibold text-red-600 mb-1">Issues found</p>
-                          {aiEvaluation.mistakes.map((m, i) => (
-                            <p key={i} className="text-[10px] text-gray-600 dark:text-gray-400">• {m}</p>
-                          ))}
-                        </div>
-                      )}
-                      {aiEvaluation.suggestions?.length > 0 && (
                         <div>
-                          <p className="text-[10px] font-semibold text-green-600 mb-1">Suggestions</p>
-                          {aiEvaluation.suggestions.map((s, i) => (
-                            <p key={i} className="text-[10px] text-gray-600 dark:text-gray-400">• {s}</p>
-                          ))}
-                        </div>
-                      )}
-                      <p className="text-[10px] text-gray-400 mt-2 italic">
-                        AI evaluation is pre-filled in the grade form below — review and adjust before saving.
-                      </p>
-                    </div>
-                  )}
-
-                  {/* Grade form */}
-                  {gradingId === sub._id && (
-                    <div className="mt-3 p-4 bg-indigo-50 dark:bg-indigo-900/20 rounded-xl border border-indigo-200 dark:border-indigo-700 space-y-3">
-                      <p className="text-sm font-semibold text-gray-900 dark:text-white">Grade Submission</p>
-                      <div className="grid grid-cols-2 gap-3">
-                        <div>
-                          <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
-                            Marks (max {selectedLab.totalMarks})
-                          </label>
-                          <input
-                            type="number"
-                            value={gradeForm.marks}
-                            onChange={e => setGradeForm(p => ({ ...p, marks: e.target.value }))}
-                            min={0}
-                            max={selectedLab.totalMarks}
-                            className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500"
+                          <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Feedback</label>
+                          <textarea
+                            value={gradeForm.feedback}
+                            onChange={e => setGradeForm(p => ({ ...p, feedback: e.target.value }))}
+                            rows={3}
+                            placeholder="Provide constructive feedback for the student..."
+                            className="w-full px-4 py-2 text-sm rounded-xl bg-gray-800/50 text-white border border-gray-700 focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none resize-none transition-all"
                           />
                         </div>
-                        <div className="flex items-end">
-                          {gradeForm.marks !== "" && (
-                            <p className={`text-2xl font-bold ${
-                              (Number(gradeForm.marks) / selectedLab.totalMarks) >= 0.5
-                                ? "text-green-600"
-                                : "text-amber-600"
-                            }`}>
-                              {Math.round((Number(gradeForm.marks) / selectedLab.totalMarks) * 100)}%
-                            </p>
-                          )}
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => handleGrade(sub._id)}
+                            disabled={grading}
+                            className="flex-1 py-2 rounded-xl text-sm font-bold text-white transition-all hover:scale-105 disabled:opacity-50 flex items-center justify-center gap-2"
+                            style={{ background: "linear-gradient(135deg, #22c55e, #16a34a)" }}
+                          >
+                            {grading ? (
+                              <><div className="relative w-4 h-4"><div className="absolute inset-0 rounded-full border-2 border-green-900" /><div className="absolute inset-0 rounded-full border-2 border-transparent border-t-white animate-spin" /></div>Saving...</>
+                            ) : (
+                              <><span className="material-symbols-outlined text-sm">save</span>Save Grade</>
+                            )}
+                          </button>
+                          <button
+                            onClick={() => { setGradingId(null); setAiEvaluation(null); }}
+                            className="px-4 py-2 rounded-xl text-sm font-medium transition-all hover:scale-105"
+                            style={{ background: "#1e293b", color: "#94a3b8" }}
+                          >
+                            Cancel
+                          </button>
                         </div>
                       </div>
-                      <div>
-                        <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Feedback</label>
-                        <textarea
-                          value={gradeForm.feedback}
-                          onChange={e => setGradeForm(p => ({ ...p, feedback: e.target.value }))}
-                          rows={3}
-                          placeholder="Provide constructive feedback for the student..."
-                          className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 resize-none"
-                        />
-                      </div>
-                      <div className="flex gap-2">
-                        <button
-  onClick={() => handleGrade(sub._id)}
-  disabled={grading}
-  className="flex-1 py-2 rounded-lg text-sm font-medium text-white bg-green-600 hover:bg-green-700 disabled:opacity-50 transition-colors flex items-center justify-center gap-2"
->
-  {grading ? (
-    <>
-      <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none">
-        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
-        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
-      </svg>
-      Saving...
-    </>
-  ) : (
-    <>
-      <span className="material-symbols-outlined text-sm">save</span>
-      Save Grade
-    </>
-  )}
-</button>
-                        <button
-                          onClick={() => { setGradingId(null); setAiEvaluation(null); }}
-                          className="px-4 py-2 rounded-lg text-sm text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-                        >
-                          Cancel
-                        </button>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              ))}
+                    )}
+                  </div>
+                );
+              })}
             </div>
           )}
         </div>
       )}
 
-{/* PDF Viewer Modal */}
-
-{/* PDF Viewer Modal */}
-{showPDFModal && selectedSub && (
-  <div
-    className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-2"
-    onClick={() => setShowPDFModal(false)}
-  >
-    <div
-      className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full flex flex-col overflow-hidden"
-      style={{ maxWidth: "95vw", height: "95vh" }}
-      onClick={e => e.stopPropagation()}
-    >
-      {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700 bg-gradient-to-r from-indigo-600 to-purple-600 flex-shrink-0">
-        <div>
-          <h3 className="text-base sm:text-lg font-bold text-white">Student Submission</h3>
-          <p className="text-indigo-100 text-xs sm:text-sm">
-            {selectedSub.student?.fullName} · {selectedSub.student?.studentId}
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <a
-            href={selectedSub.pdfUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            download
-            className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium text-indigo-600 bg-white hover:bg-indigo-50 transition-colors"
-          >
-            <span className="material-symbols-outlined text-sm">download</span>
-            Download
-          </a>
-          <button onClick={() => setShowPDFModal(false)} className="text-white hover:bg-white/20 rounded-lg p-1.5 transition-colors">
-            <span className="material-symbols-outlined">close</span>
-          </button>
-        </div>
-      </div>
-
-      {/* PDF Viewer */}
-      <div className="flex-1 bg-gray-100 dark:bg-gray-900" style={{ minHeight: 0 }}>
-        {selectedSub.pdfUrl ? (
-          <iframe
-            src={selectedSub.pdfUrl}
-            className="w-full h-full"
-            style={{ border: "none" }}
-            title="PDF Viewer"
-          />
-        ) : (
-          <div className="flex flex-col items-center justify-center h-full">
-            <span className="material-symbols-outlined text-5xl text-gray-400 mb-4">broken_image</span>
-            <p className="text-gray-500 text-sm">PDF file not available</p>
-          </div>
-        )}
-      </div>
-
-      {/* Bottom bar */}
-      <div className="flex items-center justify-between px-4 py-3 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 flex-shrink-0">
-        <p className="text-xs text-gray-500">
-          Submitted: {new Date(selectedSub.submittedAt).toLocaleString()}
+      {/* Info Banner */}
+      <div className="rounded-xl p-3 flex items-start gap-2" style={{ background: "#0a0f1e", border: "1px solid #1e293b" }}>
+        <span className="material-symbols-outlined text-xs text-indigo-400 mt-0.5">info</span>
+        <p className="text-[10px] text-gray-500 leading-relaxed">
+          <strong className="text-indigo-400">Lab grading:</strong> Review student submissions, provide feedback, and assign marks. Use AI evaluation for suggested scores and feedback, then review and adjust before saving.
         </p>
-        <button
-          onClick={() => setShowPDFModal(false)}
-          className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-medium transition-colors"
-        >
-          Close
-        </button>
       </div>
-    </div>
-  </div>
-)}
 
+      {/* PDF Viewer Modal */}
+      {showPDFModal && selectedSub && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={() => setShowPDFModal(false)}>
+          <div className="rounded-2xl w-full flex flex-col overflow-hidden" style={{ maxWidth: "95vw", height: "90vh", background: "#0f1629", border: "1px solid #1e293b" }} onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between px-5 py-3 flex-shrink-0" style={{ background: "linear-gradient(135deg, #6366f1, #818cf8)" }}>
+              <div>
+                <p className="text-sm font-bold text-white">Student Submission</p>
+                <p className="text-xs text-indigo-200">{selectedSub.student?.fullName} · {selectedSub.student?.studentId}</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <a
+                  href={selectedSub.pdfUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  download
+                  className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-bold text-indigo-600 bg-white hover:bg-indigo-50 transition-colors"
+                >
+                  <span className="material-symbols-outlined text-sm">download</span>
+                  Download
+                </a>
+                <button onClick={() => setShowPDFModal(false)} className="text-white hover:bg-white/20 rounded-lg p-1.5">
+                  <span className="material-symbols-outlined">close</span>
+                </button>
+              </div>
+            </div>
+            <div className="flex-1" style={{ minHeight: 0, background: "#1a1a2e" }}>
+              {selectedSub.pdfUrl ? (
+                <iframe src={selectedSub.pdfUrl} className="w-full h-full" style={{ border: "none" }} title="PDF Viewer" />
+              ) : (
+                <div className="flex flex-col items-center justify-center h-full">
+                  <span className="material-symbols-outlined text-5xl text-gray-600 mb-3">broken_image</span>
+                  <p className="text-gray-500 text-sm">PDF file not available</p>
+                </div>
+              )}
+            </div>
+            <div className="flex items-center justify-between px-5 py-3 border-t flex-shrink-0" style={{ borderColor: "#1e293b" }}>
+              <p className="text-xs text-gray-500">
+                Submitted: {new Date(selectedSub.submittedAt).toLocaleString()}
+              </p>
+              <button
+                onClick={() => setShowPDFModal(false)}
+                className="px-4 py-2 rounded-xl text-sm font-bold text-white transition-all hover:scale-105"
+                style={{ background: "linear-gradient(135deg, #6366f1, #818cf8)" }}
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
+      <style>{`
+        @keyframes fadeIn {
+          from { opacity: 0; transform: translateY(8px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fadeIn { animation: fadeIn 0.3s ease-out; }
+      `}</style>
     </div>
   );
 };
