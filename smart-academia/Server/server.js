@@ -3,6 +3,7 @@ const mongoose = require("mongoose");
 const cors     = require("cors");
 const dotenv   = require("dotenv");
 const { getStudentAnalytics } = require("./controllers/analyticsController");
+const teacherRoutes = require('./routes/Teacherprogress');
 
 dotenv.config();
 
@@ -39,6 +40,9 @@ app.use("/api/assistant/quizzes",    require("./routes/quizRoutes"));
 
 // Progress
 app.use("/api/analytics", require("./routes/analytics"));
+
+// Teacher student progress and course stats routes
+app.use("/api/teacher", teacherRoutes);
 
 app.get("/", (req, res) => res.json({ message: "SmartAcademia API running" }));
 

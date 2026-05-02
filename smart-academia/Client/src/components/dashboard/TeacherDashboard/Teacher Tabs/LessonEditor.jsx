@@ -1140,7 +1140,7 @@ const LessonEditor = () => {
                     {quiz && (
                       <>
                         <div className="rounded-xl p-4 space-y-3" style={{ background: "#a855f722", border: "1px solid #a855f744" }}>
-                          <p className="text-sm font-bold text-purple-400">🤖 AI Question Generator</p>
+                          <p className="text-sm font-bold text-purple-400">AI Question Generator</p>
                           <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                             <input value={aiTopic} onChange={e => setAiTopic(e.target.value)} placeholder="Topic" className="px-3 py-2 text-sm rounded-xl bg-gray-800/50 text-white border border-gray-700 focus:ring-2 focus:ring-purple-500" />
                             <select value={aiDiff} onChange={e => setAiDiff(e.target.value)} className="px-3 py-2 text-sm rounded-xl bg-gray-800/50 text-white border border-gray-700 focus:ring-2 focus:ring-purple-500"><option value="easy">Easy</option><option value="medium">Medium</option><option value="hard">Hard</option></select>
@@ -1260,27 +1260,97 @@ const LessonEditor = () => {
 
       {/* AI Lab Generator Modal - Responsive */}
       {showAIGenerator && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={() => setShowAIGenerator(false)}>
-          <div className="rounded-2xl shadow-2xl w-full max-w-md overflow-hidden" style={{ background: colors.card, border: `1px solid ${colors.border}` }} onClick={(e) => e.stopPropagation()}>
-            <div className="p-5" style={{ background: "linear-gradient(135deg, #a855f7, #d946ef)" }}>
-              <h2 className="text-xl font-bold text-white">🤖 AI Lab Generator</h2>
-              <p className="text-purple-200 text-sm">Generate a complete lab with AI</p>
-            </div>
-            <div className="p-6 space-y-4">
-              <div><label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Topic *</label><input type="text" value={aiLabTopic} onChange={(e) => setAiLabTopic(e.target.value)} placeholder="e.g., Python Lists" className="w-full px-4 py-2.5 text-sm rounded-xl bg-gray-800/50 text-white border border-gray-700 focus:ring-2 focus:ring-purple-500" /></div>
-              <div className="grid grid-cols-2 gap-4">
-                <div><label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Difficulty</label><select value={aiLabDifficulty} onChange={(e) => setAiLabDifficulty(e.target.value)} className="w-full px-4 py-2.5 text-sm rounded-xl bg-gray-800/50 text-white border border-gray-700"><option value="easy">Easy</option><option value="medium">Medium</option><option value="hard">Hard</option></select></div>
-                <div><label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Lab Type</label><select value={aiLabType} onChange={(e) => setAiLabType(e.target.value)} className="w-full px-4 py-2.5 text-sm rounded-xl bg-gray-800/50 text-white border border-gray-700"><option value="programming">Programming</option><option value="theory">Theory</option></select></div>
-              </div>
-              <div className="flex flex-col sm:flex-row gap-3 pt-2">
-                <button onClick={() => setShowAIGenerator(false)} className="flex-1 py-2.5 rounded-xl text-sm font-medium transition-all hover:scale-105" style={{ background: "#1e293b", color: "#94a3b8" }}>Cancel</button>
-                <button onClick={handleAIGenerateLab} disabled={isGeneratingLab || !aiLabTopic.trim()} className="flex-1 py-2.5 rounded-xl text-sm font-bold text-white transition-all hover:scale-105 disabled:opacity-50 flex items-center justify-center gap-2" style={{ background: "linear-gradient(135deg, #a855f7, #d946ef)" }}>
-                  {isGeneratingLab ? <><Spinner />Generating...</> : "Generate Lab"}
-                </button>
-              </div>
-            </div>
-          </div>
+        
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "rgba(0,0,0,0.85)", backdropFilter: "blur(6px)" }} onClick={() => setShowAIGenerator(false)}>
+  <div className="rounded-2xl w-full max-w-md overflow-hidden" style={{ background: colors.card, border: `1px solid ${colors.border}` }} onClick={(e) => e.stopPropagation()}>
+    
+    {/* Header */}
+    <div className="p-5" style={{ background: "linear-gradient(135deg, #a855f7, #d946ef)" }}>
+      <div className="flex items-center gap-3">
+        <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: "rgba(255,255,255,0.2)" }}>
+          <span className="material-symbols-outlined text-white text-xl">auto_awesome</span>
         </div>
+        <div>
+          <h2 className="text-xl font-bold text-white">AI Lab Generator</h2>
+          <p className="text-purple-200 text-sm">Generate a complete lab with AI</p>
+        </div>
+      </div>
+      <button onClick={() => setShowAIGenerator(false)} className="absolute top-5 right-5 p-1.5 rounded-lg text-white hover:bg-white/20 transition-all">
+        <span className="material-symbols-outlined">close</span>
+      </button>
+    </div>
+
+    {/* Content */}
+    <div className="p-6 space-y-4">
+      {/* Topic */}
+      <div>
+        <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Topic *</label>
+        <input 
+          type="text" 
+          value={aiLabTopic} 
+          onChange={(e) => setAiLabTopic(e.target.value)} 
+          placeholder="e.g., Python Lists" 
+          className="w-full px-4 py-2.5 text-sm rounded-xl bg-gray-800/50 text-white border border-gray-700 focus:ring-2 focus:ring-purple-500 focus:outline-none" 
+        />
+      </div>
+
+      {/* Difficulty & Type */}
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Difficulty</label>
+          <select 
+            value={aiLabDifficulty} 
+            onChange={(e) => setAiLabDifficulty(e.target.value)} 
+            className="w-full px-4 py-2.5 text-sm rounded-xl bg-gray-800/50 text-white border border-gray-700 focus:ring-2 focus:ring-purple-500 focus:outline-none"
+          >
+            <option value="easy">Easy</option>
+            <option value="medium">Medium</option>
+            <option value="hard">Hard</option>
+          </select>
+        </div>
+        <div>
+          <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Lab Type</label>
+          <select 
+            value={aiLabType} 
+            onChange={(e) => setAiLabType(e.target.value)} 
+            className="w-full px-4 py-2.5 text-sm rounded-xl bg-gray-800/50 text-white border border-gray-700 focus:ring-2 focus:ring-purple-500 focus:outline-none"
+          >
+            <option value="programming">Programming</option>
+            <option value="theory">Theory</option>
+          </select>
+        </div>
+      </div>
+
+      {/* Buttons - FIXED CENTERING */}
+      <div className="flex flex-col sm:flex-row gap-3 pt-2">
+        <button 
+          onClick={() => setShowAIGenerator(false)} 
+          className="flex-1 py-2.5 rounded-xl text-sm font-medium transition-all hover:scale-105 flex items-center justify-center"
+          style={{ background: "#1e293b", color: "#94a3b8" }}
+        >
+          Cancel
+        </button>
+        <button 
+          onClick={handleAIGenerateLab} 
+          disabled={isGeneratingLab || !aiLabTopic.trim()} 
+          className="flex-1 py-2.5 rounded-xl text-sm font-bold text-white transition-all hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+          style={{ background: "linear-gradient(135deg, #a855f7, #d946ef)" }}
+        >
+          {isGeneratingLab ? (
+            <>
+              <Spinner />
+              <span>Generating...</span>
+            </>
+          ) : (
+            "Generate Lab"
+          )}
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+
       )}
     </div>
   );

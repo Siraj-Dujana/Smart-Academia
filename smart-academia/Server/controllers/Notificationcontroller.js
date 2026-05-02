@@ -3,9 +3,6 @@ const Notification = require("../models/Notification");
 const Enrollment   = require("../models/Enrollment");
 const { sendEmail } = require("../utils/sendEmail");
 
-// ─────────────────────────────────────────────────────────────
-// EMAIL TEMPLATE
-// ─────────────────────────────────────────────────────────────
 const notificationEmailTemplate = ({ recipientName, title, message, link, type }) => {
   const iconMap = {
     quiz_deadline:        "quiz",
@@ -40,7 +37,7 @@ const notificationEmailTemplate = ({ recipientName, title, message, link, type }
         <p style="color: rgba(255,255,255,0.8); margin: 8px 0 0 0; font-size: 14px;">Your Learning Platform</p>
       </div>
       <div style="background: white; padding: 32px 24px; border-radius: 0 0 16px 16px; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
-        <div style="text-align: center; font-size: 48px; margin-bottom: 16px;">${icon}</div>
+        <div style="text-align: center; font-size: 48px; margin-bottom: 16px;">${iconName}</div>
         <h2 style="color: #1e293b; font-size: 20px; margin: 0 0 12px 0; text-align: center;">${title}</h2>
         ${recipientName ? `<p style="color: #64748b; margin: 0 0 16px 0;">Hi <strong>${recipientName}</strong>,</p>` : ""}
         <p style="color: #334155; line-height: 1.6; margin: 0 0 24px 0;">${message}</p>
@@ -324,24 +321,29 @@ const clearAllRead = async (req, res) => {
 };
 module.exports.clearAllRead = clearAllRead;
 
-// POST /api/notifications/announcement  (teacher only)
+// POST /api/notifications/announcement (teacher only)
 const sendAnnouncementNotification = async (req, res) => {
   try {
-    const { courseId, title, content, priority = "normal" } = req.body;
+    const { courseId, title, content, priority = "normal", sendEmail = false } = req.body;
+    
     if (!courseId || !title || !content)
       return res.status(400).json({ message: "courseId, title and content are required" });
+
+    // FIX: Add the full URL with domain
+    const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
+    const link = `${frontendUrl}/student/dashboard?tab=dashboard`;
 
     const notifications = await broadcastToCourse(courseId, {
       sender: req.user._id,
       type: "announcement",
       title,
       message: content,
-      link: `/student/dashboard?tab=dashboard`,
+      link: link,  // ← Use the full URL
       priority,
-      sendEmailNotif: false,
-    });
+      sendEmailNotif: sendEmail,
+    }, true);
 
-    res.status(201).json({ message: `Announcement sent to ${notifications.length} students` });
+    res.status(201).json({ message: `Announcement sent to ${notifications.length} students${sendEmail ? ' (emails sent)' : ''}` });
   } catch (err) {
     console.error("sendAnnouncementNotification error:", err.message);
     res.status(500).json({ message: "Server error" });
@@ -349,35 +351,39 @@ const sendAnnouncementNotification = async (req, res) => {
 };
 module.exports.sendAnnouncementNotification = sendAnnouncementNotification;
 
-// POST /api/notifications/deadline  (teacher only)
+// POST /api/notifications/deadline (teacher only)
 const sendDeadlineNotification = async (req, res) => {
   try {
-    const { courseId, type, title, message, dueDate, link } = req.body;
+    const { courseId, type, title, message, dueDate, link: customLink, sendEmail = false } = req.body;
     if (!courseId || !title || !message)
       return res.status(400).json({ message: "courseId, title and message are required" });
 
     const validTypes = ["quiz_deadline", "lab_deadline", "assignment_deadline"];
-    const notifType  = validTypes.includes(type) ? type : "quiz_deadline";
+    const notifType = validTypes.includes(type) ? type : "quiz_deadline";
+
+    // FIX: Add the full URL with domain
+    const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
+    const link = customLink || `${frontendUrl}/student/dashboard?tab=dashboard`;
 
     const notifications = await broadcastToCourse(courseId, {
       sender: req.user._id,
       type: notifType,
       title,
       message,
-      link: link || `/student/dashboard?tab=dashboard`,
+      link: link,  // ← Use the full URL
       priority: "high",
       dueDate: dueDate ? new Date(dueDate) : null,
-      sendEmailNotif: false,
-    });
+      sendEmailNotif: sendEmail,
+    }, true);
 
-    res.status(201).json({ message: `Deadline notification sent to ${notifications.length} students` });
+    res.status(201).json({ message: `Deadline notification sent to ${notifications.length} students${sendEmail ? ' (emails sent)' : ''}` });
   } catch (err) {
     console.error("sendDeadlineNotification error:", err.message);
     res.status(500).json({ message: "Server error" });
   }
 };
-module.exports.sendDeadlineNotification = sendDeadlineNotification;
 
+module.exports.sendDeadlineNotification = sendDeadlineNotification;
 // ═════════════════════════════════════════════════════════════
 // ADMIN ENDPOINTS
 // ═════════════════════════════════════════════════════════════

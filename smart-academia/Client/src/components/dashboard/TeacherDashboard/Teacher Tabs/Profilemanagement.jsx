@@ -2,6 +2,28 @@ import React, { useState, useEffect, useRef } from "react";
 
 const API = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
+// ── Color palette (matches TeacherAnalytics) ─────────────────
+const C = {
+  bg: "#070d1a", surface: "#0f1629", surface2: "#0a0f1e",
+  border: "#1e293b", border2: "#334155",
+  accent: "#6366f1", accent2: "#a855f7", amber: "#f59e0b",
+  green: "#22c55e", red: "#ef4444", cyan: "#14b8a6",
+  text: "#f1f5f9", textDim: "#94a3b8", textFaint: "#64748b",
+  indigoLight: "#818cf8", greenLight: "#4ade80",
+  amberLight: "#fbbf24", redLight: "#f87171", purpleLight: "#c084fc",
+};
+
+// ── Section Header ────────────────────────────────────────────
+const SectionHeader = ({ icon, title, color = C.accent }) => (
+  <div className="flex items-center gap-3 mb-4">
+    <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: `${color}22`, border: `1px solid ${color}44` }}>
+      <span className="material-symbols-outlined text-sm" style={{ color }}>{icon}</span>
+    </div>
+    <h3 className="text-xs font-bold text-white tracking-wide uppercase">{title}</h3>
+    <div className="flex-1 h-px" style={{ background: `linear-gradient(90deg, ${color}44, transparent)` }} />
+  </div>
+);
+
 const apiFetch = async (url, options = {}) => {
   const token = localStorage.getItem("token");
   const res = await fetch(`${API}${url}`, {
@@ -92,11 +114,12 @@ const Avatar = ({ user, size = 96, onUpload, onDelete, uploading }) => {
 const Toast = ({ msg, type }) => {
   if (!msg) return null;
   const colors = {
-    success: "bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800 text-green-700 dark:text-green-300",
-    error: "bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800 text-red-700 dark:text-red-300",
+    success: { bg: `${C.green}22`, border: C.green, text: C.greenLight },
+    error: { bg: `${C.red}22`, border: C.red, text: C.redLight },
   };
+  const c = colors[type] || colors.success;
   return (
-    <div className={`fixed top-5 right-5 z-50 px-5 py-3 rounded-xl border shadow-lg flex items-center gap-2 text-sm font-medium animate-slideIn max-w-sm ${colors[type] || colors.success}`}>
+    <div className="fixed top-5 right-5 z-50 px-5 py-3 rounded-xl border shadow-lg flex items-center gap-2 text-sm font-medium animate-slideIn max-w-sm" style={{ background: c.bg, borderColor: c.border, color: c.text }}>
       <span className="material-symbols-outlined text-lg">
         {type === "success" ? "check_circle" : "error"}
       </span>
@@ -108,18 +131,29 @@ const Toast = ({ msg, type }) => {
 // ─── Role Badge ──────────────────────────────────────────────────
 const RoleBadge = ({ role }) => {
   const config = {
-    student: { label: "Student", className: "bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300", icon: "school" },
-    teacher: { label: "Teacher", className: "bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300", icon: "cast_for_education" },
-    admin: { label: "Admin", className: "bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300", icon: "admin_panel_settings" },
+    student: { label: "Student", color: C.cyan, bg: `${C.cyan}22`, icon: "school" },
+    teacher: { label: "Teacher", color: C.greenLight, bg: `${C.green}22`, icon: "cast_for_education" },
+    admin: { label: "Admin", color: C.amberLight, bg: `${C.amber}22`, icon: "admin_panel_settings" },
   };
   const c = config[role] || config.student;
   return (
-    <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold ${c.className}`}>
+    <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold" style={{ background: c.bg, color: c.color, border: `1px solid ${c.color}44` }}>
       <span className="material-symbols-outlined text-sm">{c.icon}</span>
       {c.label}
     </span>
   );
 };
+
+// ─── Loading Spinner ───────────────────────────────────────────
+const LoadingSpinner = () => (
+  <div className="flex items-center justify-center py-12">
+    <div className="relative w-12 h-12">
+      <div className="absolute inset-0 rounded-full border-4" style={{ borderColor: C.border }} />
+      <div className="absolute inset-0 rounded-full border-4 border-transparent border-t-indigo-500 animate-spin" />
+      <div className="absolute inset-2 rounded-full border-4 border-transparent border-t-purple-500 animate-spin" style={{ animationDirection: "reverse", animationDuration: "0.8s" }} />
+    </div>
+  </div>
+);
 
 // ─── Main Profile Page ───────────────────────────────────────────
 const ProfileManagement = () => {
@@ -283,30 +317,29 @@ const ProfileManagement = () => {
   const semesters = ["1st", "2nd", "3rd", "4th", "5th", "6th", "7th", "8th"];
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <svg className="animate-spin h-8 w-8 text-indigo-600" viewBox="0 0 24 24" fill="none">
-          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
-        </svg>
-      </div>
-    );
+    return <LoadingSpinner />;
   }
 
   return (
-    <div className="max-w-3xl mx-auto px-4 sm:px-6 pb-10">
+    <div className="space-y-5 pb-10" style={{ fontFamily: "'Lexend', sans-serif", background: C.bg, minHeight: "100vh" }}>
       <Toast msg={toast.msg} type={toast.type} />
 
-      {/* Header */}
-      <div className="mb-6">
-        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">My Profile</h1>
-        <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-          Manage your personal information and account settings
-        </p>
+      {/* Hero Section */}
+      <div className="relative rounded-2xl overflow-hidden p-6 sm:p-8" style={{ background: "linear-gradient(135deg, #0c0e1e 0%, #131b35 50%, #0d1527 100%)", border: `1px solid ${C.border}` }}>
+        <div className="absolute top-0 left-1/4 w-48 h-48 rounded-full blur-3xl opacity-20" style={{ background: C.accent }} />
+        <div className="absolute bottom-0 right-1/4 w-48 h-48 rounded-full blur-3xl opacity-15" style={{ background: C.accent2 }} />
+        <div className="relative">
+          <div className="flex items-center gap-2 mb-1">
+            <span className="w-2 h-2 rounded-full animate-pulse" style={{ background: C.accent }} />
+            <p className="text-xs font-semibold text-indigo-400 uppercase tracking-widest">SmartAcademia · My Profile</p>
+          </div>
+          <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight">My Profile</h1>
+          <p className="text-sm text-gray-400 mt-1">Manage your personal information and account settings</p>
+        </div>
       </div>
 
       {/* Profile Card */}
-      <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-6 sm:p-8 mb-6">
+      <div className="rounded-2xl p-6 sm:p-8" style={{ background: C.surface, border: `1px solid ${C.border}` }}>
         <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6">
           <Avatar
             user={user}
@@ -317,24 +350,24 @@ const ProfileManagement = () => {
           />
           <div className="flex-1 text-center sm:text-left">
             <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-2">
-              <h2 className="text-xl font-bold text-gray-900 dark:text-white">{user?.fullName}</h2>
+              <h2 className="text-xl font-bold text-white">{user?.fullName}</h2>
               <RoleBadge role={user?.role} />
             </div>
-            <p className="text-gray-600 dark:text-gray-400 text-sm mb-1">{user?.email}</p>
+            <p className="text-sm" style={{ color: C.textDim }}>{user?.email}</p>
             {user?.department && (
-              <p className="text-gray-500 dark:text-gray-500 text-xs flex items-center justify-center sm:justify-start gap-1">
+              <p className="text-xs mt-1 flex items-center justify-center sm:justify-start gap-1" style={{ color: C.textFaint }}>
                 <span className="material-symbols-outlined text-sm">corporate_fare</span>
                 {user.department}
                 {user.semester && ` • ${user.semester} Semester`}
               </p>
             )}
           </div>
-          <p className="text-xs text-gray-400">Click photo to change</p>
+          <p className="text-xs" style={{ color: C.textFaint }}>Click photo to change</p>
         </div>
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 bg-white dark:bg-gray-800 rounded-xl p-1 border border-gray-200 dark:border-gray-700 mb-6">
+      <div className="flex gap-1 rounded-xl p-1" style={{ background: C.surface, border: `1px solid ${C.border}` }}>
         {[
           { id: "profile", label: "Personal Info", icon: "person" },
           { id: "security", label: "Security", icon: "lock" },
@@ -343,11 +376,14 @@ const ProfileManagement = () => {
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
-            className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all ${
+            className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-bold transition-all ${
               activeTab === tab.id
-                ? "bg-indigo-600 text-white shadow-md"
-                : "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700"
+                ? "text-white shadow-md"
+                : "hover:bg-white/5"
             }`}
+            style={activeTab === tab.id
+              ? { background: `linear-gradient(135deg, ${C.accent}, ${C.accent2})` }
+              : { color: C.textDim }}
           >
             <span className="material-symbols-outlined text-base">{tab.icon}</span>
             <span className="hidden sm:inline">{tab.label}</span>
@@ -358,66 +394,58 @@ const ProfileManagement = () => {
       {/* Tab: Personal Info */}
       {activeTab === "profile" && (
         <form onSubmit={handleSaveProfile}>
-          <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 overflow-hidden mb-6">
-            <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
-              <h3 className="font-semibold text-gray-900 dark:text-white flex items-center gap-2">
-                <span className="material-symbols-outlined text-indigo-600">person</span>
-                Personal Information
-              </h3>
+          <div className="rounded-2xl overflow-hidden" style={{ background: C.surface, border: `1px solid ${C.border}` }}>
+            <div className="px-6 py-4 border-b" style={{ background: C.surface2, borderColor: C.border }}>
+              <SectionHeader icon="person" title="Personal Information" color={C.accent} />
             </div>
             <div className="p-6 space-y-5">
               {/* Full Name */}
               <div>
-                <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1.5">
-                  Full Name
-                </label>
+                <label className="block text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: C.textFaint }}>Full Name</label>
                 <div className="relative">
-                  <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-lg">
-                    badge
-                  </span>
+                  <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-lg" style={{ color: C.textFaint }}>badge</span>
                   <input
                     type="text"
                     value={form.fullName}
                     onChange={(e) => setForm((p) => ({ ...p, fullName: e.target.value }))}
-                    className="w-full pl-10 pr-4 py-2.5 text-sm border border-gray-300 dark:border-gray-600 rounded-xl bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition-all"
+                    className="w-full pl-10 pr-4 py-2.5 text-sm rounded-xl outline-none transition-all"
+                    style={{ background: C.surface2, color: C.text, border: `1px solid ${C.border}` }}
+                    onFocus={e => e.target.style.borderColor = C.accent}
+                    onBlur={e => e.target.style.borderColor = C.border}
                   />
                 </div>
               </div>
 
               {/* Email */}
               <div>
-                <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1.5">
-                  Email Address
-                </label>
+                <label className="block text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: C.textFaint }}>Email Address</label>
                 <div className="relative">
-                  <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-lg">
-                    email
-                  </span>
+                  <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-lg" style={{ color: C.textFaint }}>email</span>
                   <input
                     type="email"
                     value={user?.email || ""}
                     disabled
-                    className="w-full pl-10 pr-4 py-2.5 text-sm border border-gray-300 dark:border-gray-600 rounded-xl bg-gray-100 dark:bg-gray-600 text-gray-500 dark:text-gray-400 cursor-not-allowed outline-none"
+                    className="w-full pl-10 pr-4 py-2.5 text-sm rounded-xl cursor-not-allowed"
+                    style={{ background: C.surface2, color: C.textFaint, border: `1px solid ${C.border}`, opacity: 0.7 }}
                   />
                 </div>
-                <p className="text-xs text-gray-500 mt-1">Email cannot be changed</p>
+                <p className="text-xs mt-1" style={{ color: C.textFaint }}>Email cannot be changed</p>
               </div>
 
               {/* Department */}
               <div>
-                <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1.5">
-                  Department
-                </label>
+                <label className="block text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: C.textFaint }}>Department</label>
                 <div className="relative">
-                  <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-lg">
-                    corporate_fare
-                  </span>
+                  <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-lg" style={{ color: C.textFaint }}>corporate_fare</span>
                   <input
                     type="text"
                     value={form.department}
                     onChange={(e) => setForm((p) => ({ ...p, department: e.target.value }))}
                     placeholder="e.g. Computer Science"
-                    className="w-full pl-10 pr-4 py-2.5 text-sm border border-gray-300 dark:border-gray-600 rounded-xl bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition-all"
+                    className="w-full pl-10 pr-4 py-2.5 text-sm rounded-xl outline-none transition-all"
+                    style={{ background: C.surface2, color: C.text, border: `1px solid ${C.border}` }}
+                    onFocus={e => e.target.style.borderColor = C.accent}
+                    onBlur={e => e.target.style.borderColor = C.border}
                   />
                 </div>
               </div>
@@ -425,17 +453,14 @@ const ProfileManagement = () => {
               {/* Student Fields */}
               {user?.role === "student" && (
                 <div>
-                  <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1.5">
-                    Current Semester
-                  </label>
+                  <label className="block text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: C.textFaint }}>Current Semester</label>
                   <div className="relative">
-                    <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-lg">
-                      calendar_today
-                    </span>
+                    <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-lg" style={{ color: C.textFaint }}>calendar_today</span>
                     <select
                       value={form.semester}
                       onChange={(e) => setForm((p) => ({ ...p, semester: e.target.value }))}
-                      className="w-full pl-10 pr-4 py-2.5 text-sm border border-gray-300 dark:border-gray-600 rounded-xl bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition-all appearance-none"
+                      className="w-full pl-10 pr-4 py-2.5 text-sm rounded-xl outline-none transition-all appearance-none"
+                      style={{ background: C.surface2, color: C.text, border: `1px solid ${C.border}` }}
                     >
                       <option value="">Select semester…</option>
                       {semesters.map((s) => (
@@ -450,36 +475,34 @@ const ProfileManagement = () => {
               {user?.role === "teacher" && (
                 <>
                   <div>
-                    <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1.5">
-                      Specialization
-                    </label>
+                    <label className="block text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: C.textFaint }}>Specialization</label>
                     <div className="relative">
-                      <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-lg">
-                        psychology
-                      </span>
+                      <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-lg" style={{ color: C.textFaint }}>psychology</span>
                       <input
                         type="text"
                         value={form.specialization}
                         onChange={(e) => setForm((p) => ({ ...p, specialization: e.target.value }))}
                         placeholder="e.g. Artificial Intelligence"
-                        className="w-full pl-10 pr-4 py-2.5 text-sm border border-gray-300 dark:border-gray-600 rounded-xl bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition-all"
+                        className="w-full pl-10 pr-4 py-2.5 text-sm rounded-xl outline-none transition-all"
+                        style={{ background: C.surface2, color: C.text, border: `1px solid ${C.border}` }}
+                        onFocus={e => e.target.style.borderColor = C.accent}
+                        onBlur={e => e.target.style.borderColor = C.border}
                       />
                     </div>
                   </div>
                   <div>
-                    <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1.5">
-                      Qualification
-                    </label>
+                    <label className="block text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: C.textFaint }}>Qualification</label>
                     <div className="relative">
-                      <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-lg">
-                        school
-                      </span>
+                      <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-lg" style={{ color: C.textFaint }}>school</span>
                       <input
                         type="text"
                         value={form.qualification}
                         onChange={(e) => setForm((p) => ({ ...p, qualification: e.target.value }))}
                         placeholder="e.g. PhD, M.Sc"
-                        className="w-full pl-10 pr-4 py-2.5 text-sm border border-gray-300 dark:border-gray-600 rounded-xl bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition-all"
+                        className="w-full pl-10 pr-4 py-2.5 text-sm rounded-xl outline-none transition-all"
+                        style={{ background: C.surface2, color: C.text, border: `1px solid ${C.border}` }}
+                        onFocus={e => e.target.style.borderColor = C.accent}
+                        onBlur={e => e.target.style.borderColor = C.border}
                       />
                     </div>
                   </div>
@@ -491,19 +514,20 @@ const ProfileManagement = () => {
           <button
             type="submit"
             disabled={savingProfile}
-            className="w-full py-3 rounded-xl bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800 text-white font-semibold disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg shadow-indigo-200 dark:shadow-indigo-900/30 flex items-center justify-center gap-2"
+            className="w-full mt-5 py-3 rounded-xl text-sm font-bold text-white transition-all hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            style={{ background: `linear-gradient(135deg, ${C.accent}, ${C.accent2})` }}
           >
             {savingProfile ? (
               <>
-                <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
-                </svg>
+                <div className="relative w-4 h-4">
+                  <div className="absolute inset-0 rounded-full border-2 border-white/30" />
+                  <div className="absolute inset-0 rounded-full border-2 border-transparent border-t-white animate-spin" />
+                </div>
                 Saving…
               </>
             ) : (
               <>
-                <span className="material-symbols-outlined text-lg">save</span>
+                <span className="material-symbols-outlined text-base">save</span>
                 Save Changes
               </>
             )}
@@ -514,12 +538,9 @@ const ProfileManagement = () => {
       {/* Tab: Security */}
       {activeTab === "security" && (
         <form onSubmit={handleChangePassword}>
-          <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 overflow-hidden mb-6">
-            <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
-              <h3 className="font-semibold text-gray-900 dark:text-white flex items-center gap-2">
-                <span className="material-symbols-outlined text-indigo-600">lock</span>
-                Change Password
-              </h3>
+          <div className="rounded-2xl overflow-hidden" style={{ background: C.surface, border: `1px solid ${C.border}` }}>
+            <div className="px-6 py-4 border-b" style={{ background: C.surface2, borderColor: C.border }}>
+              <SectionHeader icon="lock" title="Change Password" color={C.accent} />
             </div>
             <div className="p-6 space-y-5">
               {[
@@ -528,23 +549,23 @@ const ProfileManagement = () => {
                 { label: "Confirm New Password", key: "confirmPassword", icon: "check_circle", show: showPasswords.confirm },
               ].map((field) => (
                 <div key={field.key}>
-                  <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1.5">
-                    {field.label}
-                  </label>
+                  <label className="block text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: C.textFaint }}>{field.label}</label>
                   <div className="relative">
-                    <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-lg">
-                      {field.icon}
-                    </span>
+                    <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-lg" style={{ color: C.textFaint }}>{field.icon}</span>
                     <input
                       type={field.show ? "text" : "password"}
                       value={passwordForm[field.key]}
                       onChange={(e) => setPasswordForm((p) => ({ ...p, [field.key]: e.target.value }))}
-                      className="w-full pl-10 pr-12 py-2.5 text-sm border border-gray-300 dark:border-gray-600 rounded-xl bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition-all"
+                      className="w-full pl-10 pr-12 py-2.5 text-sm rounded-xl outline-none transition-all"
+                      style={{ background: C.surface2, color: C.text, border: `1px solid ${C.border}` }}
+                      onFocus={e => e.target.style.borderColor = C.accent}
+                      onBlur={e => e.target.style.borderColor = C.border}
                     />
                     <button
                       type="button"
-                      onClick={() => setShowPasswords((p) => ({ ...p, [field.key.split(/(?=[A-Z])/)[0].toLowerCase()]: !p[field.key.split(/(?=[A-Z])/)[0].toLowerCase()] }))}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                      onClick={() => setShowPasswords((p) => ({ ...p, [field.key.replace("Password", "")]: !p[field.key.replace("Password", "")] }))}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 transition-all hover:scale-105"
+                      style={{ color: C.textFaint }}
                     >
                       <span className="material-symbols-outlined text-lg">
                         {field.show ? "visibility_off" : "visibility"}
@@ -558,25 +579,21 @@ const ProfileManagement = () => {
 
           <button
             type="submit"
-            disabled={
-              savingPassword ||
-              !passwordForm.currentPassword ||
-              !passwordForm.newPassword ||
-              passwordForm.newPassword !== passwordForm.confirmPassword
-            }
-            className="w-full py-3 rounded-xl bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800 text-white font-semibold disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg shadow-indigo-200 dark:shadow-indigo-900/30 flex items-center justify-center gap-2"
+            disabled={savingPassword || !passwordForm.currentPassword || !passwordForm.newPassword || passwordForm.newPassword !== passwordForm.confirmPassword}
+            className="w-full mt-5 py-3 rounded-xl text-sm font-bold text-white transition-all hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            style={{ background: `linear-gradient(135deg, ${C.accent}, ${C.accent2})` }}
           >
             {savingPassword ? (
               <>
-                <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
-                </svg>
+                <div className="relative w-4 h-4">
+                  <div className="absolute inset-0 rounded-full border-2 border-white/30" />
+                  <div className="absolute inset-0 rounded-full border-2 border-transparent border-t-white animate-spin" />
+                </div>
                 Changing Password…
               </>
             ) : (
               <>
-                <span className="material-symbols-outlined text-lg">key</span>
+                <span className="material-symbols-outlined text-base">key</span>
                 Update Password
               </>
             )}
@@ -586,14 +603,11 @@ const ProfileManagement = () => {
 
       {/* Tab: Account Details */}
       {activeTab === "account" && (
-        <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 overflow-hidden">
-          <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
-            <h3 className="font-semibold text-gray-900 dark:text-white flex items-center gap-2">
-              <span className="material-symbols-outlined text-indigo-600">badge</span>
-              Account Details
-            </h3>
+        <div className="rounded-2xl overflow-hidden" style={{ background: C.surface, border: `1px solid ${C.border}` }}>
+          <div className="px-6 py-4 border-b" style={{ background: C.surface2, borderColor: C.border }}>
+            <SectionHeader icon="badge" title="Account Details" color={C.accent} />
           </div>
-          <div className="divide-y divide-gray-200 dark:divide-gray-700">
+          <div className="divide-y" style={{ borderColor: C.border }}>
             {[
               { label: "Account Type", value: user?.role, icon: "manage_accounts" },
               { label: "Full Name", value: user?.fullName, icon: "person" },
@@ -607,11 +621,13 @@ const ProfileManagement = () => {
               { label: "Email Verified", value: user?.isEmailVerified ? "Yes ✓" : "No", icon: user?.isEmailVerified ? "verified" : "cancel" },
               { label: "Member Since", value: user?.createdAt ? new Date(user.createdAt).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" }) : "—", icon: "event" },
             ].filter(Boolean).map((item, i) => (
-              <div key={i} className="flex items-center gap-4 px-6 py-4">
-                <span className="material-symbols-outlined text-indigo-600 text-lg">{item.icon}</span>
+              <div key={i} className="flex items-center gap-4 px-6 py-4 hover:bg-white/5 transition-colors">
+                <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: `${C.accent}22`, border: `1px solid ${C.accent}44` }}>
+                  <span className="material-symbols-outlined text-sm" style={{ color: C.accent }}>{item.icon}</span>
+                </div>
                 <div className="flex-1">
-                  <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">{item.label}</p>
-                  <p className="text-sm font-medium text-gray-900 dark:text-white capitalize">{item.value}</p>
+                  <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: C.textFaint }}>{item.label}</p>
+                  <p className="text-sm font-medium capitalize text-white">{item.value || "—"}</p>
                 </div>
               </div>
             ))}

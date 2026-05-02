@@ -266,7 +266,7 @@ const Dashboard = () => {
                       Labs
                     </button>
                     <button
-                      onClick={() => navigate(`/teacher/dashboard?tab=announcements`)}
+                      onClick={() => navigate(`/teacher/dashboard?tab=send-notifications`)}
                       className="flex-1 py-2 rounded-lg text-xs font-medium transition-all hover:scale-105 flex items-center justify-center gap-1"
                       style={{ background: "#f59e0b22", color: "#fbbf24", border: "1px solid #f59e0b44" }}
                     >
