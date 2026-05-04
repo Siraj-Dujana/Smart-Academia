@@ -28,21 +28,43 @@ const RingProgress = ({ value = 0, size = 80, stroke = 7, color = C.accent, trac
   );
 };
 
-// ── Quiz Card ───────────────────────────────────────────────
+// ── Quiz Card ── (FIXED VERSION)
 const QuizCard = ({ quiz, onStart, onViewResults }) => {
-  const sc = !quiz.canAttempt && quiz.attemptCount > 0 ? C.muted : quiz.passed ? C.green : quiz.attemptCount > 0 ? C.amber : C.accent;
-  const sl = quiz.passed ? "Passed" : !quiz.canAttempt ? "Max attempts" : quiz.attemptCount > 0 ? `Attempt ${quiz.attemptCount}/${quiz.maxAttempts}` : "New";
+  // Determine status color and label
+  let statusColor = C.accent;
+  let statusLabel = "New";
+  
+  if (quiz.passed) {
+    statusColor = C.green;
+    statusLabel = "Passed";
+  } else if (!quiz.canAttempt && quiz.attemptCount >= quiz.maxAttempts) {
+    statusColor = C.red;
+    statusLabel = "Exhausted";
+  } else if (quiz.attemptCount > 0) {
+    statusColor = C.amber;
+    statusLabel = `Attempt ${quiz.attemptCount}/${quiz.maxAttempts}`;
+  }
+
+  // Calculate progress percentage
+  const progressPercent = quiz.maxAttempts > 0 
+    ? (quiz.attemptCount / quiz.maxAttempts) * 100 
+    : 0;
 
   return (
-    <div className="rounded-2xl overflow-hidden transition-all duration-300 border group" style={{ background: C.card, borderColor: sc + "33" }}>
+    <div className="rounded-2xl overflow-hidden transition-all duration-300 border group" style={{ background: C.card, borderColor: statusColor + "33" }}>
       <div className="p-5">
         <div className="flex items-start justify-between gap-3 mb-4">
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-2">
-              <span className="material-symbols-outlined text-lg" style={{ color: sc }}>quiz</span>
-              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ background: sc + "18", color: sc, border: `1px solid ${sc}44` }}>{sl}</span>
+              <span className="material-symbols-outlined text-lg" style={{ color: statusColor }}>quiz</span>
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ background: statusColor + "18", color: statusColor, border: `1px solid ${statusColor}44` }}>
+                {statusLabel}
+              </span>
             </div>
             <h3 className="font-bold text-white text-base truncate">{quiz.title}</h3>
+            {quiz.description && (
+              <p className="text-xs text-gray-500 mt-1 line-clamp-1">{quiz.description}</p>
+            )}
           </div>
           {quiz.bestScore != null && (
             <div className="text-right flex-shrink-0">
@@ -51,22 +73,66 @@ const QuizCard = ({ quiz, onStart, onViewResults }) => {
             </div>
           )}
         </div>
+        
+        {/* Stats row */}
         <div className="grid grid-cols-2 gap-2 mb-4 text-xs">
-          {[{i:"quiz",t:`${quiz.totalQuestions} Qs`},{i:"schedule",t:`${quiz.timeLimit} min`},{i:"replay",t:`${quiz.attemptCount}/${quiz.maxAttempts}`},{i:"flag",t:`Pass: ${quiz.passingScore}%`}].map(s=>(
-            <div key={s.i} className="flex items-center gap-1.5" style={{color:C.textDim}}><span className="material-symbols-outlined text-sm">{s.i}</span>{s.t}</div>
-          ))}
+          <div className="flex items-center gap-1.5" style={{ color: C.textDim }}>
+            <span className="material-symbols-outlined text-sm">quiz</span>
+            {quiz.totalQuestions || 0} Questions
+          </div>
+          <div className="flex items-center gap-1.5" style={{ color: C.textDim }}>
+            <span className="material-symbols-outlined text-sm">schedule</span>
+            {quiz.timeLimit || 0} min
+          </div>
+          <div className="flex items-center gap-1.5" style={{ color: C.textDim }}>
+            <span className="material-symbols-outlined text-sm">replay</span>
+            {quiz.attemptCount}/{quiz.maxAttempts} attempts
+          </div>
+          <div className="flex items-center gap-1.5" style={{ color: C.textDim }}>
+            <span className="material-symbols-outlined text-sm">flag</span>
+            Pass: {quiz.passingScore || 0}%
+          </div>
         </div>
+
+        {/* Progress bar for attempts */}
+        {quiz.attemptCount > 0 && (
+          <div className="mb-4">
+            <div className="flex justify-between text-[10px] text-gray-500 mb-1">
+              <span>Attempts used</span>
+              <span>{quiz.attemptCount}/{quiz.maxAttempts}</span>
+            </div>
+            <div className="w-full rounded-full overflow-hidden" style={{ height: 4, background: C.border }}>
+              <div className="h-full rounded-full transition-all" style={{ width: `${progressPercent}%`, background: statusColor }} />
+            </div>
+          </div>
+        )}
+
+        {/* Action buttons */}
         <div className="flex gap-2 pt-3" style={{ borderTop: `1px solid ${C.border}` }}>
           {quiz.attemptCount > 0 && (
-            <button onClick={() => onViewResults(quiz)} className="flex-1 flex items-center justify-center gap-1.5 text-xs font-semibold py-2 rounded-lg transition-all hover:bg-white/5" style={{ color: C.textDim, border: `1px solid ${C.border}` }}>
-              <span className="material-symbols-outlined text-sm">bar_chart</span>Results
+            <button 
+              onClick={() => onViewResults(quiz)} 
+              className="flex-1 flex items-center justify-center gap-1.5 text-xs font-semibold py-2 rounded-lg transition-all hover:bg-white/5" 
+              style={{ color: C.textDim, border: `1px solid ${C.border}` }}
+            >
+              <span className="material-symbols-outlined text-sm">bar_chart</span>
+              Results
             </button>
           )}
-          <button onClick={() => onStart(quiz)} disabled={!quiz.canAttempt}
-            className="flex-1 flex items-center justify-center gap-1.5 text-xs font-semibold py-2 rounded-lg transition-all hover:scale-105 disabled:opacity-40"
-            style={{ background: quiz.canAttempt ? sc + "22" : "transparent", color: quiz.canAttempt ? sc : C.muted, border: `1px solid ${quiz.canAttempt ? sc + "44" : C.border}` }}>
-            <span className="material-symbols-outlined text-sm">{quiz.attemptCount > 0 ? "replay" : "play_arrow"}</span>
-            {quiz.attemptCount > 0 ? `Retry (${quiz.maxAttempts - quiz.attemptCount})` : "Start"}
+          <button 
+            onClick={() => onStart(quiz)} 
+            disabled={!quiz.canAttempt || quiz.passed}
+            className="flex-1 flex items-center justify-center gap-1.5 text-xs font-semibold py-2 rounded-lg transition-all hover:scale-105 disabled:opacity-40 disabled:hover:scale-100"
+            style={{ 
+              background: quiz.canAttempt && !quiz.passed ? statusColor + "22" : "transparent", 
+              color: quiz.canAttempt && !quiz.passed ? statusColor : C.muted, 
+              border: `1px solid ${quiz.canAttempt && !quiz.passed ? statusColor + "44" : C.border}`
+            }}
+          >
+            <span className="material-symbols-outlined text-sm">
+              {quiz.attemptCount > 0 ? "replay" : "play_arrow"}
+            </span>
+            {quiz.passed ? "Completed" : quiz.attemptCount > 0 ? `Retry (${quiz.maxAttempts - quiz.attemptCount} left)` : "Start"}
           </button>
         </div>
       </div>
@@ -138,45 +204,106 @@ const QuizPlayer = ({ quiz, attempt, questions, onSubmit, onCancel }) => {
   );
 };
 
-// ── Results Modal ───────────────────────────────────────────
+// ── Results Modal ── (FIXED SCROLLING)
 const QuizResults = ({ result, quiz, onClose, onRetry }) => (
   <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "#000000cc", backdropFilter: "blur(4px)" }}>
-    <div className="rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto" style={{ background: "#0c0e1e", border: `1px solid ${C.border}` }}>
-      <div className="p-5 sticky top-0 flex items-center justify-between" style={{ background: result.passed ? C.green : C.amber }}>
-        <div><h2 className="text-xl font-bold text-white">Results</h2><p className="text-white/80 text-sm">{quiz.title}</p></div>
-        <button onClick={onClose} className="p-1.5 rounded-full bg-white/20 hover:bg-white/30"><span className="material-symbols-outlined text-white">close</span></button>
+    <div className="rounded-2xl shadow-2xl w-full max-w-2xl flex flex-col" style={{ background: "#0c0e1e", border: `1px solid ${C.border}`, maxHeight: "90vh" }}>
+      
+      {/* Header - fixed at top */}
+      <div className="p-5 flex-shrink-0 flex items-center justify-between rounded-t-2xl" style={{ background: result.passed ? C.green : C.amber }}>
+        <div>
+          <h2 className="text-xl font-bold text-white">Results</h2>
+          <p className="text-white/80 text-sm">{quiz.title}</p>
+        </div>
+        <button onClick={onClose} className="p-1.5 rounded-full bg-white/20 hover:bg-white/30 transition-all">
+          <span className="material-symbols-outlined text-white">close</span>
+        </button>
       </div>
-      <div className="p-5">
+
+      {/* Scrollable content */}
+      <div className="flex-1 overflow-y-auto p-5">
+        {/* Ring Progress */}
         <div className="flex justify-center mb-5">
           <RingProgress value={result.score} size={140} stroke={10} color={result.passed ? C.green : C.amber} trackColor={C.border} />
         </div>
+
+        {/* Stats Grid */}
         <div className="grid grid-cols-3 gap-3 mb-5">
-          {[{l:"Correct",v:`${result.correctCount}/${result.totalQuestions}`},{l:"Time",v:result.timeTaken?`${Math.floor(result.timeTaken/60)}m ${result.timeTaken%60}s`:"—"},{l:"Pass mark",v:`${quiz.passingScore}%`}].map(s=>(
-            <div key={s.l} className="rounded-xl p-3 text-center" style={{background:C.card,border:`1px solid ${C.border}`}}><p className="font-bold text-white text-sm">{s.v}</p><p className="text-[10px] text-gray-500 mt-0.5">{s.l}</p></div>
+          {[
+            { l: "Correct", v: `${result.correctCount || 0}/${result.totalQuestions || 0}` },
+            { l: "Time", v: result.timeTaken ? `${Math.floor(result.timeTaken / 60)}m ${result.timeTaken % 60}s` : "—" },
+            { l: "Pass mark", v: `${quiz.passingScore}%` }
+          ].map(s => (
+            <div key={s.l} className="rounded-xl p-3 text-center" style={{ background: C.card, border: `1px solid ${C.border}` }}>
+              <p className="font-bold text-white text-sm">{s.v}</p>
+              <p className="text-[10px] text-gray-500 mt-0.5">{s.l}</p>
+            </div>
           ))}
         </div>
+
+        {/* Question Results */}
         {result.results?.length > 0 && (
-          <div className="mb-5 space-y-2 max-h-48 overflow-y-auto">
-            {result.results.map((r,i)=>(
-              <div key={i} className="p-3 rounded-xl" style={{background:r.isCorrect?`${C.green}11`:`${C.red}11`,border:`1px solid ${r.isCorrect?C.green:C.red}33`}}>
+          <div className="mb-5 space-y-2">
+            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Question Breakdown</p>
+            {result.results.map((r, i) => (
+              <div key={i} className="p-3 rounded-xl" style={{ background: r.isCorrect ? `${C.green}11` : `${C.red}11`, border: `1px solid ${r.isCorrect ? C.green : C.red}33` }}>
                 <div className="flex items-start gap-2">
-                  <span className="material-symbols-outlined text-sm mt-0.5" style={{color:r.isCorrect?C.greenLight:C.redLight}}>{r.isCorrect?"check_circle":"cancel"}</span>
-                  <div className="flex-1"><p className="text-xs font-medium text-white">Q{i+1}. {r.questionText}</p></div>
-                  <span className="text-xs font-bold" style={{color:r.isCorrect?C.greenLight:C.muted}}>{r.isCorrect?`+${r.points}`:"0"} pts</span>
+                  <span className="material-symbols-outlined text-sm mt-0.5 flex-shrink-0" style={{ color: r.isCorrect ? C.greenLight : C.redLight }}>
+                    {r.isCorrect ? "check_circle" : "cancel"}
+                  </span>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-medium text-white">Q{i + 1}. {r.questionText}</p>
+                    {r.userAnswer && !r.isCorrect && (
+                      <p className="text-[10px] mt-1" style={{ color: C.redLight }}>
+                        Your answer: {r.userAnswer}
+                      </p>
+                    )}
+                    {r.correctAnswer && (
+                      <p className="text-[10px] mt-0.5" style={{ color: r.isCorrect ? C.greenLight : C.amberLight }}>
+                        Correct: {r.correctAnswer}
+                      </p>
+                    )}
+                  </div>
+                  <span className="text-xs font-bold flex-shrink-0" style={{ color: r.isCorrect ? C.greenLight : C.muted }}>
+                    {r.isCorrect ? `+${r.points || 1}` : "0"} pts
+                  </span>
                 </div>
               </div>
             ))}
           </div>
         )}
-        <div className="flex gap-2">
-          <button onClick={onClose} className="flex-1 py-2 rounded-lg text-sm font-semibold hover:bg-white/5" style={{color:C.textDim,border:`1px solid ${C.border}`}}>Back</button>
-          {onRetry && <button onClick={onRetry} className="flex-1 py-2 rounded-lg text-sm font-semibold hover:scale-105" style={{background:`${C.accent}22`,color:C.indigoLight,border:`1px solid ${C.accent}44`}}>Retry</button>}
-        </div>
+
+        {/* No results message */}
+        {(!result.results || result.results.length === 0) && (
+          <div className="text-center py-8">
+            <span className="material-symbols-outlined text-5xl text-gray-700 mb-2 block">inbox</span>
+            <p className="text-sm text-gray-500">No question details available</p>
+          </div>
+        )}
+      </div>
+
+      {/* Footer - fixed at bottom */}
+      <div className="p-5 flex-shrink-0 flex gap-2 border-t" style={{ borderColor: C.border }}>
+        <button 
+          onClick={onClose} 
+          className="flex-1 py-2.5 rounded-xl text-sm font-semibold transition-all hover:scale-105" 
+          style={{ color: C.textDim, border: `1px solid ${C.border}`, background: C.card }}
+        >
+          Back to Quizzes
+        </button>
+        {onRetry && (
+          <button 
+            onClick={onRetry} 
+            className="flex-1 py-2.5 rounded-xl text-sm font-semibold transition-all hover:scale-105" 
+            style={{ background: `${C.accent}22`, color: C.indigoLight, border: `1px solid ${C.accent}44` }}
+          >
+            Try Again
+          </button>
+        )}
       </div>
     </div>
   </div>
 );
-
 // ── Main Quizzes Page ───────────────────────────────────────
 const Quizzes = () => {
   const token = localStorage.getItem("token");

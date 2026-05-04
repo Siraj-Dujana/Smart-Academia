@@ -155,12 +155,6 @@ Each attempt stores:
 * DLD labs (logic-based)
 * Networking labs (scenario-based)
 
-## Flow:
-
-* Student writes code / answers
-* Backend executes in sandbox
-* Test cases validate output
-* AI gives feedback
 
 ## Extra:
 

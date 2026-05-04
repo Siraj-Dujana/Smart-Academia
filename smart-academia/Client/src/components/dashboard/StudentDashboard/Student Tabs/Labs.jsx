@@ -61,6 +61,18 @@ const LoadingState = () => (
   </div>
 );
 
+const colors = {
+    accent: "#6366f1",
+    accent2: "#a855f7",
+    amber: "#f59e0b",
+    green: "#22c55e",
+    red: "#ef4444",
+    card: "#0f1629",
+    border: "#1e293b",
+    muted: "#64748b",
+    text: "#e2e8f0",
+    textDim: "#94a3b8",
+  };
 const Labs = () => {
   const navigate = useNavigate();
   const token = localStorage.getItem("token");
@@ -201,7 +213,15 @@ const Labs = () => {
   return (
     <div className="space-y-5 pb-10" style={{ fontFamily: "'Lexend', sans-serif" }}>
 
-
+<div>
+        <div className="flex items-center gap-2 mb-1">
+          <span className="w-2 h-2 rounded-full animate-pulse" style={{ background: colors.accent }} />
+          <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: "#818cf8" }}>Labs</p>
+        </div>
+        <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
+          Hands-on Learning
+        </h1>
+      </div>
 
       {/* Course Selector */}
       {courses.length > 0 && (

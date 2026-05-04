@@ -101,7 +101,7 @@ const notifyCourseCompleted = safe(async ({
   await createNotification({
     recipient: studentId,
     type: "course_completed",
-    title: `🎓 Course Completed: ${courseTitle}`,
+    title: `Course Completed: ${courseTitle}`,
     message: `Congratulations! You have successfully completed "${courseTitle}". Outstanding achievement!`,
     link: "/student/dashboard?tab=progress",
     courseId,
@@ -133,7 +133,7 @@ const notifyQuizPassed = safe(async ({
   await createNotification({
     recipient: studentId,
     type: "quiz_passed",
-    title: `🏆 Quiz Passed: ${quizTitle}`,
+    title: `Quiz Passed: ${quizTitle}`,
     message: `You passed the quiz "${quizTitle}" with a score of ${score}%. Great job!`,
     link: `/student/dashboard?tab=quizzes`,
     courseId,
@@ -220,7 +220,7 @@ const notifyCourseCreated = safe(async ({
   // Notify admins
   await broadcastToAdmins({
     type: "course_creation",
-    title: "📚 New Course Created",
+    title: "New Course Created",
     message: `${teacherName} created a new course: "${courseTitle}" (${courseCode}).`,
     link: "/admin/dashboard?tab=courses",
     courseId,
@@ -250,7 +250,7 @@ const notifyCourseDeleted = safe(async ({
   // Notify admins
   await broadcastToAdmins({
     type: "course_deletion",
-    title: "🗑️ Course Deleted",
+    title: "Course Deleted",
     message: `${teacherName} deleted the course "${courseTitle}" (${courseCode}).`,
     link: "/admin/dashboard?tab=courses",
     priority: "high",
@@ -279,7 +279,7 @@ const notifyCoursePublished = safe(async ({
     // Notify admins
     await broadcastToAdmins({
       type: "course_creation",
-      title: "✅ Course Published",
+      title: "Course Published",
       message: `${teacherName} published the course "${courseTitle}". Students can now enroll.`,
       link: "/admin/dashboard?tab=courses",
       courseId,
@@ -309,7 +309,7 @@ const notifyCoursePublished = safe(async ({
 const notifyStudentRegistered = safe(async ({ studentId, fullName, email }) => {
   await broadcastToAdmins({
     type: "student_registration",
-    title: "👨‍🎓 New Student Registration",
+    title: "New Student Registration",
     message: `${fullName} (${email}) has registered as a student.`,
     link: "/admin/dashboard?tab=students",
     priority: "normal",
@@ -323,7 +323,7 @@ const notifyStudentRegistered = safe(async ({ studentId, fullName, email }) => {
 const notifyTeacherRegistered = safe(async ({ teacherId, fullName, email }) => {
   await broadcastToAdmins({
     type: "teacher_registration",
-    title: "👨‍🏫 New Teacher Registration",
+    title: "New Teacher Registration",
     message: `${fullName} (${email}) has registered as a teacher.`,
     link: "/admin/dashboard?tab=teachers",
     priority: "high",
@@ -359,7 +359,7 @@ const notifyQuizDeadline = safe(async ({
   await broadcastToCourse(courseId, {
     sender: senderId,
     type: "quiz_deadline",
-    title: `⏰ Quiz Due: ${quizTitle}`,
+    title: `Quiz Due: ${quizTitle}`,
     message: `Reminder: The quiz "${quizTitle}" is due on ${dueDateObj.toLocaleDateString()}. Make sure to complete it in time!`,
     link: `/student/dashboard?tab=quizzes`,
     priority: "high",
@@ -378,7 +378,7 @@ const notifyLabDeadline = safe(async ({
   await broadcastToCourse(courseId, {
     sender: senderId,
     type: "lab_deadline",
-    title: `🧪 Lab Due: ${labTitle}`,
+    title: `Lab Due: ${labTitle}`,
     message: `Reminder: The lab "${labTitle}" is due on ${dueDateObj.toLocaleDateString()}. Submit before the deadline!`,
     link: `/student/dashboard?tab=labs`,
     priority: "high",
@@ -397,7 +397,7 @@ const notifyAssignmentDeadline = safe(async ({
   await broadcastToCourse(courseId, {
     sender: senderId,
     type: "assignment_deadline",
-    title: `📝 Assignment Due: ${assignmentTitle}`,
+    title: `Assignment Due: ${assignmentTitle}`,
     message: `Reminder: The assignment "${assignmentTitle}" is due on ${dueDateObj.toLocaleDateString()}. Don't miss the deadline!`,
     link: `/student/dashboard?tab=dashboard`,
     priority: "high",
@@ -412,7 +412,7 @@ const notifyAssignmentDeadline = safe(async ({
 const notifyUserDeleted = safe(async ({ adminName, deletedUserName, deletedUserRole }) => {
   await broadcastToAdmins({
     type: "user_report",
-    title: "👤 User Account Deleted",
+    title: "User Account Deleted",
     message: `Admin "${adminName}" deleted ${deletedUserRole} account: "${deletedUserName}".`,
     link: `/admin/dashboard?tab=${deletedUserRole === "teacher" ? "teachers" : "students"}`,
     priority: "high",

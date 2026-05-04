@@ -185,7 +185,7 @@ const Dashboard = () => {
       <div>
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-bold text-white">My Courses</h2>
-          <button onClick={() => navigate("/courses")}
+          <button onClick={() => navigate("/student/dashboard?tab=courses")}
             className="text-sm font-medium flex items-center gap-1 transition-colors hover:text-white" style={{ color: "#818cf8" }}>
             View All <span className="material-symbols-outlined text-sm">arrow_forward</span>
           </button>

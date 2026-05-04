@@ -373,15 +373,20 @@ const TeacherAnalytics = () => {
 
   return (
     <div className="space-y-5 pb-10" style={{ fontFamily: "'Lexend', sans-serif" }}>
-      {/* ── Header ── */}
-      <div>
-        <div className="flex items-center gap-2 mb-1">
-          <span className="w-2 h-2 rounded-full animate-pulse" style={{ background: C.accent }} />
-          <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: C.indigoLight }}>
-            Teacher Dashboard
-          </p>
+      {/* Hero Section */}
+      <div className="relative rounded-2xl overflow-hidden p-6" style={{ background: "linear-gradient(135deg, #0c0e1e 0%, #131b35 50%, #0d1527 100%)", border: "1px solid #1e293b" }}>
+        <div className="absolute top-0 left-1/4 w-48 h-48 rounded-full blur-3xl opacity-20" style={{ background: "#6366f1" }} />
+        <div className="absolute bottom-0 right-1/4 w-48 h-48 rounded-full blur-3xl opacity-15" style={{ background: "#a855f7" }} />
+        
+        <div className="relative">
+          <div className="flex items-center gap-2 mb-1">
+            <span className="w-2 h-2 rounded-full animate-pulse" style={{ background: "#6366f1" }} />
+            <p className="text-xs font-semibold text-indigo-400 uppercase tracking-widest">Teacher Analytics</p>
+          </div>
+          <h1 className="text-2xl sm:text-3xl font-black text-white leading-tight tracking-tight">
+          Review Students' Progress
+          </h1>
         </div>
-        <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight">Student Progress</h1>
       </div>
 
       {/* ── Course Selector ── */}
