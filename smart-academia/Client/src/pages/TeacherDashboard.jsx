@@ -10,6 +10,7 @@ import ProfileManagement from '../components/dashboard/TeacherDashboard/Teacher 
 import SendNotifications from "../components/dashboard/TeacherDashboard/Teacher Tabs/SendNotifications";
 import NotificationBell from "../components/notifications/NotificationBell";
 import { useNavigate, useLocation }  from "react-router-dom";
+import TeacherAIAnalytics from "../components/dashboard/TeacherDashboard/Teacher Tabs/TeacherAIAnalytics";
 
 const TeacherDashboard = () => {
   const navigate = useNavigate();
@@ -41,15 +42,16 @@ const TeacherDashboard = () => {
   }, [location.search]);
 
   const menuItems = [
-    { icon: "dashboard",    label: "Dashboard",         key: "dashboard",        color: "#6366f1" },
-    { icon: "book",         label: "Course Management", key: "courses",          color: "#22c55e" },
-    { icon: "menu_book",    label: "Lesson Management", key: "lessons",          color: "#f59e0b" },
-    { icon: "grading",      label: "Grade Labs",        key: "lab-submissions",  color: "#a855f7" },
-    { icon: "bar_chart",    label: "Student Progress",  key: "progress",         color: "#3b82f6" },
-    { icon: "smart_toy",    label: "AI Tutor",          key: "ai-tutor",         color: "#14b8a6" },
-    { icon: "send",         label: "Send Notifications",key: "send-notifications",color: "#f59e0b" },
-    { icon: "person",       label: "My Profile",        key: "profile",          color: "#6366f1" }
-  ];
+  { icon: "dashboard",    label: "Dashboard",         key: "dashboard",        color: "#6366f1" },
+  { icon: "book",         label: "Course Management", key: "courses",          color: "#22c55e" },
+  { icon: "menu_book",    label: "Lesson Management", key: "lessons",          color: "#f59e0b" },
+  { icon: "grading",      label: "Grade Labs",        key: "lab-submissions",  color: "#a855f7" },
+  { icon: "bar_chart",    label: "Student Progress",  key: "progress",         color: "#3b82f6" },
+  { icon: "auto_awesome", label: "AI Insights",       key: "ai-analytics",     color: "#a855f7" },  // ← ADD THIS
+  { icon: "smart_toy",    label: "AI Tutor",          key: "ai-tutor",         color: "#14b8a6" },
+  { icon: "send",         label: "Send Notifications",key: "send-notifications",color: "#f59e0b" },
+  { icon: "person",       label: "My Profile",        key: "profile",          color: "#6366f1" }
+];
 
   const handleMenuClick = (key) => {
     setActiveMenu(key);
@@ -73,6 +75,7 @@ const TeacherDashboard = () => {
       case "ai-tutor":          return <AITutor />;
       case "send-notifications": return <SendNotifications />;
       case "profile":           return <ProfileManagement />;
+      case "ai-analytics":      return <TeacherAIAnalytics />;
       default:                  return <Dashboard />;
     }
   };

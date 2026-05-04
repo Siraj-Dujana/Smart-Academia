@@ -9,6 +9,8 @@ Course completion certificates (PDF via Cloudinary)
 4. AI Progress Analyzer
 Detects weak areas
 Tracks performance trends
+
+
 5. AI Study Planner
 Generates personalized learning plan
 11. Activity Logs
@@ -34,3 +36,11 @@ the ai tutor chat is saved in local storage of the browser but will be saving in
 problem:
 make the AI tutor of the student responsive for the mobile
 and also solve the problem of the cha cause that each key word of the coding is being sent in the box...
+
+
+
+
+there should be proper teting of each module:
+student 
+admin
+teacher

@@ -4,6 +4,9 @@ const cors     = require("cors");
 const dotenv   = require("dotenv");
 const { getStudentAnalytics } = require("./controllers/analyticsController");
 const teacherRoutes = require('./routes/Teacherprogress');
+// Add with your other routes
+const aiProgressRoutes = require("./routes/aiProgressRoutes");
+
 
 dotenv.config();
 
@@ -43,6 +46,9 @@ app.use("/api/analytics", require("./routes/analytics"));
 
 // Teacher student progress and course stats routes
 app.use("/api/teacher", teacherRoutes);
+
+// AI progress analysis routes
+app.use("/api/ai-progress", aiProgressRoutes);
 
 app.get("/", (req, res) => res.json({ message: "SmartAcademia API running" }));
 

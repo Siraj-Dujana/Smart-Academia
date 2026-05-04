@@ -11,6 +11,7 @@ import ProfileManagement from '../components/dashboard/StudentDashboard/Student 
 import { useNavigate, useLocation } from "react-router-dom";
 import Notifications from "../components/dashboard/StudentDashboard/Student Tabs/Notifications";
 import NotificationBell from "../components/notifications/NotificationBell";
+import StudentAIAnalytics from "../components/dashboard/StudentDashboard/Student Tabs/StudentAIAnalytics";
 
 const StudentDashboard = () => {
   const navigate = useNavigate();
@@ -40,16 +41,17 @@ const StudentDashboard = () => {
   }, [location.search]);
 
   const menuItems = [
-    { icon: "dashboard", label: "Dashboard", key: 'dashboard' },
-    { icon: "import_contacts", label: "Courses", key: 'courses' },
-    { icon: "quiz", label: "Quizzes", key: 'quizzes' },
-    { icon: "science", label: "Labs", key: 'labs' },
-    { icon: "bar_chart_4_bars", label: "Progress", key: 'progress' },
-    { icon: "smart_toy", label: "AI Tutor", key: 'ai-tutor' },
-    { icon: "assistant", label: "AI Assistant", key: 'ai-assistant' },
-    { icon: 'person', label: 'My Profile', key: 'profile' },
-    { icon: "notifications", label: "Notifications", key: "notifications" },
-  ];
+  { icon: "dashboard", label: "Dashboard", key: 'dashboard' },
+  { icon: "import_contacts", label: "Courses", key: 'courses' },
+  { icon: "quiz", label: "Quizzes", key: 'quizzes' },
+  { icon: "science", label: "Labs", key: 'labs' },
+  { icon: "bar_chart_4_bars", label: "Progress", key: 'progress' },
+  { icon: "smart_toy", label: "AI Tutor", key: 'ai-tutor' },
+  { icon: "assistant", label: "AI Assistant", key: 'ai-assistant' },
+  { icon: 'person', label: 'My Profile', key: 'profile' },
+  { icon: "notifications", label: "Notifications", key: "notifications" },
+  { icon: "auto_awesome", label: "AI Insights", key: 'ai-analytics' },  // ← ADD THIS (fixed format)
+];
 
   const handleMenuClick = (menuKey) => {
     setActiveMenu(menuKey);
@@ -74,6 +76,7 @@ const StudentDashboard = () => {
       case 'ai-assistant': return <AIAssistant />;
       case 'profile': return <ProfileManagement />;
       case "notifications": return <Notifications />;
+      case "ai-analytics": return <StudentAIAnalytics/>;
       default: return <Dashboard />;
     }
   };
