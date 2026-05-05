@@ -377,6 +377,24 @@ const gradeSubmission = async (req, res) => {
     submission.gradedBy = req.user._id;
     await submission.save();
 
+
+    // ✅ ADD POINTS BASED ON LAB SCORE
+const scorePercent = (numMarks / totalMarks) * 100;
+if (scorePercent >= 70) {
+  await PointsService.addPoints(
+    submission.student._id,
+    POINTS_CONFIG.LAB_PASSED,
+    `Passed lab: ${submission.lab.title}`
+  );
+}
+if (scorePercent === 100) {
+  await PointsService.addPoints(
+    submission.student._id,
+    POINTS_CONFIG.LAB_PERFECT,
+    `Perfect score on lab: ${submission.lab.title}`
+  );
+}
+
     await notifyLabGraded({
       studentId:      submission.student._id,
       labTitle:       submission.lab.title,
@@ -625,6 +643,13 @@ const submitLab = async (req, res) => {
       },
       { upsert: true }
     );
+
+    // ✅ ADD POINTS FOR LAB SUBMISSION
+await PointsService.addPoints(
+  req.user._id,
+  POINTS_CONFIG.LAB_SUBMITTED,
+  `Submitted lab: ${lab.title}`
+);
 
     await checkAndUnlockNext(req.user._id, lessonId, courseId);
 

@@ -1,7 +1,7 @@
 const User = require("../models/User");
 const jwt = require("jsonwebtoken");
 const { notifyStudentRegistration, notifyTeacherRegistration } = require("./notificationController"); // ✅ ADD THIS
-
+const PointsService = require("../services/pointsService");
 // Generate JWT token
 const generateToken = (userId, role) => {
   return jwt.sign({ id: userId, role }, process.env.JWT_SECRET, {
@@ -217,7 +217,11 @@ const login = async (req, res) => {
         specialization: user.specialization,
         qualification: user.qualification,
       },
+      
     });
+    // In your auth controller, after successful login
+await PointsService.updateStreak(req.user._id);
+await PointsService.updateStreak(user._id);
   } catch (error) {
     console.error("Login error:", error);
     res.status(500).json({ message: "Server error, please try again" });

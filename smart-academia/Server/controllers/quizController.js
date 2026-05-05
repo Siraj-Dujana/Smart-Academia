@@ -401,6 +401,19 @@ const submitQuiz = async (req, res) => {
 
     if (passed) {
       try {
+         await PointsService.addPoints(
+    req.user._id,
+    POINTS_CONFIG.QUIZ_PASSED,
+    `Passed quiz: ${quiz.title}`
+  );
+    if (score === 100) {
+    await PointsService.addPoints(
+      req.user._id,
+      POINTS_CONFIG.QUIZ_PERFECT_SCORE,
+      `Perfect score on quiz: ${quiz.title}`
+    );
+    await PointsService.awardBadge(req.user._id, "PERFECT_SCORE");
+  }
         const student = await User.findById(req.user._id).select("fullName email");
         await notifyQuizPassed({
           studentId: req.user._id,

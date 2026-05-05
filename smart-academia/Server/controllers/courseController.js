@@ -4,6 +4,8 @@ const Lesson         = require("../models/Lesson");
 const Enrollment     = require("../models/Enrollment");
 const LessonProgress = require("../models/LessonProgress");
 const User           = require("../models/User");
+const QuizAttempt    = require("../models/QuizAttempt");     // ✅ ADD THIS
+const LabSubmission  = require("../models/LabSubmission");   // ✅ ADD THIS
 const { notifyEnrollment, notifyUnenrollment,  notifyCourseCreated,  notifyCourseDeleted } = require("../utils/notificationHooks");
 const { get } = require("mongoose");
 
@@ -241,25 +243,24 @@ const enrollCourse = async (req, res) => {
       course:  course._id,
     });
 
-    // Find the first published lesson and create a LessonProgress record
+    // ✅ FIX: ONLY create LessonProgress for the FIRST lesson
     const firstLesson = await Lesson.findOne({
-      course:      course._id,
+      course: course._id,
       isPublished: true,
-      order:       1,
-    });
+    }).sort({ order: 1 });
 
     if (firstLesson) {
       await LessonProgress.findOneAndUpdate(
         { student: req.user._id, lesson: firstLesson._id },
         {
           $setOnInsert: {
-            student:       req.user._id,
-            lesson:        firstLesson._id,
-            course:        course._id,
-            lessonViewed:  false,
+            student: req.user._id,
+            lesson: firstLesson._id,
+            course: course._id,
+            lessonViewed: false,
             quizCompleted: false,
-            labCompleted:  false,
-            isCompleted:   false,
+            labCompleted: false,
+            isCompleted: false,
           },
         },
         { upsert: true }
@@ -305,8 +306,20 @@ const unenrollCourse = async (req, res) => {
 
     const course = await Course.findById(req.params.id);
 
-    // Delete all LessonProgress records for this student+course
+    // ✅ Delete LessonProgress records for this student+course
     await LessonProgress.deleteMany({
+      student: req.user._id,
+      course:  req.params.id,
+    });
+
+    // ✅ NEW: Delete ALL QuizAttempts for this student+course
+    await QuizAttempt.deleteMany({
+      student: req.user._id,
+      course:  req.params.id,
+    });
+
+    // ✅ NEW: Delete ALL LabSubmissions for this student+course
+    await LabSubmission.deleteMany({
       student: req.user._id,
       course:  req.params.id,
     });
@@ -346,7 +359,6 @@ const unenrollCourse = async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 };
-
 // =============================================
 // ADMIN — Get all courses
 // =============================================

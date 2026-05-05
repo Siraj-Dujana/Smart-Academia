@@ -4,13 +4,10 @@ const cors     = require("cors");
 const dotenv   = require("dotenv");
 const { getStudentAnalytics } = require("./controllers/analyticsController");
 const teacherRoutes = require('./routes/Teacherprogress');
-// Add with your other routes
 const aiProgressRoutes = require("./routes/aiProgressRoutes");
-
-
+const leaderboardRoutes = require("./routes/leaderboardRoutes");
+const certificateRoutes = require("./routes/certificateRoutes");
 dotenv.config();
-
-
 const app = express();
 app.use(cors({ origin: ["http://localhost:5173", "http://localhost:3000"] }));
 app.use(express.json());
@@ -31,8 +28,6 @@ app.use("/api/notifications", require("./routes/Notifications"));
 app.use("/api/courses/:courseId/lessons", require("./routes/lessons"));
 
 // ── AI Routes (single mount — no duplicate) ───────────────────
-// Both /api/ai and /api/assistant share the same aiRoutes handler.
-// Document/flashcard/quiz routes are mounted separately under /api/assistant.
 app.use("/api/ai",           require("./routes/aiRoutes"));
 app.use("/api/assistant",    require("./routes/aiRoutes"));
 
@@ -50,8 +45,10 @@ app.use("/api/teacher", teacherRoutes);
 // AI progress analysis routes
 app.use("/api/ai-progress", aiProgressRoutes);
 
-app.get("/", (req, res) => res.json({ message: "SmartAcademia API running" }));
+app.use("/api/leaderboard", leaderboardRoutes);
+app.use("/api/certificates", certificateRoutes);
 
+app.get("/", (req, res) => res.json({ message: "SmartAcademia API running" }));
 
 mongoose.connect(process.env.MONGO_URI)
   .then(() => {

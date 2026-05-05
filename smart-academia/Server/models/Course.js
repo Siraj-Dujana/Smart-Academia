@@ -63,6 +63,7 @@ const CourseSchema = new mongoose.Schema(
       type: Number,
       default: 0,
     },
+    certificateTemplate: { type: String, default: null },
   },
   { timestamps: true }
 );

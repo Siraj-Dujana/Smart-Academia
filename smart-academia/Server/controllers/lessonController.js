@@ -9,7 +9,8 @@ const cloudinary     = require("../config/cloudinary");
 const multer         = require("multer");
 const path           = require("path");
 const { notifyLessonUnlocked, notifyCourseCompleted } = require("../utils/notificationHooks");
-
+const PointsService = require("../services/pointsService");
+const { POINTS_CONFIG } = require("../config/pointsConfig");
 // Multer setup for image/video uploads
 const storage = multer.diskStorage({
   destination: (req, file, cb) => cb(null, "/tmp"),
@@ -78,6 +79,13 @@ const checkAndUnlockNext = async (studentId, lessonId, courseId) => {
       await progress.save();
       console.log("✅ Lesson marked as completed!");
 
+       await PointsService.addPoints(
+    studentId, 
+    POINTS_CONFIG.LESSON_COMPLETED, 
+    `Completed lesson: ${lesson.title}`
+  );
+
+ 
       const nextLesson = await Lesson.findOne({
         course: courseId,
         order: lesson.order + 1,
@@ -139,6 +147,13 @@ const checkAndUnlockNext = async (studentId, lessonId, courseId) => {
         console.log("🎉 Course completed!");
         const course = await Course.findById(courseId);
         const student = await User.findById(studentId).select("fullName email");
+        await PointsService.addPoints(
+    studentId,
+    POINTS_CONFIG.COURSE_COMPLETED,
+    `Completed course: ${course.title}`
+  );
+  await PointsService.awardBadge(studentId, "COURSE_CHAMPION");
+  
         
         if (course && student) {
           await notifyCourseCompleted({

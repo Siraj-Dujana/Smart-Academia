@@ -57,9 +57,27 @@ const UserSchema = new mongoose.Schema(
     resetOTPExpiry: { type: Date, default: null },
     otpResendCount: { type: Number, default: 0 },
     otpResendResetTime: { type: Date, default: null },
+    // Add after existing fields (around line 50)
+    // Gamification fields
+    points: { type: Number, default: 0 },
+    level: { type: Number, default: 1 },
+    xp: { type: Number, default: 0 },
+    badges: [{
+      id: String,
+      name: String,
+      description: String,
+      icon: String,
+      earnedAt: Date
+    }],
+    streak: { type: Number, default: 0 },
+    lastActiveAt: { type: Date, default: null },
+    totalPointsEarned: { type: Number, default: 0 },
   },
+  
   { timestamps: true },
+  
 );
+
 
 // Mongoose 9.x: async pre hooks must NOT use next()
 UserSchema.pre("save", async function () {
