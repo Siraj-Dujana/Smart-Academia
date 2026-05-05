@@ -6,6 +6,7 @@ Points system
 Progress bars
 Course completion certificates (PDF via Cloudinary)
 
+
 4. AI Progress Analyzer
 Detects weak areas
 Tracks performance trends

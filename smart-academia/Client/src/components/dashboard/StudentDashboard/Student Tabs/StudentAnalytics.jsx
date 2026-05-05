@@ -381,7 +381,7 @@ const StudentAnalytics = () => {
     <div>
         <div className="flex items-center gap-2 mb-1">
           <span className="w-2 h-2 rounded-full animate-pulse" style={{ background: colors.accent }} />
-          <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: "#818cf8" }}>Dashboard</p>
+          <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: "#818cf8" }}>Progress</p>
         </div>
         <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
           Your Performance at a Glance

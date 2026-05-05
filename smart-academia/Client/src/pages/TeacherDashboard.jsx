@@ -11,7 +11,7 @@ import SendNotifications from "../components/dashboard/TeacherDashboard/Teacher 
 import NotificationBell from "../components/notifications/NotificationBell";
 import { useNavigate, useLocation }  from "react-router-dom";
 import TeacherAIAnalytics from "../components/dashboard/TeacherDashboard/Teacher Tabs/TeacherAIAnalytics";
-
+import TeacherLeaderboard from "../components/dashboard/TeacherDashboard/Teacher Tabs/TeacherLeaderboard";
 const TeacherDashboard = () => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -47,7 +47,8 @@ const TeacherDashboard = () => {
   { icon: "menu_book",    label: "Lesson Management", key: "lessons",          color: "#f59e0b" },
   { icon: "grading",      label: "Grade Labs",        key: "lab-submissions",  color: "#a855f7" },
   { icon: "bar_chart",    label: "Student Progress",  key: "progress",         color: "#3b82f6" },
-  { icon: "auto_awesome", label: "AI Insights",       key: "ai-analytics",     color: "#a855f7" },  // ← ADD THIS
+  { icon: "leaderboard",  label: "Course Rankings",   key: "course-rankings",  color: "#f59e0b" },  // ← ADD THIS
+  { icon: "auto_awesome", label: "AI Insights",       key: "ai-analytics",     color: "#a855f7" },
   { icon: "smart_toy",    label: "AI Tutor",          key: "ai-tutor",         color: "#14b8a6" },
   { icon: "send",         label: "Send Notifications",key: "send-notifications",color: "#f59e0b" },
   { icon: "person",       label: "My Profile",        key: "profile",          color: "#6366f1" }
@@ -76,6 +77,7 @@ const TeacherDashboard = () => {
       case "send-notifications": return <SendNotifications />;
       case "profile":           return <ProfileManagement />;
       case "ai-analytics":      return <TeacherAIAnalytics />;
+      case "course-rankings":   return <TeacherLeaderboard />;
       default:                  return <Dashboard />;
     }
   };

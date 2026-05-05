@@ -15,10 +15,7 @@ import Setup from './pages/Setup';
 import LessonEditor from "./components/dashboard/TeacherDashboard/Teacher Tabs/LessonEditor";
 import StudentAnalytics from "./components/dashboard/StudentDashboard/Student Tabs/StudentAnalytics";
 
-// =============================================
-// Smart home route — checks token and redirects
-// to correct dashboard if already logged in
-// =============================================
+
 const HomeRoute = () => {
   const token = localStorage.getItem("token");
   const user = JSON.parse(localStorage.getItem("user") || "null");
@@ -33,10 +30,7 @@ const HomeRoute = () => {
   return <LandingPage />;
 };
 
-// =============================================
-// /chat — redirect to the right dashboard AI tab
-// based on user role
-// =============================================
+
 const ChatRoute = () => {
   const token = localStorage.getItem("token");
   const user = JSON.parse(localStorage.getItem("user") || "null");

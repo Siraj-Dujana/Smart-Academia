@@ -12,7 +12,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import Notifications from "../components/dashboard/StudentDashboard/Student Tabs/Notifications";
 import NotificationBell from "../components/notifications/NotificationBell";
 import StudentAIAnalytics from "../components/dashboard/StudentDashboard/Student Tabs/StudentAIAnalytics";
-
+import Leaderboard from "../components/dashboard/StudentDashboard/Student Tabs/Leaderboard";
 const StudentDashboard = () => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -40,17 +40,18 @@ const StudentDashboard = () => {
     if (tab) setActiveMenu(tab);
   }, [location.search]);
 
-  const menuItems = [
+ const menuItems = [
   { icon: "dashboard", label: "Dashboard", key: 'dashboard' },
   { icon: "import_contacts", label: "Courses", key: 'courses' },
   { icon: "quiz", label: "Quizzes", key: 'quizzes' },
   { icon: "science", label: "Labs", key: 'labs' },
   { icon: "bar_chart_4_bars", label: "Progress", key: 'progress' },
+  { icon: "leaderboard", label: "Leaderboard", key: 'leaderboard' },  // ← ADD THIS
   { icon: "smart_toy", label: "AI Tutor", key: 'ai-tutor' },
   { icon: "assistant", label: "AI Assistant", key: 'ai-assistant' },
   { icon: 'person', label: 'My Profile', key: 'profile' },
   { icon: "notifications", label: "Notifications", key: "notifications" },
-  { icon: "auto_awesome", label: "AI Insights", key: 'ai-analytics' },  // ← ADD THIS (fixed format)
+  { icon: "auto_awesome", label: "AI Insights", key: 'ai-analytics' },
 ];
 
   const handleMenuClick = (menuKey) => {
@@ -77,6 +78,7 @@ const StudentDashboard = () => {
       case 'profile': return <ProfileManagement />;
       case "notifications": return <Notifications />;
       case "ai-analytics": return <StudentAIAnalytics/>;
+      case 'leaderboard': return <Leaderboard />;
       default: return <Dashboard />;
     }
   };

@@ -253,7 +253,7 @@ const Dashboard = () => {
             <span className="material-symbols-outlined text-5xl text-gray-700 mb-4 block">import_contacts</span>
             <p className="text-gray-400 font-semibold">No courses yet</p>
             <p className="text-sm text-gray-600 mt-1 mb-4">Enroll in a course to start learning</p>
-            <button onClick={() => navigate("/courses")}
+            <button onClick={() => navigate("/student/dashboard?tab=courses")}
               className="px-5 py-2 rounded-lg text-sm font-semibold transition-all hover:scale-105"
               style={{ background: `${colors.accent}22`, color: "#818cf8", border: `1px solid ${colors.accent}44` }}>
               Browse Courses
