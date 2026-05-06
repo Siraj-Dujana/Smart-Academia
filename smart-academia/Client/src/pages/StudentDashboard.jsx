@@ -13,6 +13,7 @@ import Notifications from "../components/dashboard/StudentDashboard/Student Tabs
 import NotificationBell from "../components/notifications/NotificationBell";
 import StudentAIAnalytics from "../components/dashboard/StudentDashboard/Student Tabs/StudentAIAnalytics";
 import Leaderboard from "../components/dashboard/StudentDashboard/Student Tabs/Leaderboard";
+import Certificates from "../components/dashboard/StudentDashboard/Student Tabs/Certificates";
 const StudentDashboard = () => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -43,6 +44,7 @@ const StudentDashboard = () => {
  const menuItems = [
   { icon: "dashboard", label: "Dashboard", key: 'dashboard' },
   { icon: "import_contacts", label: "Courses", key: 'courses' },
+   { icon: "workspace_premium", label: "Certificates", key: 'certificates' },  // ← ADD THIS
   { icon: "quiz", label: "Quizzes", key: 'quizzes' },
   { icon: "science", label: "Labs", key: 'labs' },
   { icon: "bar_chart_4_bars", label: "Progress", key: 'progress' },
@@ -70,6 +72,7 @@ const StudentDashboard = () => {
     switch (activeMenu) {
       case 'dashboard': return <Dashboard />;
       case 'courses': return <Courses />;
+      case "certificates": return <Certificates />;
       case 'quizzes': return <Quizzes />;
       case 'labs': return <Labs />;
       case 'progress': return <StudentAnalytics />;

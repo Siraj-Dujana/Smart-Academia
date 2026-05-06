@@ -1,13 +1,19 @@
 const express  = require("express");
 const mongoose = require("mongoose");
 const cors     = require("cors");
+
+// Load environment variables from .env file
 const dotenv   = require("dotenv");
+dotenv.config();
+
+
+
+
 const { getStudentAnalytics } = require("./controllers/analyticsController");
 const teacherRoutes = require('./routes/Teacherprogress');
 const aiProgressRoutes = require("./routes/aiProgressRoutes");
 const leaderboardRoutes = require("./routes/leaderboardRoutes");
 const certificateRoutes = require("./routes/certificateRoutes");
-dotenv.config();
 const app = express();
 app.use(cors({ origin: ["http://localhost:5173", "http://localhost:3000"] }));
 app.use(express.json());
