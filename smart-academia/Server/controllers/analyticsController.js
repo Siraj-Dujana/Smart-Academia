@@ -274,7 +274,6 @@ const getStudentAnalytics = async (req, res) => {
     const inProgressCourses= courses.filter(c => !c.isCompleted && c.progress > 0).length;
     const totalCredits     = courses.reduce((s, c) => s + (c.credits || 0), 0);
     const earnedCredits    = courses.reduce((s, c) => s + c.creditsEarned, 0);
-    console.log(earnedCredits)
 
     const allQuizScores = courses.flatMap(c =>
       c.lessons.flatMap(l => l.quiz?.bestScore != null ? [l.quiz.bestScore] : [])

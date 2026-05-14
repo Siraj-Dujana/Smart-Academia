@@ -453,14 +453,12 @@ const aiEvaluateSubmission = async (req, res) => {
     // Try to extract text from the PDF first
     if (submission.pdfUrl) {
       try {
-        console.log("🔍 Fetching PDF for AI evaluation:", submission.pdfUrl);
         const pdfBuffer = await fetchPdfBuffer(submission.pdfUrl);
         const pdfText   = await extractPdfText(pdfBuffer);
 
         if (pdfText && pdfText.length > 10) {
           submittedContent = pdfText;
           contentSource    = "pdf";
-          console.log(`✅ Extracted ${pdfText.length} chars from PDF`);
         } else {
           console.warn("⚠️  PDF extracted but text is empty — falling back to text answer");
         }
@@ -483,7 +481,6 @@ const aiEvaluateSubmission = async (req, res) => {
       });
     }
 
-    console.log(`📝 Evaluating submission from source: ${contentSource}`);
 
     // ── Step 2: Build the Gemini prompt ──────────────────────
     const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });

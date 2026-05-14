@@ -389,31 +389,101 @@ const TeacherAnalytics = () => {
         </div>
       </div>
 
-      {/* ── Course Selector ── */}
-      <div className="rounded-2xl p-4" style={{ background: C.surface, border: `1px solid ${C.border}` }}>
-        <p className="text-xs font-semibold uppercase tracking-wider mb-3" style={{ color: C.textFaint }}>
-          Select Course
-        </p>
-        <div className="flex flex-wrap gap-2">
-          {courses.map(c => (
-            <button key={c._id}
-              onClick={() => setSelectedCourse(c)}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all hover:scale-105"
-              style={{
-                background: selectedCourse?._id === c._id ? `${C.accent}22` : "transparent",
-                color: selectedCourse?._id === c._id ? C.indigoLight : C.textDim,
-                border: `1px solid ${selectedCourse?._id === c._id ? C.accent + "55" : C.border}`,
-              }}>
-              <span className="material-symbols-outlined text-sm">menu_book</span>
-              <span className="truncate max-w-[160px]">{c.title}</span>
-              <span className="text-[10px] px-1.5 py-0.5 rounded-full"
-                style={{ background: C.border, color: C.textFaint }}>
-                {c.enrolledCount || 0}
-              </span>
-            </button>
-          ))}
-        </div>
-      </div>
+  {/* ── Course Selector ── */}
+<div className="rounded-2xl p-4" style={{ background: C.surface, border: `1px solid ${C.border}` }}>
+  <div className="flex items-center justify-between mb-3">
+    <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: C.textFaint }}>
+      Select Course
+    </p>
+    <div className="flex gap-2">
+      {/* View Report Button */}
+      {selectedCourse && progressData?.students?.length > 0 && (
+        <button
+          onClick={async () => {
+            try {
+              const token = localStorage.getItem("token");
+              const response = await fetch(`${API}/api/teacher/courses/${selectedCourse._id}/report`, {
+                headers: { Authorization: `Bearer ${token}` },
+              });
+              if (response.ok) {
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                window.open(url, "_blank");
+                setTimeout(() => window.URL.revokeObjectURL(url), 100);
+              } else {
+                const data = await response.json();
+                alert(data.message || "Failed to generate report");
+              }
+            } catch (err) {
+              console.error("View error:", err);
+              alert("Cannot connect to server");
+            }
+          }}
+          className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium transition-all hover:scale-105"
+          style={{ background: `${C.accent}22`, color: C.indigoLight, border: `1px solid ${C.accent}44` }}
+        >
+          <span className="material-symbols-outlined text-sm">visibility</span>
+          View Report
+        </button>
+      )}
+      
+      {/* Download Report Button */}
+      {selectedCourse && progressData?.students?.length > 0 && (
+        <button
+          onClick={async () => {
+            try {
+              const token = localStorage.getItem("token");
+              const response = await fetch(`${API}/api/teacher/courses/${selectedCourse._id}/report`, {
+                headers: { Authorization: `Bearer ${token}` },
+              });
+              if (response.ok) {
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement("a");
+                a.href = url;
+                a.download = `Course_Report_${selectedCourse.code}_${new Date().toISOString().slice(0, 10)}.pdf`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                window.URL.revokeObjectURL(url);
+              } else {
+                const data = await response.json();
+                alert(data.message || "Failed to generate report");
+              }
+            } catch (err) {
+              console.error("Download error:", err);
+              alert("Cannot connect to server");
+            }
+          }}
+          className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium transition-all hover:scale-105"
+          style={{ background: `${C.green}22`, color: C.greenLight, border: `1px solid ${C.green}44` }}
+        >
+          <span className="material-symbols-outlined text-sm">picture_as_pdf</span>
+          Download Report
+        </button>
+      )}
+    </div>
+  </div>
+  <div className="flex flex-wrap gap-2">
+    {courses.map(c => (
+      <button key={c._id}
+        onClick={() => setSelectedCourse(c)}
+        className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all hover:scale-105"
+        style={{
+          background: selectedCourse?._id === c._id ? `${C.accent}22` : "transparent",
+          color: selectedCourse?._id === c._id ? C.indigoLight : C.textDim,
+          border: `1px solid ${selectedCourse?._id === c._id ? C.accent + "55" : C.border}`,
+        }}>
+        <span className="material-symbols-outlined text-sm">menu_book</span>
+        <span className="truncate max-w-[160px]">{c.title}</span>
+        <span className="text-[10px] px-1.5 py-0.5 rounded-full"
+          style={{ background: C.border, color: C.textFaint }}>
+          {c.enrolledCount || 0}
+        </span>
+      </button>
+    ))}
+  </div>
+</div>
 
       {error && (
         <div className="p-4 rounded-xl flex items-center gap-3"

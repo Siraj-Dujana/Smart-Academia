@@ -174,6 +174,7 @@ const registerTeacher = async (req, res) => {
 };
 
 // ===== LOGIN =====
+// ===== LOGIN =====
 const login = async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -200,7 +201,15 @@ const login = async (req, res) => {
       return res.status(401).json({ message: "Invalid email or password" });
     }
 
-    // ✅ Return ALL user fields
+    // ✅ UPDATE STREAK HERE - BEFORE sending response
+    try {
+      await PointsService.updateStreak(user._id);
+    } catch (err) {
+      console.error("Streak update error:", err.message);
+      // Don't block login if streak update fails
+    }
+
+    // ✅ Send response
     res.status(200).json({
       message: "Login successful",
       token: generateToken(user._id, user.role),
@@ -217,11 +226,8 @@ const login = async (req, res) => {
         specialization: user.specialization,
         qualification: user.qualification,
       },
-      
     });
-    // In your auth controller, after successful login
-await PointsService.updateStreak(req.user._id);
-await PointsService.updateStreak(user._id);
+    
   } catch (error) {
     console.error("Login error:", error);
     res.status(500).json({ message: "Server error, please try again" });

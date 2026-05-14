@@ -4,6 +4,7 @@ const router  = express.Router();
 const {
   getCourseStudentProgress,
   getTeacherCoursesWithStats,
+  generateCourseReport
 } = require("../controllers/teacherProgressController");
 const { protect, authorize } = require("../middleware/authMiddleware");
 
@@ -15,5 +16,8 @@ router.get("/courses", getTeacherCoursesWithStats);
 
 // GET /api/teacher/courses/:courseId/progress — full student progress for one course
 router.get("/courses/:courseId/progress", getCourseStudentProgress);
+
+// to generate reports
+router.get("/courses/:courseId/report", protect, authorize("teacher"), generateCourseReport);
 
 module.exports = router;
