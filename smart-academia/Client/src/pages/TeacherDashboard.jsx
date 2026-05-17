@@ -12,6 +12,7 @@ import NotificationBell from "../components/notifications/NotificationBell";
 import { useNavigate, useLocation }  from "react-router-dom";
 import TeacherAIAnalytics from "../components/dashboard/TeacherDashboard/Teacher Tabs/TeacherAIAnalytics";
 import TeacherLeaderboard from "../components/dashboard/TeacherDashboard/Teacher Tabs/TeacherLeaderboard";
+import TeacherShareNotes from "../components/dashboard/TeacherDashboard/Teacher Tabs/TeacherShareNotes"
 const TeacherDashboard = () => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -46,8 +47,9 @@ const TeacherDashboard = () => {
   { icon: "book",         label: "Course Management", key: "courses",          color: "#22c55e" },
   { icon: "menu_book",    label: "Lesson Management", key: "lessons",          color: "#f59e0b" },
   { icon: "grading",      label: "Grade Labs",        key: "lab-submissions",  color: "#a855f7" },
+  { icon: "note_stack",   label: "Share Notes",       key: "share-notes",      color: "#3b82f6" },  // ← ADD THIS
   { icon: "bar_chart",    label: "Student Progress",  key: "progress",         color: "#3b82f6" },
-  { icon: "leaderboard",  label: "Course Rankings",   key: "course-rankings",  color: "#f59e0b" },  // ← ADD THIS
+  { icon: "leaderboard",  label: "Course Rankings",   key: "course-rankings",  color: "#f59e0b" },
   { icon: "auto_awesome", label: "AI Insights",       key: "ai-analytics",     color: "#a855f7" },
   { icon: "smart_toy",    label: "AI Tutor",          key: "ai-tutor",         color: "#14b8a6" },
   { icon: "send",         label: "Send Notifications",key: "send-notifications",color: "#f59e0b" },
@@ -74,6 +76,7 @@ const TeacherDashboard = () => {
       case "lab-submissions":   return <LabSubmissions />;
       case "progress":          return <TeacherAnalytics />;
       case "ai-tutor":          return <AITutor />;
+      case "share-notes": return <TeacherShareNotes />;
       case "send-notifications": return <SendNotifications />;
       case "profile":           return <ProfileManagement />;
       case "ai-analytics":      return <TeacherAIAnalytics />;

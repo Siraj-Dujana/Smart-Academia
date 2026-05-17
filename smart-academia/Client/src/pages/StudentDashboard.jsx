@@ -14,6 +14,7 @@ import NotificationBell from "../components/notifications/NotificationBell";
 import StudentAIAnalytics from "../components/dashboard/StudentDashboard/Student Tabs/StudentAIAnalytics";
 import Leaderboard from "../components/dashboard/StudentDashboard/Student Tabs/Leaderboard";
 import Certificates from "../components/dashboard/StudentDashboard/Student Tabs/Certificates";
+import StudentViewNotes from "../components/dashboard/StudentDashboard/Student Tabs/StudentViewNotes"
 const StudentDashboard = () => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -41,14 +42,15 @@ const StudentDashboard = () => {
     if (tab) setActiveMenu(tab);
   }, [location.search]);
 
- const menuItems = [
+const menuItems = [
   { icon: "dashboard", label: "Dashboard", key: 'dashboard' },
   { icon: "import_contacts", label: "Courses", key: 'courses' },
-   { icon: "workspace_premium", label: "Certificates", key: 'certificates' },  // ← ADD THIS
+  { icon: "workspace_premium", label: "Certificates", key: 'certificates' },
   { icon: "quiz", label: "Quizzes", key: 'quizzes' },
   { icon: "science", label: "Labs", key: 'labs' },
+  { icon: "note_stack", label: "Notes", key: 'notes' },  // ← ADD THIS
   { icon: "bar_chart_4_bars", label: "Progress", key: 'progress' },
-  { icon: "leaderboard", label: "Leaderboard", key: 'leaderboard' },  // ← ADD THIS
+  { icon: "leaderboard", label: "Leaderboard", key: 'leaderboard' },
   { icon: "smart_toy", label: "AI Tutor", key: 'ai-tutor' },
   { icon: "assistant", label: "AI Assistant", key: 'ai-assistant' },
   { icon: 'person', label: 'My Profile', key: 'profile' },
@@ -75,6 +77,7 @@ const StudentDashboard = () => {
       case "certificates": return <Certificates />;
       case 'quizzes': return <Quizzes />;
       case 'labs': return <Labs />;
+      case 'notes': return <StudentViewNotes />;
       case 'progress': return <StudentAnalytics />;
       case 'ai-tutor': return <AITutor />;
       case 'ai-assistant': return <AIAssistant />;

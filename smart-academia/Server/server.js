@@ -1,46 +1,46 @@
-const express  = require("express");
+const express = require("express");
 const mongoose = require("mongoose");
-const cors     = require("cors");
+const cors = require("cors");
 
 // Load environment variables from .env file
-const dotenv   = require("dotenv");
+const dotenv = require("dotenv");
 dotenv.config();
 
-
-
-
+// Import routes
 const { getStudentAnalytics } = require("./controllers/analyticsController");
 const teacherRoutes = require('./routes/Teacherprogress');
 const aiProgressRoutes = require("./routes/aiProgressRoutes");
 const leaderboardRoutes = require("./routes/leaderboardRoutes");
 const certificateRoutes = require("./routes/certificateRoutes");
+const courseNoteRoutes = require('./routes/courseNoteRoutes');
+
 const app = express();
 app.use(cors({ origin: ["http://localhost:5173", "http://localhost:3000"] }));
 app.use(express.json());
 
 // ── Core Routes ──────────────────────────────────────────────
-app.use("/api/auth",          require("./routes/auth"));
-app.use("/api/otp",           require("./routes/otp"));
-app.use("/api/quizzes",       require("./routes/quizzes"));
-app.use("/api/admin",         require("./routes/admin"));
-app.use("/api/setup",         require("./setup/setupRoute"));
-app.use("/api/assignments",   require("./routes/assignments"));
-app.use("/api/courses",       require("./routes/courses"));
-app.use("/api/student",       require("./routes/student"));
-app.use("/api/profile",       require("./routes/profile"));
+app.use("/api/auth", require("./routes/auth"));
+app.use("/api/otp", require("./routes/otp"));
+app.use("/api/quizzes", require("./routes/quizzes"));
+app.use("/api/admin", require("./routes/admin"));
+app.use("/api/setup", require("./setup/setupRoute"));
+app.use("/api/assignments", require("./routes/assignments"));
+app.use("/api/courses", require("./routes/courses"));
+app.use("/api/student", require("./routes/student"));
+app.use("/api/profile", require("./routes/profile"));
 app.use("/api/notifications", require("./routes/Notifications"));
 
 // ── Lesson routes (nested under courses) ─────────────────────
 app.use("/api/courses/:courseId/lessons", require("./routes/lessons"));
 
 // ── AI Routes (single mount — no duplicate) ───────────────────
-app.use("/api/ai",           require("./routes/aiRoutes"));
-app.use("/api/assistant",    require("./routes/aiRoutes"));
+app.use("/api/ai", require("./routes/aiRoutes"));
+app.use("/api/assistant", require("./routes/aiRoutes"));
 
 // ── AI Assistant sub-resources ───────────────────────────────
-app.use("/api/assistant/documents",  require("./routes/documentRoutes"));
+app.use("/api/assistant/documents", require("./routes/documentRoutes"));
 app.use("/api/assistant/flashcards", require("./routes/flashcardRoutes"));
-app.use("/api/assistant/quizzes",    require("./routes/quizRoutes"));
+app.use("/api/assistant/quizzes", require("./routes/quizRoutes"));
 
 // Progress
 app.use("/api/analytics", require("./routes/analytics"));
@@ -53,6 +53,9 @@ app.use("/api/ai-progress", aiProgressRoutes);
 
 app.use("/api/leaderboard", leaderboardRoutes);
 app.use("/api/certificates", certificateRoutes);
+
+// Course notes - Share Notes feature
+app.use('/api/course-notes', courseNoteRoutes);
 
 app.get("/", (req, res) => res.json({ message: "SmartAcademia API running" }));
 
