@@ -5,7 +5,7 @@ const {
   analyzeStudentProgress,
   analyzeClassProgress,
   getTeacherCoursesForAnalysis,
-} = require("../controllers/aiProgressController");
+} = require("../controllers/Aiprogresscontroller");
 
 // Student route (any authenticated user)
 router.get("/student", protect, analyzeStudentProgress);
