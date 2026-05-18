@@ -7,7 +7,7 @@ const QuizAttempt    = require("../models/QuizAttempt");
 const LabSubmission  = require("../models/LabSubmission");
 const Quiz           = require("../models/Quiz");
 const Lab            = require("../models/Lab");
-const User           = require("../models/User");
+const User           = require("../models/user");
 
 /**
  * GET /api/teacher/courses/:courseId/progress
