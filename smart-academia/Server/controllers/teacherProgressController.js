@@ -9,11 +9,6 @@ const Quiz           = require("../models/Quiz");
 const Lab            = require("../models/Lab");
 const User           = require("../models/User");
 
-/**
- * GET /api/teacher/courses/:courseId/progress
- * Returns full progress data for all students enrolled in a teacher's course.
- * Includes per-student lesson/quiz/lab breakdown + course-level aggregates.
- */
 const getCourseStudentProgress = async (req, res) => {
   try {
     const { courseId } = req.params;
