@@ -1,6 +1,6 @@
 const User = require("../models/User");
 const jwt = require("jsonwebtoken");
-const { notifyStudentRegistration, notifyTeacherRegistration } = require("./notificationController"); // ✅ ADD THIS
+const { notifyStudentRegistration, notifyTeacherRegistration } = require("./Notificationcontroller"); // ✅ ADD THIS
 const PointsService = require("../services/pointsService");
 // Generate JWT token
 const generateToken = (userId, role) => {
