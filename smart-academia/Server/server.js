@@ -15,16 +15,25 @@ const certificateRoutes = require("./routes/certificateRoutes");
 const courseNoteRoutes = require('./routes/courseNoteRoutes');
 
 const app = express();
+// app.use(cors({ origin: ["http://localhost:5173", "http://localhost:3000", process.env.CLIENT_URL] }));
 
-// ✅ FIXED CORS - No asterisk in options
+const allowedOrigins = [
+  "http://localhost:5173",
+  "http://localhost:3000",
+  process.env.CLIENT_URL,        // your Vercel URL
+].filter(Boolean);
+
 app.use(cors({
-  origin: '*',
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
+  origin: (origin, callback) => {
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error("Not allowed by CORS"));
+    }
+  },
+  credentials: true,
 }));
 
-// Remove the problematic line - not needed when origin is '*'
-// app.options('*', cors());
 
 app.use(express.json());
 
@@ -69,13 +78,11 @@ app.use('/api/course-notes', courseNoteRoutes);
 
 app.get("/", (req, res) => res.json({ message: "SmartAcademia API running" }));
 
-console.log("✅ Server starting with CORS: All origins allowed");
-
 mongoose.connect(process.env.MONGO_URI)
   .then(() => {
-    console.log("✅ MongoDB connected");
+    console.log("MongoDB connected");
     app.listen(process.env.PORT || 5000, () =>
-      console.log(`✅ Server running on port ${process.env.PORT || 5000}`)
+      console.log(`Server running on port ${process.env.PORT || 5000}`)
     );
   })
-  .catch(err => console.error("❌ MongoDB error:", err));
+  .catch(err => console.error("MongoDB error:", err));
