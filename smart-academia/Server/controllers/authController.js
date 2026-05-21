@@ -9,7 +9,7 @@ const generateToken = (userId, role) => {
   });
 };
 
-// ===== REGISTER STUDENT =====
+// ===== REGISTER STUDENT ====
 const registerStudent = async (req, res) => {
   try {
     const { fullName, studentId, email, password, department, semester } = req.body;
