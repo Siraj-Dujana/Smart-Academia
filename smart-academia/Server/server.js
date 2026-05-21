@@ -19,7 +19,7 @@ const app = express();
 
 const allowedOrigins = [
   "http://localhost:5173",
-  "http://localhost:3000",
+  "http://localhost:5000",
   "https://smart-academia-ai.vercel.app",
   process.env.CLIENT_URL,        // your Vercel URL
 ].filter(Boolean);
