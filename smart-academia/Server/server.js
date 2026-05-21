@@ -15,7 +15,15 @@ const certificateRoutes = require("./routes/certificateRoutes");
 const courseNoteRoutes = require('./routes/courseNoteRoutes');
 
 const app = express();
-app.use(cors({ origin: ["http://localhost:5173", "http://localhost:3000", process.env.CLIENT_URL] }));
+// app.use(cors({ origin: ["http://localhost:5173", "http://localhost:3000", process.env.CLIENT_URL] }));
+const allowedOrigins = [
+  "http://localhost:5173",
+  "http://localhost:3000",
+  "https://smart-academia-ai.vercel.app",  // Your Vercel frontend
+  "https://smart-academia.up.railway.app",  // Your Railway backend
+  process.env.CLIENT_URL
+].filter(Boolean); // Remove undefined values
+
 app.use(express.json());
 
 // ── Core Routes ──────────────────────────────────────────────
