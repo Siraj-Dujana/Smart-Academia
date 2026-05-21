@@ -15,7 +15,35 @@ const certificateRoutes = require("./routes/certificateRoutes");
 const courseNoteRoutes = require('./routes/courseNoteRoutes');
 
 const app = express();
-app.use(cors({ origin: ["http://localhost:5173", "http://localhost:3000", process.env.CLIENT_URL] }));
+
+// ✅ FIXED CORS CONFIGURATION
+const allowedOrigins = [
+  "http://localhost:5173",
+  "http://localhost:3000",
+  "https://smart-academia-ai.vercel.app",  // Your Vercel frontend
+  process.env.CLIENT_URL
+].filter(Boolean); // Remove undefined values
+
+// CORS middleware
+app.use(cors({
+  origin: function(origin, callback) {
+    // Allow requests with no origin (like mobile apps, curl, postman)
+    if (!origin) return callback(null, true);
+    
+    if (allowedOrigins.indexOf(origin) !== -1) {
+      callback(null, true);
+    } else {
+      console.log(`❌ CORS blocked: ${origin}`);
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
+}));
+
+// Handle preflight requests explicitly
+app.options('*', cors());
 
 app.use(express.json());
 
@@ -60,11 +88,14 @@ app.use('/api/course-notes', courseNoteRoutes);
 
 app.get("/", (req, res) => res.json({ message: "SmartAcademia API running" }));
 
+// Log allowed origins on startup
+console.log("✅ Allowed CORS origins:", allowedOrigins);
+
 mongoose.connect(process.env.MONGO_URI)
   .then(() => {
-    console.log("MongoDB connected");
+    console.log("✅ MongoDB connected");
     app.listen(process.env.PORT || 5000, () =>
-      console.log(`Server running on port ${process.env.PORT || 5000}`)
+      console.log(`✅ Server running on port ${process.env.PORT || 5000}`)
     );
   })
-  .catch(err => console.error("MongoDB error:", err));
+  .catch(err => console.error("❌ MongoDB error:", err));
