@@ -15,27 +15,7 @@ const certificateRoutes = require("./routes/certificateRoutes");
 const courseNoteRoutes = require('./routes/courseNoteRoutes');
 
 const app = express();
-// app.use(cors({ origin: ["http://localhost:5173", "http://localhost:3000", process.env.CLIENT_URL] }));
-
-const allowedOrigins = [
-  "http://localhost:5173",
-  "http://localhost:5000",
-  "https://smart-academia-ai.vercel.app",
-  process.env.CLIENT_URL,        // your Vercel URL
-].filter(Boolean);
-
-app.use(cors({
-  origin: (origin, callback) => {
-    if (!origin || allowedOrigins.includes(origin)) {
-      callback(null, true);
-    } else {
-      callback(new Error("Not allowed by CORS"));
-    }
-  },
-  credentials: true,
-}));
-
-
+app.use(cors({ origin: ["http://localhost:5173", "http://localhost:3000", process.env.CLIENT_URL] }));
 app.use(express.json());
 
 // ── Core Routes ──────────────────────────────────────────────
