@@ -19,7 +19,7 @@ const {
   clearAdminRead,
   deleteAdminNotification,
   adminBroadcast,
-} = require("../controllers/notificationController");
+} = require("../controllers/Notificationcontroller");
 const { protect, authorize } = require("../middleware/authMiddleware");
 
 // All routes require authentication
