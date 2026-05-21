@@ -2,7 +2,7 @@
 // Central notification dispatcher — called from controllers after key events.
 // All functions are fire-and-forget: they log errors but never throw.
 
-const { createNotification, broadcastToCourse, broadcastToAdmins } = require("../controllers/notificationController");
+const { createNotification, broadcastToCourse, broadcastToAdmins } = require("../controllers/Notificationcontroller");
 const { sendEmail } = require("./sendEmail");
 
 // ─────────────────────────────────────────────────────────────
