@@ -35,7 +35,7 @@ const sendRegistrationOTP = async (req, res) => {
       if (
         existingUser.otpResendResetTime &&
         now < existingUser.otpResendResetTime &&
-        existingUser.otpResendCount >= 10
+        existingUser.otpResendCount >= 30
       ) {
         const minutesLeft = Math.ceil(
           (existingUser.otpResendResetTime - now) / 60000
