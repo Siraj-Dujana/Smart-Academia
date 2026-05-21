@@ -1,7 +1,7 @@
 const User = require("../models/User");
 const Course = require("../models/Course");
 const Enrollment = require("../models/Enrollment");
-const { notifyUserDeleted } = require("./notificationController"); // ✅ ADD THIS
+const { notifyUserDeleted } = require("./Notificationcontroller"); // ✅ ADD THIS
 
 // Get all students
 const getAllStudents = async (req, res) => {
