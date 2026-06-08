@@ -456,7 +456,7 @@ const submitQuiz = async (req, res) => {
       await LessonProgress.findOneAndUpdate(
         { student: req.user._id, lesson: quiz.lesson },
         {
-          $set: { quizCompleted: true, quizScore: score },
+          $set: { quizCompleted: true, quizScore: score, quizPassed: passed },
           $setOnInsert: {
             student: req.user._id,
             lesson:  quiz.lesson,

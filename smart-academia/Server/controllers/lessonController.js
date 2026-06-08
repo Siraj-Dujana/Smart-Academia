@@ -25,54 +25,72 @@ const upload = multer({
   },
 });
 module.exports.uploadMiddleware = upload.single("file");
-
-// ── CORE: Unlock next lesson ─────────────────────────────────
 const checkAndUnlockNext = async (studentId, lessonId, courseId) => {
   try {
-    
     const lesson = await Lesson.findById(lessonId);
-    if (!lesson) {
-      
-      return;
-    }
-    
+    if (!lesson) return;
 
-    const progress = await LessonProgress.findOne({ student: studentId, lesson: lessonId });
+    let progress = await LessonProgress.findOne({ student: studentId, lesson: lessonId });
     if (!progress) {
-      
-      return;
+      // Create progress if it doesn't exist
+      progress = await LessonProgress.create({
+        student: studentId,
+        lesson: lessonId,
+        course: courseId,
+        lessonViewed: false,
+        quizCompleted: false,
+        labCompleted: false,
+        isCompleted: false,
+        quizPassed: false,
+        labPassed: false,
+      });
     }
-    if (progress.isCompleted) {
-      
-      return;
-    }
+    if (progress.isCompleted) return;
 
-    const quizExists = !!(await Quiz.findOne({ lesson: lessonId, isPublished: true }));
-    const labExists  = !!(await Lab.findOne({  lesson: lessonId, isPublished: true }));
+    // Check if quiz exists
+    const quiz = await Quiz.findOne({ lesson: lessonId, isPublished: true });
+    const lab = await Lab.findOne({ lesson: lessonId, isPublished: true });
     
-   
-
-    const quizOk = !lesson.requiresQuiz || progress.quizCompleted || (lesson.requiresQuiz && !quizExists);
-    const labOk  = !lesson.requiresLab  || progress.labCompleted  || (lesson.requiresLab  && !labExists);
+    let quizOk = !lesson.requiresQuiz;
+    let labOk = !lesson.requiresLab;
+    
+    // ✅ Check quiz pass status from the progress record
+    if (lesson.requiresQuiz && quiz) {
+      quizOk = progress.quizPassed === true;
+      console.log(`📊 Quiz status for student ${studentId}: quizPassed = ${progress.quizPassed}`);
+    }
+    
+    // ✅ Check lab pass status from the progress record
+    if (lesson.requiresLab && lab) {
+      labOk = progress.labPassed === true;
+      console.log(`📊 Lab status for student ${studentId}: labPassed = ${progress.labPassed}`);
+    }
+    
     const viewOk = progress.lessonViewed;
 
- 
+    console.log("=== checkAndUnlockNext ===");
+    console.log("Lesson:", lesson.title);
+    console.log("Requires Quiz:", lesson.requiresQuiz);
+    console.log("Requires Lab:", lesson.requiresLab);
+    console.log("quizOk (passed):", quizOk);
+    console.log("labOk (passed):", labOk);
+    console.log("viewOk:", viewOk);
+    console.log("isCompleted:", progress.isCompleted);
 
-    if (viewOk && quizOk && labOk) {
-      
-      
+    if (viewOk && quizOk && labOk && !progress.isCompleted) {
       progress.isCompleted = true;
       progress.completedAt = new Date();
       await progress.save();
       
-
-       await PointsService.addPoints(
-    studentId, 
-    POINTS_CONFIG.LESSON_COMPLETED, 
-    `Completed lesson: ${lesson.title}`
-  );
-
- 
+      console.log(`🎉 Lesson ${lesson.title} marked as COMPLETED!`);
+      
+      await PointsService.addPoints(
+        studentId, 
+        POINTS_CONFIG.LESSON_COMPLETED, 
+        `Completed lesson: ${lesson.title}`
+      );
+      
+      // Unlock next lesson
       const nextLesson = await Lesson.findOne({
         course: courseId,
         order: lesson.order + 1,
@@ -80,25 +98,24 @@ const checkAndUnlockNext = async (studentId, lessonId, courseId) => {
       });
 
       if (nextLesson) {
-        
-        
         await LessonProgress.findOneAndUpdate(
           { student: studentId, lesson: nextLesson._id },
           {
             $setOnInsert: {
               student: studentId,
-              lesson:  nextLesson._id,
-              course:  courseId,
-              lessonViewed:  false,
+              lesson: nextLesson._id,
+              course: courseId,
+              lessonViewed: false,
               quizCompleted: false,
-              labCompleted:  false,
-              isCompleted:   false,
+              labCompleted: false,
+              isCompleted: false,
+              quizPassed: false,
+              labPassed: false,
             },
           },
           { upsert: true }
         );
         
-
         const student = await User.findById(studentId).select("fullName email");
         await notifyLessonUnlocked({
           studentId,
@@ -108,22 +125,18 @@ const checkAndUnlockNext = async (studentId, lessonId, courseId) => {
           recipientEmail: student?.email || null,
           recipientName: student?.fullName || null,
         });
-      } else {
-       
+        console.log(`🔓 Next lesson "${nextLesson.title}" unlocked for student`);
       }
 
       // Update overall course progress
       const totalLessons = await Lesson.countDocuments({ course: courseId, isPublished: true });
       const completedCount = await LessonProgress.countDocuments({
         student: studentId,
-        course:  courseId,
+        course: courseId,
         isCompleted: true,
       });
       const overallProgress = totalLessons > 0
-        ? Math.round((completedCount / totalLessons) * 100)
-        : 0;
-
-     
+        ? Math.round((completedCount / totalLessons) * 100) : 0;
 
       await Enrollment.findOneAndUpdate(
         { student: studentId, course: courseId },
@@ -131,16 +144,14 @@ const checkAndUnlockNext = async (studentId, lessonId, courseId) => {
       );
 
       if (overallProgress === 100) {
-        
         const course = await Course.findById(courseId);
         const student = await User.findById(studentId).select("fullName email");
         await PointsService.addPoints(
-    studentId,
-    POINTS_CONFIG.COURSE_COMPLETED,
-    `Completed course: ${course.title}`
-  );
-  await PointsService.awardBadge(studentId, "COURSE_CHAMPION");
-  
+          studentId,
+          POINTS_CONFIG.COURSE_COMPLETED,
+          `Completed course: ${course.title}`
+        );
+        await PointsService.awardBadge(studentId, "COURSE_CHAMPION");
         
         if (course && student) {
           await notifyCourseCompleted({
@@ -154,13 +165,17 @@ const checkAndUnlockNext = async (studentId, lessonId, courseId) => {
         }
       }
     } else {
-      
+      console.log("❌ Lesson NOT completed yet. Missing conditions:");
+      if (!viewOk) console.log("   - Lesson not viewed");
+      if (lesson.requiresQuiz && !quizOk) console.log("   - Quiz not passed");
+      if (lesson.requiresLab && !labOk) console.log("   - Lab not passed");
     }
   } catch (err) {
     console.error("checkAndUnlockNext error:", err.message);
     console.error(err.stack);
   }
 };
+
 module.exports.checkAndUnlockNext = checkAndUnlockNext;
 
 

@@ -1,4 +1,3 @@
-// controllers/labController.js
 const Lab            = require("../models/Lab");
 const LabSubmission  = require("../models/LabSubmission");
 const LessonProgress = require("../models/LessonProgress");
@@ -7,6 +6,8 @@ const cloudinary     = require("../config/cloudinary");
 const { checkAndUnlockNext } = require("./lessonController");
 const { GoogleGenAI } = require("@google/genai");
 const { notifyLabGraded } = require("../utils/notificationHooks");
+const PointsService = require('../services/pointsService');
+const { POINTS_CONFIG } = require('../config/pointsConfig');
 const fs   = require("fs");
 const path = require("path");
 const https = require("https");
@@ -45,8 +46,7 @@ const extractPdfText = async (buffer) => {
 };
 
 // ─────────────────────────────────────────────────────────────
-// SHARED: Get lab for a lesson (teacher editor + student view)
-// GET /api/courses/:courseId/lessons/:lessonId/lab
+// SHARED: Get lab for a lesson
 // ─────────────────────────────────────────────────────────────
 const getLabByLesson = async (req, res) => {
   try {
@@ -209,8 +209,6 @@ Return ONLY a valid JSON object. No markdown, no explanation, no code blocks. Ju
 
 // ─────────────────────────────────────────────────────────────
 // AI Explain Lab
-// FIX: accessible to both teachers AND students (route no longer has authorize("teacher"))
-// This lets students click "AI Explain this lab" from inside the lesson viewer.
 // ─────────────────────────────────────────────────────────────
 const aiExplainLab = async (req, res) => {
   try {
@@ -219,7 +217,6 @@ const aiExplainLab = async (req, res) => {
 
     if (!lab) return res.status(404).json({ message: "Lab not found" });
 
-    // Authorization: teacher must own it, student must be enrolled
     const isTeacher = lab.lesson.course.teacher.toString() === req.user._id.toString();
     const isStudent = req.user.role === "student";
     if (!isTeacher && !isStudent)
@@ -377,23 +374,34 @@ const gradeSubmission = async (req, res) => {
     submission.gradedBy = req.user._id;
     await submission.save();
 
+    const scorePercent = (numMarks / totalMarks) * 100;
+    const labPassed = scorePercent >= 70;
 
-    // ✅ ADD POINTS BASED ON LAB SCORE
-const scorePercent = (numMarks / totalMarks) * 100;
-if (scorePercent >= 70) {
-  await PointsService.addPoints(
-    submission.student._id,
-    POINTS_CONFIG.LAB_PASSED,
-    `Passed lab: ${submission.lab.title}`
-  );
-}
-if (scorePercent === 100) {
-  await PointsService.addPoints(
-    submission.student._id,
-    POINTS_CONFIG.LAB_PERFECT,
-    `Perfect score on lab: ${submission.lab.title}`
-  );
-}
+    await LessonProgress.findOneAndUpdate(
+      { student: submission.student._id, lesson: submission.lesson },
+      {
+        $set: { 
+          labCompleted: true,
+          labPassed: labPassed
+        },
+      },
+      { upsert: true }
+    );
+
+    if (labPassed) {
+      await PointsService.addPoints(
+        submission.student._id,
+        POINTS_CONFIG.LAB_PASSED,
+        `Passed lab: ${submission.lab.title}`
+      );
+    }
+    if (scorePercent === 100) {
+      await PointsService.addPoints(
+        submission.student._id,
+        POINTS_CONFIG.LAB_PERFECT,
+        `Perfect score on lab: ${submission.lab.title}`
+      );
+    }
 
     await notifyLabGraded({
       studentId:      submission.student._id,
@@ -406,6 +414,8 @@ if (scorePercent === 100) {
       recipientName:  submission.student.fullName,
     });
 
+    await checkAndUnlockNext(submission.student._id, submission.lesson, submission.course);
+
     res.status(200).json({ message: "Graded successfully", submission });
   } catch (err) {
     console.error("gradeSubmission error:", err.message);
@@ -415,17 +425,6 @@ if (scorePercent === 100) {
 
 // ─────────────────────────────────────────────────────────────
 // TEACHER: AI Evaluate a submission
-//
-// FIX: Now reads PDF content when the student submitted a PDF.
-// It fetches the PDF from Cloudinary, extracts the text with
-// pdf-parse, and passes that text to Gemini for evaluation.
-// This means a student submitting name="siraj" inside a PDF
-// will be evaluated on that actual code — not on an empty string.
-//
-// Priority order for submission content:
-//   1. PDF text (if pdfUrl exists and text can be extracted)
-//   2. Text answer (if no PDF or PDF has no extractable text)
-//   3. Error message if neither has content
 // ─────────────────────────────────────────────────────────────
 const aiEvaluateSubmission = async (req, res) => {
   try {
@@ -446,11 +445,9 @@ const aiEvaluateSubmission = async (req, res) => {
     const lab = submission.lab;
     const totalMarks = lab.totalMarks || 100;
 
-    // ── Step 1: Determine what the student actually submitted ──
     let submittedContent = "";
     let contentSource    = "none";
 
-    // Try to extract text from the PDF first
     if (submission.pdfUrl) {
       try {
         const pdfBuffer = await fetchPdfBuffer(submission.pdfUrl);
@@ -464,25 +461,20 @@ const aiEvaluateSubmission = async (req, res) => {
         }
       } catch (pdfErr) {
         console.error("⚠️  PDF fetch/parse failed:", pdfErr.message);
-        // Fall through to text answer
       }
     }
 
-    // Fall back to text answer if PDF had no extractable text
     if (!submittedContent && submission.answer && submission.answer.trim()) {
       submittedContent = submission.answer.trim();
       contentSource    = "text";
     }
 
-    // Nothing to evaluate
     if (!submittedContent) {
       return res.status(400).json({
         message: "No evaluatable content found. The student's PDF has no extractable text and no text answer was provided.",
       });
     }
 
-
-    // ── Step 2: Build the Gemini prompt ──────────────────────
     const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
     const prompt = `You are an expert university lab evaluator grading a student's submission.
@@ -501,11 +493,8 @@ ${submittedContent}
 
 GRADING INSTRUCTIONS:
 - Award marks based strictly on how well the student's submission satisfies the lab requirements.
-- If the lab asked to initialize a variable with a specific value and the student did exactly that, award full marks.
-- Be precise: partial fulfillment → partial marks. Full fulfillment → full marks. No fulfillment → 0.
 - The score must be between 0 and ${totalMarks}.
-- Do NOT penalise for code style unless the instructions specifically require it.
-- Provide specific, constructive feedback mentioning what was correct and what was missing.
+- Provide specific, constructive feedback.
 
 Return ONLY valid JSON. No markdown, no explanation outside the JSON.
 
@@ -538,12 +527,10 @@ Return ONLY valid JSON. No markdown, no explanation outside the JSON.
       return res.status(500).json({ message: "AI returned invalid format. Try again." });
     }
 
-    // Clamp score to valid range
     if (typeof evaluation.score === "number") {
       evaluation.score = Math.max(0, Math.min(totalMarks, Math.round(evaluation.score)));
     }
 
-    // Include the content source so the teacher UI can show what was evaluated
     evaluation.evaluatedFrom = contentSource;
 
     res.status(200).json({ evaluation });
@@ -554,7 +541,7 @@ Return ONLY valid JSON. No markdown, no explanation outside the JSON.
 };
 
 // ─────────────────────────────────────────────────────────────
-// STUDENT: Submit lab
+// STUDENT: Submit lab (WITH AI AUTO-EVALUATION)
 // ─────────────────────────────────────────────────────────────
 const submitLab = async (req, res) => {
   try {
@@ -595,7 +582,6 @@ const submitLab = async (req, res) => {
     if (!answer && !pdfUrl)
       return res.status(400).json({ message: "Please write an answer or upload a PDF" });
 
-    // Delete old PDF from Cloudinary if student is resubmitting with a new PDF
     const existing = await LabSubmission.findOne({ lab: labId, student: req.user._id });
     if (existing?.pdfPublicId && pdfUrl && existing.pdfPublicId !== pdfPublicId) {
       try {
@@ -617,6 +603,9 @@ const submitLab = async (req, res) => {
           status:      "submitted",
           gradedAt:    null,
           gradedBy:    null,
+          aiSuggestedMarks: null,
+          aiSuggestedFeedback: null,
+          aiEvaluatedAt: null,
         },
         $setOnInsert: {
           lab:     labId,
@@ -641,24 +630,103 @@ const submitLab = async (req, res) => {
       { upsert: true }
     );
 
-    // ✅ ADD POINTS FOR LAB SUBMISSION
-await PointsService.addPoints(
-  req.user._id,
-  POINTS_CONFIG.LAB_SUBMITTED,
-  `Submitted lab: ${lab.title}`
-);
+    await PointsService.addPoints(
+      req.user._id,
+      POINTS_CONFIG.LAB_SUBMITTED,
+      `Submitted lab: ${lab.title}`
+    );
+
+    // ✅ AUTO AI EVALUATION - SIMPLIFIED & RELIABLE
+    let aiSuggestedMarks = null;
+    let aiSuggestedFeedback = null;
+
+    try {
+      console.log("🤖 Starting AI evaluation for lab submission...");
+      
+      if ((answer && answer.trim()) || pdfUrl) {
+        const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+        const totalMarks = lab.totalMarks || 100;
+        
+        let contentToEvaluate = answer;
+        
+        if (pdfUrl) {
+          try {
+            const pdfBuffer = await fetchPdfBuffer(pdfUrl);
+            const pdfText = await extractPdfText(pdfBuffer);
+            if (pdfText && pdfText.length > 10) {
+              contentToEvaluate = pdfText;
+              console.log("📄 Using PDF content, length:", contentToEvaluate.length);
+            }
+          } catch (pdfErr) {
+            console.error("PDF extraction failed:", pdfErr.message);
+          }
+        }
+        
+        if (contentToEvaluate && contentToEvaluate.trim()) {
+          const prompt = `Evaluate this student's lab submission and give a score out of ${totalMarks}.
+
+LAB: ${lab.title}
+INSTRUCTIONS: ${lab.instructions || "Complete the lab requirements"}
+
+STUDENT SUBMISSION:
+${contentToEvaluate.slice(0, 4000)}
+
+Return ONLY JSON: {"score": number between 0 and ${totalMarks}, "feedback": "brief feedback"}`;
+
+          console.log("📤 Calling Gemini API...");
+          const response = await ai.models.generateContent({
+            model: "gemini-2.5-flash-lite",
+            contents: prompt,
+          });
+
+          let text = response.text;
+          console.log("🤖 AI Response received:", text);
+          
+          if (text) {
+            text = text.trim()
+              .replace(/^```json\s*/i, "")
+              .replace(/^```\s*/i, "")
+              .replace(/```\s*$/i, "")
+              .trim();
+            
+            try {
+              const evaluation = JSON.parse(text);
+              if (evaluation && typeof evaluation.score === 'number') {
+                aiSuggestedMarks = Math.max(0, Math.min(totalMarks, Math.round(evaluation.score)));
+                aiSuggestedFeedback = evaluation.feedback || "";
+                
+                submission.aiSuggestedMarks = aiSuggestedMarks;
+                submission.aiSuggestedFeedback = aiSuggestedFeedback;
+                submission.aiEvaluatedAt = new Date();
+                await submission.save();
+                
+                console.log(`✅ AI Evaluation complete: ${aiSuggestedMarks}/${totalMarks} marks`);
+              }
+            } catch (parseErr) {
+              console.error("Failed to parse AI response:", parseErr.message);
+            }
+          }
+        } else {
+          console.log("⚠️ No content to evaluate");
+        }
+      }
+    } catch (aiErr) {
+      console.error("❌ Auto AI evaluation failed:", aiErr.message);
+    }
 
     await checkAndUnlockNext(req.user._id, lessonId, courseId);
 
     res.status(200).json({
-      message: "Lab submitted successfully",
+      message: aiSuggestedMarks ? "Lab submitted with AI evaluation" : "Lab submitted successfully",
       submission: {
-        _id:         submission._id,
-        answer:      submission.answer,
-        pdfUrl:      submission.pdfUrl,
+        _id: submission._id,
+        answer: submission.answer,
+        pdfUrl: submission.pdfUrl,
         pdfFileName: submission.pdfFileName,
-        status:      submission.status,
+        status: submission.status,
         submittedAt: submission.submittedAt,
+        aiSuggestedMarks: submission.aiSuggestedMarks || aiSuggestedMarks,
+        aiSuggestedFeedback: submission.aiSuggestedFeedback || aiSuggestedFeedback,
       },
     });
   } catch (err) {
@@ -676,7 +744,27 @@ const getMySubmission = async (req, res) => {
       lab:     req.params.labId,
       student: req.user._id,
     });
-    res.status(200).json({ submission });
+    
+    if (submission) {
+      res.status(200).json({ 
+        submission: {
+          _id: submission._id,
+          answer: submission.answer,
+          pdfUrl: submission.pdfUrl,
+          pdfFileName: submission.pdfFileName,
+          status: submission.status,
+          submittedAt: submission.submittedAt,
+          marks: submission.marks,
+          feedback: submission.feedback,
+          gradedAt: submission.gradedAt,
+          aiSuggestedMarks: submission.aiSuggestedMarks,
+          aiSuggestedFeedback: submission.aiSuggestedFeedback,
+          aiEvaluatedAt: submission.aiEvaluatedAt,
+        }
+      });
+    } else {
+      res.status(200).json({ submission: null });
+    }
   } catch (err) {
     console.error("getMySubmission error:", err.message);
     res.status(500).json({ message: "Server error" });
@@ -759,8 +847,6 @@ const getSubmissionPDF = async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 };
-
-
 
 module.exports = {
   getLabByLesson,

@@ -18,8 +18,7 @@ const MiniBar = ({ value = 0, color = "#6366f1", height = 3 }) => (
   </div>
 );
 
-// ── Stat Glow Card ────────────────────────────────────────────
-const GlowCard = ({ icon, label, value, color, sub }) => (
+const GlowCard = ({ icon, label, value, color, sub, percentage }) => (
   <div className="relative rounded-2xl overflow-hidden p-4 flex flex-col gap-2 group" style={{ background: "#0f1629", border: `1px solid ${color}33` }}>
     <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500" style={{ background: `radial-gradient(ellipse at 50% 0%, ${color}15 0%, transparent 70%)` }} />
     <div className="flex items-start justify-between">
@@ -32,7 +31,7 @@ const GlowCard = ({ icon, label, value, color, sub }) => (
       <p className="text-2xl font-black text-white tracking-tight" style={{ textShadow: `0 0 20px ${color}66` }}>{value}</p>
       <p className="text-[10px] text-gray-400 font-medium mt-0.5">{label}</p>
     </div>
-    <MiniBar value={typeof value === "string" && value.endsWith("%") ? parseFloat(value) : 75} color={color} />
+    <MiniBar value={percentage !== undefined ? percentage : 0} color={color} />
   </div>
 );
 
@@ -237,13 +236,38 @@ const Labs = () => {
         </div>
       )}
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <GlowCard icon="science" label="Total Labs" value={stats.total} color="#6366f1" />
-        <GlowCard icon="check_circle" label="Submitted" value={stats.completed} color="#f59e0b" sub={`${stats.completed}/${stats.total}`} />
-        <GlowCard icon="verified" label="Graded" value={stats.graded} color="#22c55e" />
-        <GlowCard icon="trending_up" label="Completion Rate" value={`${stats.rate}%`} color="#a855f7" />
-      </div>
+     {/* Stats Cards */}
+<div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+  <GlowCard 
+    icon="science" 
+    label="Total Labs" 
+    value={stats.total} 
+    color="#6366f1" 
+    percentage={100} 
+  />
+  <GlowCard 
+    icon="check_circle" 
+    label="Submitted" 
+    value={stats.completed} 
+    color="#f59e0b" 
+    sub={`${stats.completed}/${stats.total}`}
+    percentage={stats.total > 0 ? (stats.completed / stats.total) * 100 : 0}
+  />
+  <GlowCard 
+    icon="verified" 
+    label="Graded" 
+    value={stats.graded} 
+    color="#22c55e"
+    percentage={stats.total > 0 ? (stats.graded / stats.total) * 100 : 0}
+  />
+  <GlowCard 
+    icon="trending_up" 
+    label="Completion Rate" 
+    value={`${stats.rate}%`} 
+    color="#a855f7"
+    percentage={stats.rate}
+  />
+</div>
 
       {/* Error Banner */}
       {error && (
@@ -360,16 +384,26 @@ const Labs = () => {
           {/* Spacer to push button to bottom */}
           <div className="flex-1"></div>
 
-          {/* Action Button - Always at bottom */}
-          <button className="w-full flex items-center justify-center gap-1.5 text-xs font-bold py-2 rounded-lg transition-all hover:opacity-90 mt-3 flex-shrink-0" style={{
-            background: lab.status === "graded" ? "#22c55e" : lab.status === "submitted" ? "#f59e0b" : "linear-gradient(135deg, #6366f1, #818cf8)",
-            color: "white"
-          }}>
-            <span className="material-symbols-outlined text-sm">
-              {lab.status === "graded" ? "visibility" : lab.status === "submitted" ? "edit" : "play_arrow"}
-            </span>
-            {lab.status === "graded" ? "View Results" : lab.status === "submitted" ? "Update Submission" : "Start Lab"}
-          </button>
+        {/* Action Button - Always at bottom */}
+<button 
+  className="w-full flex items-center justify-center gap-1.5 text-xs font-bold py-2 rounded-lg transition-all hover:opacity-90 mt-3 flex-shrink-0" 
+  style={{
+    background: lab.status === "graded" ? "#64748b" : (lab.status === "submitted" ? "#f59e0b" : "linear-gradient(135deg, #6366f1, #818cf8)"),
+    color: "white",
+    cursor: lab.status === "graded" ? "not-allowed" : "pointer"
+  }}
+  disabled={lab.status === "graded"}
+  onClick={() => {
+    if (lab.status !== "graded") {
+      navigate(`/lessons/${lab.courseId}?lessonId=${lab.lessonId}`);
+    }
+  }}
+>
+  <span className="material-symbols-outlined text-sm">
+    {lab.status === "graded" ? "lock" : (lab.status === "submitted" ? "edit" : "play_arrow")}
+  </span>
+  {lab.status === "graded" ? "Graded - Read Only" : (lab.status === "submitted" ? "Update Submission" : "Start Lab")}
+</button>
         </div>
       </div>
     );

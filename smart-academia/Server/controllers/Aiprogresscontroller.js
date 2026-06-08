@@ -391,15 +391,34 @@ const analyzeClassProgress = async (req, res) => {
       }
     });
 
-    // Per-quiz analysis - ONLY required quizzes
+    // ✅ FIXED: Per-quiz analysis - using BEST score per student
     const quizAnalysis = quizzes
       .filter(quiz => requiredQuizIds.has(quiz._id.toString()))
       .map(quiz => {
         const attempts = allAttempts.filter(a => a.quiz.toString() === quiz._id.toString());
-        const scores = attempts.map(a => a.score);
-        const passedCount = attempts.filter(a => a.passed).length;
-        const uniqueStudents = [...new Set(attempts.map(a => a.student.toString()))].length;
-        const avgScore = scores.length ? Math.round(scores.reduce((s, v) => s + v, 0) / scores.length) : 0;
+        
+        // Get best score per student
+        const bestScoresPerStudent = new Map();
+        attempts.forEach(attempt => {
+          const studentIdKey = attempt.student.toString();
+          const currentBest = bestScoresPerStudent.get(studentIdKey);
+          if (!currentBest || attempt.score > currentBest) {
+            bestScoresPerStudent.set(studentIdKey, attempt.score);
+          }
+        });
+        
+        const bestScores = Array.from(bestScoresPerStudent.values());
+        const avgScore = bestScores.length ? Math.round(bestScores.reduce((s, v) => s + v, 0) / bestScores.length) : 0;
+        
+        // Count students who passed (using best score)
+        let passedCount = 0;
+        bestScoresPerStudent.forEach((bestScore, studentIdKey) => {
+          if (bestScore >= quiz.passingScore) {
+            passedCount++;
+          }
+        });
+        
+        const uniqueStudents = bestScoresPerStudent.size;
         const passRate = uniqueStudents > 0 ? Math.round((passedCount / uniqueStudents) * 100) : 0;
 
         return {
@@ -409,35 +428,48 @@ const analyzeClassProgress = async (req, res) => {
           avgScore,
           passRate,
           passedCount,
-          lowestScore: scores.length ? Math.min(...scores) : null,
-          highestScore: scores.length ? Math.max(...scores) : null,
+          lowestScore: bestScores.length ? Math.min(...bestScores) : null,
+          highestScore: bestScores.length ? Math.max(...bestScores) : null,
           notAttempted: enrollments.length - uniqueStudents,
         };
       });
 
-    // Per-lab analysis - ONLY required labs
+    // ✅ FIXED: Per-lab analysis - using BEST score per student
     const labAnalysis = labs
       .filter(lab => requiredLabIds.has(lab._id.toString()))
       .map(lab => {
         const submissions = allSubmissions.filter(s => s.lab.toString() === lab._id.toString());
-        const graded = submissions.filter(s => s.status === "graded" && s.marks != null);
-        const labScores = graded.map(s => Math.round((s.marks / (lab.totalMarks || 100)) * 100));
-        const avgScore = labScores.length ? Math.round(labScores.reduce((s, v) => s + v, 0) / labScores.length) : 0;
+        
+        // Get best score per student (only graded submissions)
+        const bestScoresPerStudent = new Map();
+        submissions.forEach(sub => {
+          if (sub.status === "graded" && sub.marks != null) {
+            const studentIdKey = sub.student.toString();
+            const scorePercent = Math.round((sub.marks / (lab.totalMarks || 100)) * 100);
+            const currentBest = bestScoresPerStudent.get(studentIdKey);
+            if (!currentBest || scorePercent > currentBest) {
+              bestScoresPerStudent.set(studentIdKey, scorePercent);
+            }
+          }
+        });
+        
+        const bestScores = Array.from(bestScoresPerStudent.values());
+        const avgScore = bestScores.length ? Math.round(bestScores.reduce((s, v) => s + v, 0) / bestScores.length) : 0;
 
         return {
           title: lab.title,
           labType: lab.labType,
           difficulty: lab.difficulty,
           submissionCount: submissions.length,
-          gradedCount: graded.length,
+          gradedCount: submissions.filter(s => s.status === "graded").length,
           avgScore,
-          lowestScore: labScores.length ? Math.min(...labScores) : null,
-          highestScore: labScores.length ? Math.max(...labScores) : null,
-          notSubmitted: enrollments.length - submissions.length,
+          lowestScore: bestScores.length ? Math.min(...bestScores) : null,
+          highestScore: bestScores.length ? Math.max(...bestScores) : null,
+          notSubmitted: enrollments.length - bestScoresPerStudent.size,
         };
       });
 
-    // Per-lesson completion
+    // Per-lesson completion (same)
     const lessonAnalysis = lessons.map(lesson => {
       const progress = allProgress.filter(p => p.lesson.toString() === lesson._id.toString());
       const viewed = progress.filter(p => p.lessonViewed).length;
@@ -452,19 +484,30 @@ const analyzeClassProgress = async (req, res) => {
       };
     });
 
-    // At-risk students (low progress + low quiz scores)
+    // ✅ FIXED: At-risk students (using best quiz scores)
     const studentScores = studentIds.map(sid => {
       const sidStr = sid.toString();
       const enrollment = enrollments.find(e => e.student.toString() === sidStr);
+      
+      // Get best score per quiz for this student
       const studentAttempts = allAttempts.filter(a => a.student.toString() === sidStr && requiredQuizIds.has(a.quiz.toString()));
+      const bestPerQuiz = new Map();
+      studentAttempts.forEach(attempt => {
+        const quizId = attempt.quiz.toString();
+        const currentBest = bestPerQuiz.get(quizId);
+        if (!currentBest || attempt.score > currentBest) {
+          bestPerQuiz.set(quizId, attempt.score);
+        }
+      });
+      const bestScores = Array.from(bestPerQuiz.values());
+      const avgQuizScore = bestScores.length ? Math.round(bestScores.reduce((s, v) => s + v, 0) / bestScores.length) : 0;
+      
       const studentSubs = allSubmissions.filter(s => s.student.toString() === sidStr && requiredLabIds.has(s.lab.toString()));
-      const scores = studentAttempts.map(a => a.score);
-      const avgScore = scores.length ? Math.round(scores.reduce((s, v) => s + v, 0) / scores.length) : 0;
 
       return {
         studentId: sidStr,
         progress: enrollment?.progress || 0,
-        avgQuizScore: avgScore,
+        avgQuizScore,
         labsSubmitted: studentSubs.length,
         totalAttempts: studentAttempts.length,
         passedQuizzes: studentAttempts.filter(a => a.passed).length,
@@ -483,22 +526,27 @@ const analyzeClassProgress = async (req, res) => {
       ? Math.round(classProgressValues.reduce((s, v) => s + v, 0) / classProgressValues.length)
       : 0;
     
-    const requiredQuizScores = allAttempts
-      .filter(a => requiredQuizIds.has(a.quiz.toString()))
-      .map(a => a.score);
-    const classAvgQuiz = requiredQuizScores.length
-      ? Math.round(requiredQuizScores.reduce((s, v) => s + v, 0) / requiredQuizScores.length)
-      : 0;
+    // ✅ FIXED: Class average quiz score (using best scores per student per quiz)
+    let totalQuizBestScores = 0;
+    let quizCount = 0;
+    quizAnalysis.forEach(quiz => {
+      if (quiz.avgScore > 0) {
+        totalQuizBestScores += quiz.avgScore;
+        quizCount++;
+      }
+    });
+    const classAvgQuiz = quizCount > 0 ? Math.round(totalQuizBestScores / quizCount) : 0;
     
-    const gradedRequiredSubs = allSubmissions.filter(s => 
-      requiredLabIds.has(s.lab.toString()) && s.status === "graded" && s.marks != null
-    );
-    const classAvgLab = gradedRequiredSubs.length
-      ? Math.round(gradedRequiredSubs.reduce((s, sub) => {
-          const lab = labs.find(l => l._id.toString() === sub.lab.toString());
-          return s + Math.round((sub.marks / (lab?.totalMarks || 100)) * 100);
-        }, 0) / gradedRequiredSubs.length)
-      : 0;
+    // ✅ FIXED: Class average lab score (using best scores per student per lab)
+    let totalLabBestScores = 0;
+    let labCount = 0;
+    labAnalysis.forEach(lab => {
+      if (lab.avgScore > 0) {
+        totalLabBestScores += lab.avgScore;
+        labCount++;
+      }
+    });
+    const classAvgLab = labCount > 0 ? Math.round(totalLabBestScores / labCount) : 0;
 
     const classMetrics = {
       totalStudents: enrollments.length,
@@ -507,9 +555,7 @@ const analyzeClassProgress = async (req, res) => {
       avgQuizScore: classAvgQuiz,
       avgLabScore: classAvgLab,
       totalAttempts: allAttempts.filter(a => requiredQuizIds.has(a.quiz.toString())).length,
-      passRate: requiredQuizScores.length
-        ? Math.round((allAttempts.filter(a => requiredQuizIds.has(a.quiz.toString()) && a.passed).length / requiredQuizScores.length) * 100)
-        : 0,
+      passRate: quizAnalysis.length ? Math.round(quizAnalysis.reduce((s, q) => s + q.passRate, 0) / quizAnalysis.length) : 0,
       atRiskStudents: atRiskCount,
       excellentStudents: excellentCount,
     };
@@ -519,6 +565,7 @@ const analyzeClassProgress = async (req, res) => {
     const prompt = `You are an expert educational AI analyzer for university teachers. Analyze this class performance data and provide actionable insights.
 
 IMPORTANT:
+- Quiz scores represent the BEST score per student (highest attempt), NOT the average of all attempts.
 - ONLY consider quizzes and labs that were REQUIRED in the course.
 - Do NOT flag optional assessments as weaknesses.
 
@@ -546,11 +593,10 @@ Return ONLY valid JSON (no markdown):
 }
 
 Rules:
-- weakAreas: ONLY include REQUIRED quizzes with avg score < 60%, REQUIRED labs with low scores, lessons with < 50% completion. Max 6.
+- weakAreas: ONLY include REQUIRED quizzes with avg best score < 60%, REQUIRED labs with low scores, lessons with < 50% completion. Max 6.
 - strengths: REQUIRED quizzes > 75%, REQUIRED labs with good scores. Max 4.
 - recommendations: actionable teaching strategies. Max 5.
-- Be data-specific, reference actual required assessment names.
-- Do NOT flag missing optional assessments as weaknesses.`;
+- Be data-specific, reference actual required assessment names.`;
 
     const ai = getAI();
     const response = await ai.models.generateContent({
@@ -603,8 +649,263 @@ const getTeacherCoursesForAnalysis = async (req, res) => {
   }
 };
 
+// ─────────────────────────────────────────────────────────────
+// TEACHER: Get individual student weak areas for a course
+// GET /api/ai-progress/teacher/course/:courseId/students
+// ─────────────────────────────────────────────────────────────
+const getStudentsWeakAreas = async (req, res) => {
+  try {
+    const { courseId } = req.params;
+    const teacherId = req.user._id;
+
+    const course = await Course.findById(courseId);
+    if (!course) return res.status(404).json({ message: "Course not found" });
+    if (course.teacher.toString() !== teacherId.toString())
+      return res.status(403).json({ message: "Not your course" });
+
+    const enrollments = await Enrollment.find({ course: courseId })
+      .populate("student", "fullName email studentId avatar")
+      .lean();
+
+    if (!enrollments.length) {
+      return res.status(200).json({ students: [] });
+    }
+
+    const studentIds = enrollments.map(e => e.student._id);
+
+    const [quizzes, labs, lessons, allAttempts, allSubmissions, allProgress] = await Promise.all([
+      Quiz.find({ course: courseId, isPublished: true }).lean(),
+      Lab.find({ course: courseId, isPublished: true }).lean(),
+      Lesson.find({ course: courseId, isPublished: true }).sort({ order: 1 }).lean(),
+      QuizAttempt.find({ course: courseId }).lean(),
+      LabSubmission.find({ course: courseId }).lean(),
+      LessonProgress.find({ course: courseId }).lean(),
+    ]);
+
+    // Get IDs of required quizzes and labs
+    const requiredQuizIds = new Set();
+    const requiredLabIds = new Set();
+    
+    lessons.forEach(lesson => {
+      if (lesson.requiresQuiz) {
+        const quiz = quizzes.find(q => q.lesson?.toString() === lesson._id.toString());
+        if (quiz) requiredQuizIds.add(quiz._id.toString());
+      }
+      if (lesson.requiresLab) {
+        const lab = labs.find(l => l.lesson?.toString() === lesson._id.toString());
+        if (lab) requiredLabIds.add(lab._id.toString());
+      }
+    });
+
+    // Build student-wise analysis
+    const studentsData = await Promise.all(enrollments.map(async (enrollment) => {
+      const student = enrollment.student;
+      const sid = student._id.toString();
+
+      // Get student's attempts and submissions
+      const studentAttempts = allAttempts.filter(a => a.student.toString() === sid);
+      const studentSubmissions = allSubmissions.filter(s => s.student.toString() === sid);
+      const studentProgress = allProgress.filter(p => p.student.toString() === sid);
+
+      // Analyze per student
+      const weakAreas = [];
+      const strengths = [];
+      const quizPerformance = [];
+      const labPerformance = [];
+
+      // Quiz analysis
+      for (const quiz of quizzes) {
+        if (!requiredQuizIds.has(quiz._id.toString())) continue;
+        
+        const attempts = studentAttempts.filter(a => a.quiz.toString() === quiz._id.toString());
+        const bestAttempt = attempts.length 
+          ? attempts.reduce((a, b) => a.score > b.score ? a : b, attempts[0])
+          : null;
+        
+        const score = bestAttempt?.score || 0;
+        const passed = bestAttempt?.passed || false;
+
+        quizPerformance.push({
+          quizId: quiz._id,
+          title: quiz.title,
+          score: score,
+          passingScore: quiz.passingScore,
+          passed: passed,
+          attemptsCount: attempts.length,
+          maxAttempts: quiz.maxAttempts,
+        });
+
+        if (score < 60 && attempts.length > 0) {
+          weakAreas.push({
+            type: "quiz",
+            title: quiz.title,
+            score: score,
+            passingScore: quiz.passingScore,
+            message: `Scored ${score}% on "${quiz.title}" (need ${quiz.passingScore}% to pass)`,
+            suggestion: `Review ${quiz.title} concepts and retake the quiz`
+          });
+        } else if (score >= 80 && attempts.length > 0) {
+          strengths.push({
+            type: "quiz",
+            title: quiz.title,
+            score: score,
+            message: `Excellent: ${score}% on "${quiz.title}"`
+          });
+        } else if (attempts.length === 0) {
+          weakAreas.push({
+            type: "quiz",
+            title: quiz.title,
+            score: 0,
+            message: `Not attempted: "${quiz.title}"`,
+            suggestion: `Take the quiz "${quiz.title}" to assess understanding`
+          });
+        }
+      }
+
+      // Lab analysis
+      for (const lab of labs) {
+        if (!requiredLabIds.has(lab._id.toString())) continue;
+        
+        const submission = studentSubmissions.find(s => s.lab.toString() === lab._id.toString());
+        const scorePercent = submission?.marks != null 
+          ? Math.round((submission.marks / (lab.totalMarks || 100)) * 100)
+          : null;
+
+        labPerformance.push({
+          labId: lab._id,
+          title: lab.title,
+          score: scorePercent,
+          totalMarks: lab.totalMarks,
+          status: submission?.status || "not_submitted",
+          submittedAt: submission?.submittedAt,
+        });
+
+        if (scorePercent !== null && scorePercent < 60 && submission?.status === "graded") {
+          weakAreas.push({
+            type: "lab",
+            title: lab.title,
+            score: scorePercent,
+            message: `Scored ${scorePercent}% on "${lab.title}"`,
+            suggestion: `Review lab requirements and resubmit for better score`
+          });
+        } else if (scorePercent !== null && scorePercent >= 80) {
+          strengths.push({
+            type: "lab",
+            title: lab.title,
+            score: scorePercent,
+            message: `Excellent: ${scorePercent}% on "${lab.title}"`
+          });
+        } else if (!submission) {
+          weakAreas.push({
+            type: "lab",
+            title: lab.title,
+            score: 0,
+            message: `Not submitted: "${lab.title}"`,
+            suggestion: `Complete and submit "${lab.title}"`
+          });
+        }
+      }
+
+      // Calculate overall progress
+      const completedLessons = studentProgress.filter(p => p.isCompleted).length;
+      const progressPct = lessons.length > 0 
+        ? Math.round((completedLessons / lessons.length) * 100)
+        : 0;
+
+      // Calculate average scores
+      const quizScores = quizPerformance.filter(q => q.score > 0).map(q => q.score);
+      const avgQuizScore = quizScores.length 
+        ? Math.round(quizScores.reduce((a, b) => a + b, 0) / quizScores.length)
+        : null;
+
+      const labScores = labPerformance.filter(l => l.score !== null && l.score > 0).map(l => l.score);
+      const avgLabScore = labScores.length 
+        ? Math.round(labScores.reduce((a, b) => a + b, 0) / labScores.length)
+        : null;
+
+      // Generate AI recommendation for this student
+      let aiRecommendation = null;
+      if (weakAreas.length > 0) {
+        try {
+          const ai = getAI();
+          const weakAreasText = weakAreas.map(w => `- ${w.message}`).join("\n");
+          const strengthsText = strengths.length > 0 ? strengths.map(s => `- ${s.message}`).join("\n") : "None yet";
+          
+          const prompt = `Based on this student's performance, provide 2-3 specific recommendations.
+
+Student: ${student.fullName}
+Overall Progress: ${progressPct}%
+Avg Quiz Score: ${avgQuizScore || 'N/A'}%
+Avg Lab Score: ${avgLabScore || 'N/A'}%
+
+Weak Areas:
+${weakAreasText}
+
+Strengths:
+${strengthsText}
+
+Return ONLY JSON: { "recommendations": ["action 1", "action 2", "action 3"] }`;
+
+          const response = await ai.models.generateContent({
+            model: "gemini-2.5-flash-lite",
+            contents: prompt,
+          });
+
+          let text = response.text.trim()
+            .replace(/^```json\s*/i, "").replace(/^```\s*/i, "").replace(/```\s*$/i, "").trim();
+          
+          const parsed = JSON.parse(text);
+          aiRecommendation = parsed.recommendations;
+        } catch (err) {
+          aiRecommendation = [`Review ${weakAreas[0]?.title || "course materials"}`];
+        }
+      }
+
+      return {
+        studentId: student._id,
+        fullName: student.fullName,
+        email: student.email,
+        studentIdNumber: student.studentId,
+        avatar: student.avatar,
+        progress: progressPct,
+        avgQuizScore: avgQuizScore,
+        avgLabScore: avgLabScore,
+        isCompleted: enrollment.isCompleted || false,
+        weakAreas: weakAreas,
+        strengths: strengths,
+        quizPerformance: quizPerformance,
+        labPerformance: labPerformance,
+        aiRecommendation: aiRecommendation || ["Continue practicing to improve performance"],
+      };
+    }));
+
+    // Sort by progress (lowest first for at-risk students)
+    studentsData.sort((a, b) => a.progress - b.progress);
+
+    res.status(200).json({
+      course: {
+        _id: course._id,
+        title: course.title,
+        code: course.code,
+      },
+      students: studentsData,
+      summary: {
+        totalStudents: studentsData.length,
+        atRiskCount: studentsData.filter(s => s.progress < 40 || (s.avgQuizScore && s.avgQuizScore < 50)).length,
+        excellentCount: studentsData.filter(s => s.progress >= 80 && (s.avgQuizScore || 0) >= 80).length,
+        avgClassProgress: Math.round(studentsData.reduce((sum, s) => sum + s.progress, 0) / studentsData.length),
+      }
+    });
+
+  } catch (err) {
+    console.error("getStudentsWeakAreas error:", err.message);
+    res.status(500).json({ message: "Failed to load student analysis: " + err.message });
+  }
+};
+
 module.exports = {
   analyzeStudentProgress,
   analyzeClassProgress,
   getTeacherCoursesForAnalysis,
+   getStudentsWeakAreas,  // ← ADD THIS
 };

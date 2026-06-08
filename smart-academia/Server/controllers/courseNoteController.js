@@ -210,14 +210,34 @@ const downloadNote = async (req, res) => {
     const filename = `${note.title}.${note.fileType}`;
     
     if (note.fileUrl) {
-      // Fetch the file from Cloudinary
-      const response = await fetch(note.fileUrl);
-      const fileBuffer = await response.buffer();
+      // ✅ FIX: Use require('https') or 'http' based on URL
+      const https = require('https');
+      const http = require('http');
+      const protocol = note.fileUrl.startsWith('https') ? https : http;
       
-      res.setHeader('Content-Type', contentType);
-      res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
-      res.setHeader('Content-Length', fileBuffer.length);
-      res.send(fileBuffer);
+      protocol.get(note.fileUrl, (response) => {
+        if (response.statusCode !== 200) {
+          return res.status(502).json({ message: 'Failed to fetch file from storage' });
+        }
+        
+        const chunks = [];
+        response.on('data', (chunk) => chunks.push(chunk));
+        response.on('end', () => {
+          const fileBuffer = Buffer.concat(chunks);
+          
+          res.setHeader('Content-Type', contentType);
+          res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+          res.setHeader('Content-Length', fileBuffer.length);
+          res.send(fileBuffer);
+        });
+        response.on('error', (err) => {
+          console.error('Stream error:', err);
+          res.status(502).json({ message: 'Error streaming file' });
+        });
+      }).on('error', (err) => {
+        console.error('Request error:', err);
+        res.status(502).json({ message: 'Failed to fetch file' });
+      });
     } else {
       res.status(404).json({ message: 'File not found' });
     }

@@ -24,6 +24,20 @@ const LabSubmissionSchema = new mongoose.Schema(
     status:   { type: String, enum: ["submitted", "graded"], default: "submitted" },
     gradedAt: { type: Date,   default: null },
     gradedBy: { type: mongoose.Schema.Types.ObjectId, ref: "User", default: null },
+
+    // ✅ NEW: AI Auto-evaluation fields
+    aiSuggestedMarks: {
+      type: Number,
+      default: null,
+    },
+    aiSuggestedFeedback: {
+      type: String,
+      default: null,
+    },
+    aiEvaluatedAt: {
+      type: Date,
+      default: null,
+    },
   },
   { timestamps: true }
 );

@@ -1,4 +1,3 @@
-// routes/lessons.js
 const express = require("express");
 const router  = express.Router({ mergeParams: true });
 const multer  = require("multer");
@@ -28,10 +27,16 @@ const {
   submitLab,
   getMySubmission,
   getLabByLesson,
-  getSubmissionPDF,       // ✅ ADDED
+  getSubmissionPDF,
 } = require("../controllers/labController");
 
 const { protect, authorize } = require("../middleware/authMiddleware");
+
+// ✅ IMPORT ALL MODELS NEEDED FOR RESET FUNCTIONALITY
+const LessonProgress = require("../models/LessonProgress");
+const QuizAttempt = require("../models/QuizAttempt");
+const LabSubmission = require("../models/LabSubmission");
+const Lesson = require("../models/Lesson");
 
 // ── Multer setup for student PDF submissions ─────────────────
 const pdfStorage = multer.diskStorage({
@@ -73,6 +78,119 @@ router.get( "/progress", protect, authorize("student"), getCourseProgress);
 router.post("/upload",   protect, authorize("teacher"), uploadMiddleware, uploadFile);
 
 // ════════════════════════════════════════════════════════════
+// LESSON RESET ROUTE - FULLY WORKING
+// ════════════════════════════════════════════════════════════
+router.post("/:id/reset", protect, authorize("student"), async (req, res) => {
+  try {
+    const { id: lessonId } = req.params;
+    const { courseId } = req.params;
+    const studentId = req.user._id;
+
+    console.log("========== RESET DEBUG ==========");
+    console.log("Lesson ID:", lessonId);
+    console.log("Course ID:", courseId);
+    console.log("Student ID:", studentId);
+
+    // 1. Get the lesson
+    const lesson = await Lesson.findById(lessonId);
+    if (!lesson) {
+      return res.status(404).json({ message: "Lesson not found" });
+    }
+    console.log("Lesson found:", lesson.title);
+
+    // 2. Find quiz associated with this lesson
+    const Quiz = require("../models/Quiz");
+    const quiz = await Quiz.findOne({ lesson: lessonId });
+    console.log("Quiz found:", quiz ? quiz.title : "No quiz for this lesson");
+
+    if (quiz) {
+      const quizAttemptsBefore = await QuizAttempt.find({
+        student: studentId,
+        quiz: quiz._id,
+        course: courseId,
+      });
+      console.log("Quiz attempts BEFORE delete:", quizAttemptsBefore.length);
+
+      const quizDeleteResult = await QuizAttempt.deleteMany({
+        student: studentId,
+        quiz: quiz._id,
+        course: courseId,
+      });
+      console.log("Quiz attempts DELETED:", quizDeleteResult.deletedCount);
+    }
+
+    // 3. Find lab associated with this lesson
+    const Lab = require("../models/Lab");
+    const lab = await Lab.findOne({ lesson: lessonId });
+    console.log("Lab found:", lab ? lab.title : "No lab for this lesson");
+
+    if (lab) {
+      const labSubmissionsBefore = await LabSubmission.find({
+        student: studentId,
+        lab: lab._id,
+        course: courseId,
+      });
+      console.log("Lab submissions BEFORE delete:", labSubmissionsBefore.length);
+
+      const labDeleteResult = await LabSubmission.deleteMany({
+        student: studentId,
+        lab: lab._id,
+        course: courseId,
+      });
+      console.log("Lab submissions DELETED:", labDeleteResult.deletedCount);
+    }
+
+    // 4. Reset LessonProgress
+    const progress = await LessonProgress.findOne({
+      student: studentId,
+      lesson: lessonId,
+      course: courseId,
+    });
+
+    if (progress) {
+      progress.lessonViewed = false;
+      progress.quizCompleted = false;
+      progress.quizScore = null;
+      progress.labCompleted = false;
+      progress.isCompleted = false;
+      progress.completedAt = null;
+      await progress.save();
+      console.log("Progress reset successfully");
+    } else {
+      await LessonProgress.create({
+        student: studentId,
+        lesson: lessonId,
+        course: courseId,
+        lessonViewed: false,
+        quizCompleted: false,
+        labCompleted: false,
+        isCompleted: false,
+      });
+      console.log("New progress record created");
+    }
+
+    console.log("========== RESET COMPLETE ==========");
+
+    res.status(200).json({
+      success: true,
+      message: "Lesson reset successfully",
+      data: {
+        lessonId,
+        courseId,
+        resetAt: new Date(),
+        quizReset: quiz ? true : false,
+        labReset: lab ? true : false,
+      },
+    });
+  } catch (error) {
+    console.error("Reset lesson error:", error);
+    res.status(500).json({
+      message: "Failed to reset lesson",
+      error: error.message,
+    });
+  }
+});
+// ════════════════════════════════════════════════════════════
 // DYNAMIC lesson routes
 // ════════════════════════════════════════════════════════════
 router.put(   "/:id",         protect, authorize("teacher"), updateLesson);
@@ -83,46 +201,22 @@ router.get(   "/:id/content", protect, authorize("student"), getLessonContent);
 // ════════════════════════════════════════════════════════════
 // LAB routes — TEACHER
 // ════════════════════════════════════════════════════════════
-
-// ✅ GET lab for a lesson
 router.get("/:lessonId/lab", protect, getLabByLesson);
-
-// Create lab manually
 router.post("/:lessonId/lab", protect, authorize("teacher"), createLab);
-
-// AI generate lab
 router.post("/:lessonId/lab/ai-generate", protect, authorize("teacher"), aiGenerateLab);
-
-// AI explain lab
 router.post("/:lessonId/lab/:labId/explain", protect, aiExplainLab);
-
-// Update lab
 router.put("/:lessonId/lab/:labId", protect, authorize("teacher"), updateLab);
-
-// Delete lab
 router.delete("/:lessonId/lab/:labId", protect, authorize("teacher"), deleteLab);
-
-// Get all student submissions for a lab
 router.get("/:lessonId/lab/:labId/submissions", protect, authorize("teacher"), getLabSubmissions);
-
-// ✅ PDF proxy route - Get submission PDF with auth check
-router.get("/:lessonId/lab/:labId/submissions/:submissionId/pdf",  getSubmissionPDF);
-
-// Grade a submission manually
+router.get("/:lessonId/lab/:labId/submissions/:submissionId/pdf", getSubmissionPDF);
 router.put("/:lessonId/lab/:labId/submissions/:submissionId/grade", protect, authorize("teacher"), gradeSubmission);
-
-// AI evaluate a submission
 router.post("/:lessonId/lab/:labId/submissions/:submissionId/ai-evaluate", protect, authorize("teacher"), aiEvaluateSubmission);
 
 // ════════════════════════════════════════════════════════════
 // LAB routes — STUDENT
 // ════════════════════════════════════════════════════════════
-
-// Submit lab (text answer + optional PDF)
 router.post("/:lessonId/lab/:labId/submit", protect, authorize("student"),
   pdfUpload.single("pdf"), handlePdfUploadError, submitLab);
-
-// Get own submission
 router.get("/:lessonId/lab/:labId/my-submission", protect, authorize("student"), getMySubmission);
 
 module.exports = router;
