@@ -232,7 +232,7 @@ const apiFetch = (url, opts = {}) => {
 };
 
 // ─────────────────────────────────────────────
-// QUIZ SECTION (FULL IMPLEMENTATION - FIXED)
+// QUIZ SECTION (WITH ATTEMPT HISTORY)
 // ─────────────────────────────────────────────
 const QuizSection = ({ quiz, courseId, lessonId, onCompleted, onPassed }) => {
   const [questions, setQuestions] = useState([]);
@@ -246,15 +246,32 @@ const QuizSection = ({ quiz, courseId, lessonId, onCompleted, onPassed }) => {
   const [attempts, setAttempts] = useState(0);
   const [tabWarnings, setTabWarnings] = useState(0);
   const [warning, setWarning] = useState("");
-  
+  const [attemptHistory, setAttemptHistory] = useState([]);
+  const [showHistory, setShowHistory] = useState(false);
+
   const timerRef = useRef(null);
   const warningRef = useRef(0);
   const attemptIdRef = useRef(null);
 
   useEffect(() => {
     fetchInit();
+    fetchAttemptHistory();
     return () => clearInterval(timerRef.current);
   }, [quiz._id]);
+
+  // ✅ NEW: Fetch all quiz attempts for history
+  const fetchAttemptHistory = async () => {
+    try {
+      const res = await apiFetch(`/api/student/quiz/${quiz._id}/attempts`);
+      const data = await res.json();
+      if (res.ok) {
+        setAttemptHistory(data.attempts || []);
+        console.log("📊 Quiz attempt history:", data.attempts);
+      }
+    } catch (err) {
+      console.error("Failed to fetch quiz attempt history:", err);
+    }
+  };
 
   useEffect(() => {
     if (attempts >= quiz.maxAttempts && !result?.passed) {
@@ -394,6 +411,10 @@ const QuizSection = ({ quiz, courseId, lessonId, onCompleted, onPassed }) => {
       setResult(data);
       setSubmitted(true);
       setAttempts((p) => p + 1);
+
+      // Refresh attempt history after submission
+      await fetchAttemptHistory();
+
       onCompleted && onCompleted();
       onPassed && onPassed(data.passed === true);
     } catch {
@@ -405,6 +426,17 @@ const QuizSection = ({ quiz, courseId, lessonId, onCompleted, onPassed }) => {
 
   const fmt = (s) =>
     `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
+
+  // Get best score from history
+  const bestScore =
+    attemptHistory.length > 0
+      ? Math.max(...attemptHistory.map((a) => a.score || 0))
+      : result?.score || null;
+
+  const bestAttempt =
+    bestScore !== null
+      ? attemptHistory.find((a) => a.score === bestScore)
+      : null;
 
   if (attempts >= quiz.maxAttempts && !result?.passed) {
     return (
@@ -445,6 +477,22 @@ const QuizSection = ({ quiz, courseId, lessonId, onCompleted, onPassed }) => {
             </p>
           </div>
         </div>
+
+        {/* Show best score if there are previous attempts */}
+        {bestScore !== null && (
+          <div
+            className="p-3 rounded-xl text-xs"
+            style={{
+              background: "#22c55e22",
+              border: "1px solid #22c55e44",
+              color: "#4ade80",
+            }}
+          >
+            🏆 Your best score: {bestScore}%{" "}
+            {bestScore >= quiz.passingScore && "✓ Passed"}
+          </div>
+        )}
+
         <div
           className="p-3 rounded-xl text-xs"
           style={{
@@ -456,11 +504,13 @@ const QuizSection = ({ quiz, courseId, lessonId, onCompleted, onPassed }) => {
           ⚠️ Tab switching is monitored. 1st switch = warning. 2nd switch =
           auto-submit.
         </div>
+
         {attempts > 0 && (
           <p className="text-xs text-amber-500">
             Attempt {attempts + 1} of {quiz.maxAttempts}
           </p>
         )}
+
         <button
           onClick={handleStart}
           className="w-full py-2.5 rounded-xl text-sm font-bold text-white transition-all hover:scale-105 flex items-center justify-center gap-2"
@@ -471,7 +521,92 @@ const QuizSection = ({ quiz, courseId, lessonId, onCompleted, onPassed }) => {
           </span>
           {attempts > 0 ? "Retake Quiz" : "Start Quiz"}
         </button>
+
+        {/* Attempt History Button */}
+        {attemptHistory.length > 0 && (
+          <button
+            onClick={() => setShowHistory(!showHistory)}
+            className="w-full py-2 rounded-xl text-sm font-medium transition-all hover:scale-105 flex items-center justify-center gap-2"
+            style={{
+              background: "#6366f122",
+              color: "#818cf8",
+              border: "1px solid #6366f144",
+            }}
+          >
+            <span className="material-symbols-outlined text-base">history</span>
+            {showHistory
+              ? "Hide History"
+              : `View History (${attemptHistory.length} attempts)`}
+          </button>
+        )}
+
         {error && <p className="text-xs text-red-400">{error}</p>}
+
+        {/* Attempt History Panel */}
+        {showHistory && attemptHistory.length > 0 && (
+          <div
+            className="mt-2 p-3 rounded-xl"
+            style={{ background: "#0a0f1e", border: "1px solid #1e293b" }}
+          >
+            <h4 className="text-xs font-bold text-white mb-2 flex items-center gap-2">
+              <span className="material-symbols-outlined text-sm text-amber-400">
+                timeline
+              </span>
+              Previous Attempts
+            </h4>
+            <div className="space-y-2">
+              {attemptHistory.map((attempt, idx) => {
+                const isBest = attempt.score === bestScore;
+                const passed = attempt.score >= quiz.passingScore;
+                const scoreColor = passed ? "#22c55e" : "#ef4444";
+
+                return (
+                  <div
+                    key={idx}
+                    className="flex items-center justify-between p-2 rounded-lg"
+                    style={{
+                      background: isBest ? "#22c55e10" : "#1e293b",
+                      border: isBest ? "1px solid #22c55e44" : "none",
+                    }}
+                  >
+                    <div className="flex items-center gap-3">
+                      <span className="text-xs font-bold text-gray-500 w-12">
+                        #{attempt.attemptNumber}
+                      </span>
+                      <span className="text-xs text-gray-400">
+                        {new Date(attempt.submittedAt).toLocaleDateString()}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span
+                        className="text-xs font-bold"
+                        style={{ color: scoreColor }}
+                      >
+                        {attempt.score}%
+                      </span>
+                      {passed && (
+                        <span className="text-[10px] text-emerald-400">✓</span>
+                      )}
+                      {isBest && (
+                        <span className="text-[10px] text-amber-400">
+                          ★ Best
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+            <div className="mt-2 pt-2 border-t border-gray-800">
+              <p className="text-[10px] text-gray-500 flex items-center gap-1">
+                <span className="material-symbols-outlined text-xs">
+                  trending_up
+                </span>
+                Best: {bestScore}% · Total attempts: {attemptHistory.length}
+              </p>
+            </div>
+          </div>
+        )}
       </div>
     );
   }
@@ -519,6 +654,20 @@ const QuizSection = ({ quiz, courseId, lessonId, onCompleted, onPassed }) => {
             )}
           </div>
         </div>
+
+        {/* Show best score comparison */}
+        {bestScore !== null && bestScore > result.score && (
+          <div
+            className="mb-3 p-2 rounded-lg text-center"
+            style={{ background: "#3b82f622", border: "1px solid #3b82f644" }}
+          >
+            <p className="text-[10px] text-blue-400">
+              💡 Your best score is {bestScore}% (Attempt #
+              {bestAttempt?.attemptNumber})
+            </p>
+          </div>
+        )}
+
         {!result.passed && attempts < quiz.maxAttempts && (
           <button
             onClick={handleStart}
@@ -635,7 +784,7 @@ const QuizSection = ({ quiz, courseId, lessonId, onCompleted, onPassed }) => {
 };
 
 // ─────────────────────────────────────────────
-// LAB SECTION (FULL IMPLEMENTATION - WITH AUTO AI POLLING)
+// LAB SECTION (WITH ATTEMPT HISTORY)
 // ─────────────────────────────────────────────
 const LabSection = ({ lab, lessonId, courseId, onCompleted, onPassed }) => {
   const [answer, setAnswer] = useState("");
@@ -651,146 +800,76 @@ const LabSection = ({ lab, lessonId, courseId, onCompleted, onPassed }) => {
   const [loadingExpl, setLoadingExpl] = useState(false);
   const [activeTab, setActiveTab] = useState("instructions");
   const [aiEvaluation, setAiEvaluation] = useState(null);
-  const [showAiFeedback, setShowAiFeedback] = useState(false);
   const [isCheckingAI, setIsCheckingAI] = useState(false);
+  const [attemptHistory, setAttemptHistory] = useState([]);
+  const [showHistory, setShowHistory] = useState(false);
   const fileInputRef = useRef(null);
-  const pollingInterval = useRef(null);
 
   const isGraded = submission?.status === "graded";
 
   useEffect(() => {
     fetchMySubmission();
-    return () => {
-      if (pollingInterval.current) clearInterval(pollingInterval.current);
-    };
+    fetchAttemptHistory();
   }, [lab._id]);
 
-  
-  
-  
-const fetchMySubmission = async () => {
-  try {
-    const res = await apiFetch(
-      `/api/courses/${courseId}/lessons/${lessonId}/lab/${lab._id}/my-submission`,
-    );
-    const data = await res.json();
-    console.log("📦 FETCH SUBMISSION RESPONSE:", data);
-    
-    if (res.ok && data.submission) {
-      setSubmission(data.submission);
-      setAnswer(data.submission.answer || "");
-      setSubmitted(true);
-      
-      // ✅ Check for AI evaluation - FIXED
-      const aiMarks = data.submission.aiSuggestedMarks;
-      const aiFeedback = data.submission.aiSuggestedFeedback;
-      
-      console.log("🔍 AI Marks from response:", aiMarks);
-      console.log("🔍 AI Feedback from response:", aiFeedback);
-      
-      if (aiMarks && aiMarks !== null && aiMarks !== undefined) {
-        console.log("✅ AI Evaluation found! Setting state...");
-        setAiEvaluation({
-          marks: aiMarks,
-          feedback: aiFeedback || "",
-        });
-        setShowAiFeedback(true);
-        if (pollingInterval.current) clearInterval(pollingInterval.current);
-        setIsCheckingAI(false);
+  // ✅ NEW: Fetch all attempts for history
+  const fetchAttemptHistory = async () => {
+    try {
+      const res = await apiFetch(`/api/student/lab/${lab._id}/attempts`);
+      const data = await res.json();
+      if (res.ok) {
+        setAttemptHistory(data.attempts || []);
+        console.log("📊 Attempt history:", data.attempts);
       }
-      
-      onCompleted && onCompleted();
-      if (data.submission.status === "graded") {
-        const totalMarks = lab.totalMarks || 100;
-        const scorePercent = (data.submission.marks / totalMarks) * 100;
-        const isPassed = scorePercent >= 70;
-        onPassed && onPassed(isPassed);
-        setActiveTab("result");
-        if (pollingInterval.current) clearInterval(pollingInterval.current);
-        setIsCheckingAI(false);
-      } else if (aiMarks) {
-        setActiveTab("result");
-        if (pollingInterval.current) clearInterval(pollingInterval.current);
-        setIsCheckingAI(false);
-      }
-    } else {
-      if (lab.starterCode) setAnswer(lab.starterCode);
+    } catch (err) {
+      console.error("Failed to fetch attempt history:", err);
     }
-  } catch (err) {
-    console.error("Fetch submission error:", err);
-    if (lab.starterCode) setAnswer(lab.starterCode);
-  }
-};
+  };
 
-const pollForAIEvaluation = async () => {
-  try {
-    const res = await apiFetch(
-      `/api/courses/${courseId}/lessons/${lessonId}/lab/${lab._id}/my-submission`,
-    );
-    const data = await res.json();
-    
-    console.log("🔄 POLLING RESPONSE:", data);
-    
-    if (res.ok && data.submission) {
-      const aiMarks = data.submission.aiSuggestedMarks;
-      const aiFeedback = data.submission.aiSuggestedFeedback;
-      
-      console.log("🔄 Poll - AI Marks:", aiMarks);
-      
-      if (aiMarks && aiMarks !== null && aiMarks !== undefined && !aiEvaluation) {
-        console.log("🎉 AI Evaluation found via polling! Score:", aiMarks);
-        setAiEvaluation({
-          marks: aiMarks,
-          feedback: aiFeedback || "",
-        });
+  const fetchMySubmission = async () => {
+    try {
+      const res = await apiFetch(
+        `/api/courses/${courseId}/lessons/${lessonId}/lab/${lab._id}/my-submission`,
+      );
+      const data = await res.json();
+      console.log("📦 FETCH SUBMISSION RESPONSE:", data);
+
+      if (res.ok && data.submission) {
         setSubmission(data.submission);
         setAnswer(data.submission.answer || "");
-        setShowAiFeedback(true);
-        setSuccess(`AI Score: ${aiMarks}/${lab.totalMarks || 100} marks. Teacher will review.`);
-        setTimeout(() => setSuccess(""), 5000);
-        
-        if (pollingInterval.current) clearInterval(pollingInterval.current);
-        setIsCheckingAI(false);
-        return true;
+        setSubmitted(true);
+
+        const aiMarks = data.submission.aiSuggestedMarks;
+        const aiFeedback = data.submission.aiSuggestedFeedback;
+
+        console.log("🔍 AI Marks from response:", aiMarks);
+
+        if (aiMarks !== null && aiMarks !== undefined) {
+          console.log("✅ AI Evaluation found! Score:", aiMarks);
+          setAiEvaluation({
+            marks: aiMarks,
+            feedback: aiFeedback || "",
+          });
+          setIsCheckingAI(false);
+          setActiveTab("result");
+        }
+
+        onCompleted && onCompleted();
+        if (data.submission.status === "graded") {
+          const totalMarks = lab.totalMarks || 100;
+          const scorePercent = (data.submission.marks / totalMarks) * 100;
+          const isPassed = scorePercent >= 70;
+          onPassed && onPassed(isPassed);
+          setActiveTab("result");
+        }
+      } else {
+        if (lab.starterCode) setAnswer(lab.starterCode);
       }
+    } catch (err) {
+      console.error("Fetch submission error:", err);
+      if (lab.starterCode) setAnswer(lab.starterCode);
     }
-    return false;
-  } catch (err) {
-    console.error("Polling error:", err);
-    return false;
-  }
-};
-
-
-
-  const startPollingForAI = () => {
-  if (pollingInterval.current) clearInterval(pollingInterval.current);
-  setIsCheckingAI(true);
-  
-  let attempts = 0;
-  const maxAttempts = 20; // 40 seconds max (2 second intervals)
-  
-  pollingInterval.current = setInterval(async () => {
-    attempts++;
-    console.log(`Polling for AI evaluation (${attempts}/${maxAttempts})...`);
-    
-    const found = await pollForAIEvaluation();
-    if (found) {
-      console.log("AI evaluation found, stopping polling");
-      if (pollingInterval.current) clearInterval(pollingInterval.current);
-      setIsCheckingAI(false);
-    }
-    
-    if (attempts >= maxAttempts) {
-      console.log("Max polling attempts reached, stopping");
-      if (pollingInterval.current) clearInterval(pollingInterval.current);
-      setIsCheckingAI(false);
-      if (!aiEvaluation) {
-        setSuccess("Lab submitted! AI evaluation will appear when ready.");
-      }
-    }
-  }, 2000);
-};
+  };
 
   const handleSubmit = async () => {
     if (isGraded) {
@@ -802,16 +881,19 @@ const pollForAIEvaluation = async () => {
       setError("Please write an answer or upload a PDF file");
       return;
     }
+
     setSubmitting(true);
     setError("");
     setSuccess("");
-    
+    setAiEvaluation(null);
+    setIsCheckingAI(true);
+
     try {
       const formData = new FormData();
       if (answer.trim()) formData.append("answer", answer.trim());
       if (pdfFile) formData.append("pdf", pdfFile);
       const token = localStorage.getItem("token");
-      
+
       const res = await fetch(
         `${API}/api/courses/${courseId}/lessons/${lessonId}/lab/${lab._id}/submit`,
         {
@@ -821,33 +903,104 @@ const pollForAIEvaluation = async () => {
         },
       );
       const data = await res.json();
-      
+
+      console.log("📤 Submit response:", data);
+
       if (!res.ok) {
         setError(data.message || "Submission failed");
+        setIsCheckingAI(false);
         return;
       }
-      
+
       setSubmitted(true);
       setPdfFile(null);
       if (fileInputRef.current) fileInputRef.current.value = "";
       onCompleted && onCompleted();
-      
-      setSuccess("Lab submitted! AI is evaluating your work...");
-      setActiveTab("result");
-      
+
+      // Refresh attempt history
+      await fetchAttemptHistory();
+
+      if (
+        data.submission?.aiSuggestedMarks !== null &&
+        data.submission?.aiSuggestedMarks !== undefined
+      ) {
+        console.log(
+          "🎉 AI evaluation received! Score:",
+          data.submission.aiSuggestedMarks,
+        );
+        setAiEvaluation({
+          marks: data.submission.aiSuggestedMarks,
+          feedback: data.submission.aiSuggestedFeedback || "",
+        });
+        setSuccess(
+          `Lab submitted! Your score: ${data.submission.aiSuggestedMarks}/${lab.totalMarks || 100} marks.`,
+        );
+        setIsCheckingAI(false);
+        setActiveTab("result");
+      } else {
+        setSuccess("Lab submitted! AI is evaluating your work...");
+        setActiveTab("result");
+        startPollingForAI();
+      }
+
       await fetchMySubmission();
-      
-      // Start polling for AI evaluation
-      startPollingForAI();
-      
-      setTimeout(() => setSuccess(""), 8000);
-      
+      setTimeout(() => setSuccess(""), 5000);
     } catch (err) {
       console.error("Submission error:", err);
       setError("Cannot connect to server");
+      setIsCheckingAI(false);
     } finally {
       setSubmitting(false);
     }
+  };
+
+  const startPollingForAI = () => {
+    let attempts = 0;
+    const maxAttempts = 20;
+
+    const pollInterval = setInterval(async () => {
+      attempts++;
+      console.log(`Polling for AI evaluation (${attempts}/${maxAttempts})...`);
+
+      try {
+        const res = await apiFetch(
+          `/api/courses/${courseId}/lessons/${lessonId}/lab/${lab._id}/my-submission`,
+        );
+        const data = await res.json();
+
+        if (res.ok && data.submission) {
+          const aiMarks = data.submission.aiSuggestedMarks;
+
+          if (aiMarks !== null && aiMarks !== undefined) {
+            console.log("🎉 AI Evaluation found via polling! Score:", aiMarks);
+            setAiEvaluation({
+              marks: aiMarks,
+              feedback: data.submission.aiSuggestedFeedback || "",
+            });
+            setSubmission(data.submission);
+            setAnswer(data.submission.answer || "");
+            setSuccess(`AI Score: ${aiMarks}/${lab.totalMarks || 100} marks.`);
+            setIsCheckingAI(false);
+            await fetchAttemptHistory();
+            clearInterval(pollInterval);
+            return;
+          }
+        }
+      } catch (err) {
+        console.error("Polling error:", err);
+      }
+
+      if (attempts >= maxAttempts) {
+        console.log("Max polling attempts reached");
+        setIsCheckingAI(false);
+        if (!aiEvaluation) {
+          setSuccess(
+            "Lab submitted! AI evaluation will appear shortly. Refresh to see your score.",
+          );
+        }
+        clearInterval(pollInterval);
+      }
+    }, 2000);
   };
 
   const handleAiExplain = async () => {
@@ -869,6 +1022,17 @@ const pollForAIEvaluation = async () => {
       setLoadingExpl(false);
     }
   };
+
+  // Helper to get best score
+  const bestScore =
+    attemptHistory.length > 0
+      ? Math.max(...attemptHistory.map((a) => a.finalScore || 0))
+      : null;
+
+  const bestAttempt =
+    bestScore !== null
+      ? attemptHistory.find((a) => (a.finalScore || 0) === bestScore)
+      : null;
 
   const labCfg = {
     programming: {
@@ -927,6 +1091,7 @@ const pollForAIEvaluation = async () => {
       className="rounded-xl overflow-hidden"
       style={{ background: "#0f1629", border: "1px solid #1e293b" }}
     >
+      {/* Header */}
       <div
         className="px-5 py-4"
         style={{ background: "#0a0f1e", borderBottom: "1px solid #1e293b" }}
@@ -938,7 +1103,7 @@ const pollForAIEvaluation = async () => {
               style={{ background: cfg.bg, border: `1px solid ${cfg.border}` }}
             >
               <span
-                className={`material-symbols-outlined text-lg`}
+                className="material-symbols-outlined text-lg"
                 style={{ color: cfg.color }}
               >
                 {cfg.icon}
@@ -948,7 +1113,7 @@ const pollForAIEvaluation = async () => {
               <div className="flex flex-wrap items-center gap-2">
                 <p className="font-semibold text-white text-sm">{lab.title}</p>
                 <span
-                  className={`text-[10px] px-2 py-0.5 rounded-full font-bold`}
+                  className="text-[10px] px-2 py-0.5 rounded-full font-bold"
                   style={{
                     background: diff.bg,
                     border: `1px solid ${diff.border}`,
@@ -997,16 +1162,17 @@ const pollForAIEvaluation = async () => {
         </div>
       </div>
 
+      {/* Tabs */}
       <div
         className="flex gap-1 p-1.5"
         style={{ background: "#0a0f1e", borderBottom: "1px solid #1e293b" }}
       >
         <button
-          className={`flex-1 flex items-center justify-center gap-1.5 py-2 px-2 rounded-lg text-xs font-semibold transition-all`}
+          className="flex-1 flex items-center justify-center gap-1.5 py-2 px-2 rounded-lg text-xs font-semibold transition-all"
           style={tabClass("instructions")}
           onClick={() => !isGraded && setActiveTab("instructions")}
         >
-          <span className="material-symbols-outlined text-sm">info</span>
+          <span className="material-symbols-outlined text-sm">info</span>{" "}
           Instructions
         </button>
         <button
@@ -1015,24 +1181,35 @@ const pollForAIEvaluation = async () => {
           onClick={() => !isGraded && setActiveTab("submit")}
           disabled={isGraded}
         >
-          <span className="material-symbols-outlined text-sm">upload</span>
+          <span className="material-symbols-outlined text-sm">upload</span>{" "}
           Submit
         </button>
         {submitted && (
           <button
-            className={`flex-1 flex items-center justify-center gap-1.5 py-2 px-2 rounded-lg text-xs font-semibold transition-all`}
+            className="flex-1 flex items-center justify-center gap-1.5 py-2 px-2 rounded-lg text-xs font-semibold transition-all"
             style={tabClass("result")}
             onClick={() => setActiveTab("result")}
           >
             <span className="material-symbols-outlined text-sm">
               {submission?.status === "graded" ? "grade" : "pending"}
-            </span>
+            </span>{" "}
             Result
           </button>
         )}
+        <button
+          className={`flex-1 flex items-center justify-center gap-1.5 py-2 px-2 rounded-lg text-xs font-semibold transition-all ${attemptHistory.length === 0 ? "opacity-50 cursor-not-allowed" : ""}`}
+          style={tabClass("history")}
+          onClick={() =>
+            attemptHistory.length > 0 && setShowHistory(!showHistory)
+          }
+        >
+          <span className="material-symbols-outlined text-sm">history</span>{" "}
+          History
+        </button>
       </div>
 
       <div className="p-5 space-y-4">
+        {/* Instructions Tab */}
         {activeTab === "instructions" && (
           <>
             {lab.description && (
@@ -1045,7 +1222,7 @@ const pollForAIEvaluation = async () => {
               style={{ background: "#3b82f622", border: "1px solid #3b82f644" }}
             >
               <p className="text-xs font-bold text-blue-400 mb-2 flex items-center gap-1">
-                <span className="material-symbols-outlined text-sm">list</span>
+                <span className="material-symbols-outlined text-sm">list</span>{" "}
                 Step-by-step instructions
               </p>
               <div className="space-y-1">
@@ -1073,44 +1250,6 @@ const pollForAIEvaluation = async () => {
                 <pre className="text-xs text-green-400 font-mono whitespace-pre-wrap">
                   {lab.outputExample}
                 </pre>
-              </div>
-            )}
-            {lab.labType === "programming" && lab.testCases?.length > 0 && (
-              <div
-                className="p-4 rounded-xl"
-                style={{ background: "#1e293b", border: "1px solid #334155" }}
-              >
-                <p className="text-xs text-gray-400 mb-3 font-medium">
-                  Test cases
-                </p>
-                <div className="space-y-2">
-                  {lab.testCases.map((tc, i) => (
-                    <div
-                      key={i}
-                      className="flex flex-wrap items-center gap-2 text-xs font-mono"
-                    >
-                      <span className="text-gray-500">Input:</span>
-                      <code
-                        className="px-2 py-0.5 rounded"
-                        style={{ background: "#0f1629", color: "#4ade80" }}
-                      >
-                        {tc.input}
-                      </code>
-                      <span className="text-gray-500">→</span>
-                      <code
-                        className="px-2 py-0.5 rounded"
-                        style={{ background: "#0f1629", color: "#60a5fa" }}
-                      >
-                        {tc.expectedOutput}
-                      </code>
-                      {tc.description && (
-                        <span className="text-gray-500 italic">
-                          {tc.description}
-                        </span>
-                      )}
-                    </div>
-                  ))}
-                </div>
               </div>
             )}
             <button
@@ -1233,12 +1372,13 @@ const pollForAIEvaluation = async () => {
                 background: "linear-gradient(135deg, #6366f1, #818cf8)",
               }}
             >
-              <span className="material-symbols-outlined text-sm">upload</span>
+              <span className="material-symbols-outlined text-sm">upload</span>{" "}
               Go to submission
             </button>
           </>
         )}
 
+        {/* Submit Tab */}
         {activeTab === "submit" && (
           <>
             {isGraded ? (
@@ -1300,23 +1440,6 @@ const pollForAIEvaluation = async () => {
                     <p className="text-sm text-emerald-400">{success}</p>
                   </div>
                 )}
-                {submitted && !isGraded && (
-                  <div
-                    className="rounded-xl p-3 flex items-center gap-2"
-                    style={{
-                      background: "#6366f122",
-                      border: "1px solid #6366f144",
-                    }}
-                  >
-                    <span className="material-symbols-outlined text-sm text-indigo-400">
-                      info
-                    </span>
-                    <p className="text-sm text-indigo-400">
-                      Already submitted — you can resubmit to update your
-                      answer.
-                    </p>
-                  </div>
-                )}
                 <div>
                   <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
                     {lab.labType === "programming"
@@ -1374,7 +1497,7 @@ const pollForAIEvaluation = async () => {
                     >
                       <span className="material-symbols-outlined text-base">
                         picture_as_pdf
-                      </span>
+                      </span>{" "}
                       Upload PDF
                     </button>
                     {pdfFile ? (
@@ -1405,7 +1528,7 @@ const pollForAIEvaluation = async () => {
                       >
                         <span className="material-symbols-outlined text-base">
                           description
-                        </span>
+                        </span>{" "}
                         View previously submitted PDF
                       </button>
                     ) : null}
@@ -1425,7 +1548,7 @@ const pollForAIEvaluation = async () => {
                   {submitting ? (
                     <>
                       <LoadingSpinner size="sm" />
-                      <span>Submitting...</span>
+                      <span>Submitting & Evaluating...</span>
                     </>
                   ) : (
                     <>
@@ -1441,46 +1564,85 @@ const pollForAIEvaluation = async () => {
           </>
         )}
 
+        {/* Result Tab */}
         {activeTab === "result" && submission && (
           <>
+            {isCheckingAI &&
+              !aiEvaluation &&
+              submission.status !== "graded" && (
+                <div
+                  className="rounded-xl p-4 text-center"
+                  style={{
+                    background: "#6366f122",
+                    border: "1px solid #6366f144",
+                  }}
+                >
+                  <LoadingSpinner size="sm" />
+                  <p className="text-sm text-indigo-400 mt-2">
+                    AI is evaluating your submission...
+                  </p>
+                </div>
+              )}
 
-          {/* DEBUG: Remove after fixing */}
-    <div className="rounded-xl p-2 mb-3 text-xs" style={{ background: "#1e293b" }}>
-      <p>Debug: submission.aiSuggestedMarks = {submission?.aiSuggestedMarks}</p>
-      <p>Debug: aiEvaluation state = {aiEvaluation ? JSON.stringify(aiEvaluation) : "null"}</p>
-      <p>Debug: isCheckingAI = {String(isCheckingAI)}</p>
-    </div>
-            {isCheckingAI && !aiEvaluation && submission.status !== "graded" && (
-              <div className="rounded-xl p-4 text-center" style={{ background: "#6366f122", border: "1px solid #6366f144" }}>
-                <LoadingSpinner size="sm" />
-                <p className="text-sm text-indigo-400 mt-2">AI is evaluating your submission...</p>
-              </div>
-            )}
-            
             {aiEvaluation && submission.status !== "graded" && (
-              <div className="rounded-xl p-4" style={{ background: "#a855f722", border: "1px solid #a855f744" }}>
-                <div className="flex items-center gap-2 mb-2">
-                  <span className="material-symbols-outlined text-purple-400">auto_awesome</span>
-                  <p className="text-sm font-bold text-purple-400">AI Evaluation</p>
-                  <span className="ml-auto text-sm font-bold text-purple-400">
-                    Score: {aiEvaluation.marks} / {lab.totalMarks || 100}
+              <div
+                className="rounded-xl p-4"
+                style={{
+                  background: "#a855f722",
+                  border: "1px solid #a855f744",
+                }}
+              >
+                <div className="flex items-center gap-2 mb-3">
+                  <span className="material-symbols-outlined text-purple-400">
+                    auto_awesome
+                  </span>
+                  <p className="text-sm font-bold text-purple-400">
+                    AI Evaluation Score
+                  </p>
+                  <span
+                    className={`ml-auto text-xl font-bold ${aiEvaluation.marks === 0 ? "text-red-400" : "text-purple-400"}`}
+                  >
+                    {aiEvaluation.marks} / {lab.totalMarks || 100}
                   </span>
                 </div>
                 {aiEvaluation.feedback && (
-                  <div className="mt-2 p-3 rounded-lg" style={{ background: "#1e293b" }}>
-                    <p className="text-xs text-gray-300 leading-relaxed">{aiEvaluation.feedback}</p>
+                  <div
+                    className="mb-3 p-3 rounded-lg"
+                    style={{ background: "#1e293b" }}
+                  >
+                    <p className="text-xs text-gray-300 leading-relaxed">
+                      {aiEvaluation.feedback}
+                    </p>
                   </div>
                 )}
-                <p className="text-[10px] text-gray-500 mt-2 italic">
-                  🤖 This is an AI-suggested score. Your teacher will review your submission and provide the final grade.
+                {aiEvaluation.marks === 0 && (
+                  <div
+                    className="mt-2 p-2 rounded-lg"
+                    style={{
+                      background: "#ef444422",
+                      border: "1px solid #ef444444",
+                    }}
+                  >
+                    <p className="text-[10px] text-red-400 flex items-center gap-1">
+                      <span className="material-symbols-outlined text-xs">
+                        warning
+                      </span>
+                      Your submission didn't meet the lab requirements. Review
+                      the instructions and resubmit.
+                    </p>
+                  </div>
+                )}
+                <p className="text-[10px] text-gray-500 mt-3 italic">
+                  🤖 This is your AI-evaluated score. Your teacher will review
+                  and may adjust it.
                 </p>
               </div>
             )}
-            
+
             {submission.status === "graded" ? (
               <>
                 <div
-                  className={`rounded-xl p-4`}
+                  className="rounded-xl p-4"
                   style={{
                     background: "#22c55e22",
                     border: "1px solid #22c55e44",
@@ -1520,7 +1682,7 @@ const pollForAIEvaluation = async () => {
                       <span className="material-symbols-outlined text-sm">
                         feedback
                       </span>
-                      Instructor feedback
+                      Teacher Feedback
                     </p>
                     <p className="text-sm text-gray-300 leading-relaxed">
                       {submission.feedback}
@@ -1541,7 +1703,7 @@ const pollForAIEvaluation = async () => {
                 </span>
                 <div>
                   <p className="text-sm font-semibold text-indigo-400">
-                    Submitted — awaiting review
+                    Submitted — awaiting teacher review
                   </p>
                   <p className="text-xs text-gray-500 mt-0.5">
                     Submitted{" "}
@@ -1550,6 +1712,7 @@ const pollForAIEvaluation = async () => {
                 </div>
               </div>
             )}
+
             {submission.answer && (
               <div>
                 <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
@@ -1567,6 +1730,7 @@ const pollForAIEvaluation = async () => {
                 </pre>
               </div>
             )}
+
             {submission.pdfUrl && (
               <button
                 onClick={() => setShowPdf(true)}
@@ -1579,11 +1743,12 @@ const pollForAIEvaluation = async () => {
               >
                 <span className="material-symbols-outlined text-base">
                   picture_as_pdf
-                </span>
+                </span>{" "}
                 View submitted PDF —{" "}
                 {submission.pdfFileName || "submission.pdf"}
               </button>
             )}
+
             {!isGraded && (
               <button
                 onClick={() => setActiveTab("submit")}
@@ -1594,15 +1759,135 @@ const pollForAIEvaluation = async () => {
                   border: "1px solid #6366f144",
                 }}
               >
-                {submission.status === "graded"
-                  ? "Resubmit"
-                  : "Update submission"}
+                Update submission
               </button>
             )}
           </>
         )}
       </div>
 
+      {/* ✅ NEW: Attempt History Panel */}
+      {showHistory && attemptHistory.length > 0 && (
+        <div
+          className="border-t p-5"
+          style={{ borderColor: "#1e293b", background: "#0a0f1e" }}
+        >
+          <div className="flex items-center justify-between mb-4">
+            <h4 className="text-sm font-bold text-white flex items-center gap-2">
+              <span className="material-symbols-outlined text-base text-purple-400">
+                timeline
+              </span>
+              Attempt History
+            </h4>
+            {bestScore !== null && (
+              <span className="text-[10px] px-2 py-1 rounded-full bg-emerald-500/20 text-emerald-400">
+                Best: {bestScore}/{lab.totalMarks || 100}
+              </span>
+            )}
+          </div>
+
+          <div className="space-y-2">
+            {attemptHistory.map((attempt, idx) => {
+              const isBest = attempt.finalScore === bestScore;
+              const percentage = attempt.percentage || 0;
+              const scoreColor =
+                percentage >= 70
+                  ? "#22c55e"
+                  : percentage >= 50
+                    ? "#f59e0b"
+                    : "#ef4444";
+
+              return (
+                <div
+                  key={idx}
+                  className="flex items-center gap-3 p-3 rounded-xl transition-all hover:bg-white/5"
+                  style={{
+                    background: isBest ? "#22c55e10" : "transparent",
+                    border: isBest
+                      ? "1px solid #22c55e44"
+                      : "1px solid #1e293b",
+                  }}
+                >
+                  <div className="flex-shrink-0 w-12 text-center">
+                    <p className="text-xs font-bold text-gray-500">Attempt</p>
+                    <p className="text-sm font-black text-white">
+                      {attempt.attemptNumber}
+                    </p>
+                  </div>
+
+                  <div className="flex-1">
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-xs text-gray-400">
+                        {new Date(attempt.submittedAt).toLocaleDateString()}
+                      </span>
+                      <span
+                        className="text-xs font-bold"
+                        style={{ color: scoreColor }}
+                      >
+                        {percentage}%
+                      </span>
+                    </div>
+                    <div className="h-1.5 rounded-full overflow-hidden bg-gray-800">
+                      <div
+                        className="h-full rounded-full transition-all"
+                        style={{
+                          width: `${percentage}%`,
+                          background: `linear-gradient(90deg, ${scoreColor}cc, ${scoreColor})`,
+                        }}
+                      />
+                    </div>
+                    <div className="flex items-center justify-between mt-1">
+                      <span className="text-[10px] text-gray-500">
+                        {attempt.finalScore}/{lab.totalMarks || 100} marks
+                      </span>
+                      {attempt.status === "graded" && (
+                        <span className="text-[10px] text-emerald-400">
+                          ✓ Graded
+                        </span>
+                      )}
+                      {isBest && (
+                        <span className="text-[10px] text-emerald-400 flex items-center gap-1">
+                          <span className="material-symbols-outlined text-xs">
+                            star
+                          </span>{" "}
+                          Best
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  {attempt.feedback && (
+                    <button
+                      className="flex-shrink-0 text-gray-500 hover:text-indigo-400 transition-colors"
+                      onClick={() => alert(attempt.feedback)}
+                    >
+                      <span className="material-symbols-outlined text-sm">
+                        chat
+                      </span>
+                    </button>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+
+          <div
+            className="mt-4 p-3 rounded-lg"
+            style={{ background: "#6366f122", border: "1px solid #6366f144" }}
+          >
+            <p className="text-[10px] text-gray-400 flex items-center gap-2">
+              <span className="material-symbols-outlined text-xs text-indigo-400">
+                trending_up
+              </span>
+              {attemptHistory.length} attempt(s) total · Best score: {bestScore}
+              /{lab.totalMarks || 100} (
+              {Math.round((bestScore / (lab.totalMarks || 100)) * 100)}%)
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* PDF Modal */}
       {showPdf && submission?.pdfUrl && (
         <div
           className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4"
@@ -1639,7 +1924,7 @@ const pollForAIEvaluation = async () => {
                 >
                   <span className="material-symbols-outlined text-sm">
                     open_in_new
-                  </span>
+                  </span>{" "}
                   Open
                 </a>
                 <button
@@ -1695,10 +1980,39 @@ const LessonViewer = () => {
   useEffect(() => {
     fetchAll();
   }, [courseId]);
-  
+
   useEffect(() => {
-    if (activeLesson?._id) openLesson(activeLesson._id);
-  }, [activeLesson?._id, loadTrigger]);
+    if (activeLesson?._id) {
+      openLesson(activeLesson._id);
+    }
+  }, [activeLesson?._id]);
+
+  // ✅ Validate current lesson requirements when lessonData changes
+  useEffect(() => {
+    if (!lessonData?.lesson) return;
+
+    const quizRequired = lessonData.lesson.requiresQuiz && !!lessonData.quiz;
+    const labRequired = lessonData.lesson.requiresLab && !!lessonData.lab;
+
+    console.log(`📊 Validating Lesson ${lessonData.lesson.order}:`, {
+      quizRequired,
+      quizDone,
+      quizPassed,
+      labRequired,
+      labDone,
+      labPassed,
+    });
+
+    // If quiz is required but not passed, show appropriate message
+    if (quizRequired && (!quizDone || !quizPassed)) {
+      console.log("⚠️ Quiz requirement not met for this lesson");
+    }
+
+    // If lab is required but not passed, show appropriate message
+    if (labRequired && (!labDone || !labPassed)) {
+      console.log("⚠️ Lab requirement not met for this lesson");
+    }
+  }, [lessonData, quizDone, quizPassed, labDone, labPassed]);
 
   const fetchAll = async () => {
     setLoadingList(true);
@@ -1727,10 +2041,6 @@ const LessonViewer = () => {
   const openLesson = async (lessonId) => {
     setLoadingLesson(true);
     setError("");
-    setQuizDone(false);
-    setLabDone(false);
-    setQuizPassed(false);
-    setLabPassed(false);
 
     try {
       const res = await apiFetch(
@@ -1744,113 +2054,183 @@ const LessonViewer = () => {
         return;
       }
 
-      setLessonData(data);
-      setQuizDone(data.progress?.quizCompleted || false);
-      setLabDone(data.progress?.labCompleted || false);
+      console.log(`📖 Opening lesson ${lessonId}:`, data);
 
+      // Set completion status from API response
+      const newQuizDone = data.progress?.quizCompleted || false;
+      const newLabDone = data.progress?.labCompleted || false;
+
+      // Handle Quiz Passed Status
+      let newQuizPassed = false;
       if (data.quiz && data.quizAttempts && data.quizAttempts.length > 0) {
         const sortedAttempts = [...data.quizAttempts].sort(
-          (a, b) => new Date(b.submittedAt) - new Date(a.submittedAt)
+          (a, b) => new Date(b.submittedAt) - new Date(a.submittedAt),
         );
         const mostRecent = sortedAttempts[0];
-        setQuizPassed(mostRecent.passed === true);
-        console.log("Quiz - Most recent attempt passed:", mostRecent.passed);
-      } else {
-        setQuizPassed(false);
+        newQuizPassed = mostRecent.passed === true;
+        console.log(`📝 Lesson ${lessonId} - Quiz passed:`, newQuizPassed);
       }
 
-      if (
-        data.lab &&
-        data.labSubmission &&
-        data.labSubmission.status === "graded"
-      ) {
+      // Handle Lab Passed Status
+      let newLabPassed = false;
+      if (data.lab && data.labSubmission) {
         const totalMarks = data.lab.totalMarks || 100;
-        const scorePercent = (data.labSubmission.marks / totalMarks) * 100;
-        const isPassed = scorePercent >= 70;
-        setLabPassed(isPassed);
-        console.log("Lab - Score:", scorePercent + "%", "Passed:", isPassed);
-      } else {
-        setLabPassed(false);
+        let scorePercent = 0;
+
+        if (
+          data.labSubmission.status === "graded" &&
+          data.labSubmission.marks !== null
+        ) {
+          scorePercent = (data.labSubmission.marks / totalMarks) * 100;
+          newLabPassed = scorePercent >= 70;
+          console.log(
+            `🔬 Lesson ${lessonId} - Lab graded: ${scorePercent}%, Passed:`,
+            newLabPassed,
+          );
+        } else if (
+          data.labSubmission.aiSuggestedMarks !== null &&
+          data.labSubmission.aiSuggestedMarks !== undefined
+        ) {
+          scorePercent =
+            (data.labSubmission.aiSuggestedMarks / totalMarks) * 100;
+          newLabPassed = scorePercent >= 70;
+          console.log(
+            `🔬 Lesson ${lessonId} - Lab AI: ${scorePercent}%, Passed:`,
+            newLabPassed,
+          );
+        }
       }
-    } catch {
+
+      // Batch all state updates
+      setLessonData(data);
+      setQuizDone(newQuizDone);
+      setLabDone(newLabDone);
+      setQuizPassed(newQuizPassed);
+      setLabPassed(newLabPassed);
+
+      console.log(`✅ Lesson ${lessonId} loaded with states:`, {
+        quizDone: newQuizDone,
+        quizPassed: newQuizPassed,
+        labDone: newLabDone,
+        labPassed: newLabPassed,
+      });
+    } catch (err) {
+      console.error("Open lesson error:", err);
       setError("Cannot connect to server");
     } finally {
       setLoadingLesson(false);
     }
   };
 
-  const refreshAfterStep = async () => {
+  const refreshAfterStep = useCallback(async () => {
+    if (!activeLesson?._id) return;
+
+    console.log(`🔄 Refreshing lesson ${activeLesson._id}...`);
+
+    // Add a small delay to prevent multiple rapid refreshes
+    await new Promise((resolve) => setTimeout(resolve, 100));
+
     try {
+      // Refresh lessons list
       const lRes = await apiFetch(`/api/courses/${courseId}/lessons`);
       const lData = await lRes.json();
-      if (lRes.ok) setLessons(lData.lessons);
+      if (lRes.ok) {
+        setLessons(lData.lessons);
+      }
 
-      if (activeLesson?._id) {
-        const ldRes = await apiFetch(
-          `/api/courses/${courseId}/lessons/${activeLesson._id}/content`,
-        );
-        const ldData = await ldRes.json();
-        if (ldRes.ok) {
-          setLessonData(ldData);
-          
-          const newQuizDone = ldData.progress?.quizCompleted || false;
-          const newLabDone = ldData.progress?.labCompleted || false;
-          
-          setQuizDone(newQuizDone);
-          setLabDone(newLabDone);
+      // Refresh current lesson content
+      const ldRes = await apiFetch(
+        `/api/courses/${courseId}/lessons/${activeLesson._id}/content`,
+      );
+      const ldData = await ldRes.json();
+
+      if (ldRes.ok) {
+        console.log("📦 Refreshed lesson data:", ldData);
+
+        // Update completion status from fresh data
+        const newQuizDone = ldData.progress?.quizCompleted || false;
+        const newLabDone = ldData.progress?.labCompleted || false;
+
+        // Update quiz pass status
+        let newQuizPassed = false;
+        if (
+          ldData.quiz &&
+          ldData.quizAttempts &&
+          ldData.quizAttempts.length > 0
+        ) {
+          const sortedAttempts = [...ldData.quizAttempts].sort(
+            (a, b) => new Date(b.submittedAt) - new Date(a.submittedAt),
+          );
+          const mostRecent = sortedAttempts[0];
+          newQuizPassed = mostRecent.passed === true;
+        }
+
+        // Update lab pass status
+        let newLabPassed = false;
+        if (ldData.lab && ldData.labSubmission) {
+          const totalMarks = ldData.lab.totalMarks || 100;
+          let scorePercent = 0;
 
           if (
-            ldData.quiz &&
-            ldData.quizAttempts &&
-            ldData.quizAttempts.length > 0
+            ldData.labSubmission.status === "graded" &&
+            ldData.labSubmission.marks !== null
           ) {
-            const sortedAttempts = [...ldData.quizAttempts].sort(
-              (a, b) => new Date(b.submittedAt) - new Date(a.submittedAt)
-            );
-            const mostRecent = sortedAttempts[0];
-            const isPassed = mostRecent.passed === true;
-            setQuizPassed(prev => prev !== isPassed ? isPassed : prev);
-            console.log("Refresh - Quiz passed (from DB):", isPassed);
-          }
-
-          if (
-            ldData.lab &&
-            ldData.labSubmission &&
-            ldData.labSubmission.status === "graded"
+            scorePercent = (ldData.labSubmission.marks / totalMarks) * 100;
+            newLabPassed = scorePercent >= 70;
+          } else if (
+            ldData.labSubmission.aiSuggestedMarks !== null &&
+            ldData.labSubmission.aiSuggestedMarks !== undefined
           ) {
-            const totalMarks = ldData.lab.totalMarks || 100;
-            const scorePercent =
-              (ldData.labSubmission.marks / totalMarks) * 100;
-            const isPassed = scorePercent >= 70;
-            setLabPassed(prev => prev !== isPassed ? isPassed : prev);
-            console.log("Refresh - Lab passed (from DB):", isPassed);
+            scorePercent =
+              (ldData.labSubmission.aiSuggestedMarks / totalMarks) * 100;
+            newLabPassed = scorePercent >= 70;
           }
         }
+
+        // Batch all state updates together
+        setLessonData(ldData);
+        setQuizDone(newQuizDone);
+        setLabDone(newLabDone);
+        setQuizPassed(newQuizPassed);
+        setLabPassed(newLabPassed);
+
+        console.log(
+          `✅ Refresh complete - Quiz passed: ${newQuizPassed}, Lab passed: ${newLabPassed}`,
+        );
       }
-    } catch {
-      /* silent */
+    } catch (err) {
+      console.error("Refresh failed:", err);
     }
-  };
+  }, [courseId, activeLesson?._id]);
 
   const resetLesson = async () => {
     setLoadingLesson(true);
     setError("");
     setSuccess("");
-    
+
     try {
-      const res = await apiFetch(`/api/courses/${courseId}/lessons/${activeLesson._id}/reset`, {
-        method: "POST",
-      });
-      
+      const res = await apiFetch(
+        `/api/courses/${courseId}/lessons/${activeLesson._id}/reset`,
+        {
+          method: "POST",
+        },
+      );
+
       if (res.ok) {
         setQuizDone(false);
         setLabDone(false);
         setQuizPassed(false);
         setLabPassed(false);
-        
+
+        // Clear any cached lab passed status
+        localStorage.removeItem(`lab_passed_${activeLesson._id}`);
+        localStorage.removeItem(`quiz_passed_${activeLesson._id}`);
+
         await openLesson(activeLesson._id);
         await refreshAfterStep();
-        setSuccess("Lesson reset successfully! You can now re-attempt the quiz and lab.");
+        setSuccess(
+          "Lesson reset successfully! You can now re-attempt the quiz and lab.",
+        );
         setTimeout(() => setSuccess(""), 3000);
       } else {
         const data = await res.json();
@@ -1867,8 +2247,15 @@ const LessonViewer = () => {
   const handleLessonClick = (lesson) => {
     setSidebarOpen(false);
     if (lesson._id === activeLesson?._id) {
+      // Same lesson - just refresh
       setLoadTrigger((t) => t + 1);
     } else {
+      // Different lesson - clear all states first
+      setQuizDone(false);
+      setLabDone(false);
+      setQuizPassed(false);
+      setLabPassed(false);
+      setLessonData(null);
       setActiveLesson(lesson);
     }
   };
@@ -1897,51 +2284,51 @@ const LessonViewer = () => {
   };
 
   const computeCanGoNext = () => {
-  if (!lessonData?.lesson || !lessons.length) return false;
+    if (!lessonData?.lesson || !lessons.length) return false;
 
-  // Check if there is a next lesson
-  const hasNextLesson = lessons.some(
-    (l) => l.order === lessonData.lesson.order + 1,
-  );
-  if (!hasNextLesson) return false;
+    // Check if there is a next lesson
+    const hasNextLesson = lessons.some(
+      (l) => l.order === lessonData.lesson.order + 1,
+    );
+    if (!hasNextLesson) return false;
 
-  // Must have viewed the lesson (for all lessons)
-  const viewed = lessonData.progress?.lessonViewed || false;
-  if (!viewed) return false;
+    // Must have viewed the lesson (for all lessons)
+    const viewed = lessonData.progress?.lessonViewed || false;
+    if (!viewed) return false;
 
-  const quizRequired = lessonData.lesson.requiresQuiz && !!lessonData.quiz;
-  const labRequired = lessonData.lesson.requiresLab && !!lessonData.lab;
+    const quizRequired = lessonData.lesson.requiresQuiz && !!lessonData.quiz;
+    const labRequired = lessonData.lesson.requiresLab && !!lessonData.lab;
 
-  // Check quiz requirements
-  if (quizRequired) {
-    // Must have submitted AND passed the quiz
-    if (!quizDone || !quizPassed) {
-      console.log("❌ Cannot go next - Quiz requirements not met:", { 
-        quizRequired, 
-        quizDone, 
-        quizPassed 
-      });
-      return false;
+    // Check quiz requirements
+    if (quizRequired) {
+      // Must have submitted AND passed the quiz
+      if (!quizDone || !quizPassed) {
+        console.log("❌ Cannot go next - Quiz requirements not met:", {
+          quizRequired,
+          quizDone,
+          quizPassed,
+        });
+        return false;
+      }
     }
-  }
 
-  // Check lab requirements
-  if (labRequired) {
-    // Must have submitted AND passed the lab
-    if (!labDone || !labPassed) {
-      console.log("❌ Cannot go next - Lab requirements not met:", { 
-        labRequired, 
-        labDone, 
-        labPassed 
-      });
-      return false;
+    // Check lab requirements
+    if (labRequired) {
+      // Must have submitted AND passed the lab
+      if (!labDone || !labPassed) {
+        console.log("❌ Cannot go next - Lab requirements not met:", {
+          labRequired,
+          labDone,
+          labPassed,
+        });
+        return false;
+      }
     }
-  }
 
-  console.log("✅ Can go next - All requirements met");
-  return true;
-};
-  
+    console.log("✅ Can go next - All requirements met");
+    return true;
+  };
+
   const canGoNext = computeCanGoNext();
   const quizRequired = lessonData?.lesson?.requiresQuiz && !!lessonData?.quiz;
   const labRequired = lessonData?.lesson?.requiresLab && !!lessonData?.lab;
@@ -2227,7 +2614,9 @@ const LessonViewer = () => {
               border: "1px solid #6366f144",
             }}
           >
-            <span className="material-symbols-outlined text-xl">arrow_back</span>
+            <span className="material-symbols-outlined text-xl">
+              arrow_back
+            </span>
           </button>
           <button
             onClick={() => setSidebarOpen(!sidebarOpen)}
@@ -2401,9 +2790,15 @@ const LessonViewer = () => {
                   <button
                     onClick={() => setShowResetConfirm(true)}
                     className="text-[10px] font-medium px-2 py-0.5 rounded-full flex items-center gap-1 transition-all hover:scale-105"
-                    style={{ background: "#f59e0b22", color: "#fbbf24", border: "1px solid #f59e0b44" }}
+                    style={{
+                      background: "#f59e0b22",
+                      color: "#fbbf24",
+                      border: "1px solid #f59e0b44",
+                    }}
                   >
-                    <span className="material-symbols-outlined text-xs">refresh</span>
+                    <span className="material-symbols-outlined text-xs">
+                      refresh
+                    </span>
                     Reset Lesson
                   </button>
                 </div>
@@ -2417,7 +2812,8 @@ const LessonViewer = () => {
                 )}
               </div>
 
-              {lessonData?.lesson?.contentBlocks && lessonData.lesson.contentBlocks.length > 0 ? (
+              {lessonData?.lesson?.contentBlocks &&
+              lessonData.lesson.contentBlocks.length > 0 ? (
                 <div className="space-y-6">
                   {lessonData.lesson.contentBlocks.map((block, idx) => (
                     <ContentBlockRenderer key={block.id || idx} block={block} />
@@ -2536,114 +2932,285 @@ const LessonViewer = () => {
 
               {lessonData.lesson.requiresQuiz && lessonData.quiz ? (
                 <QuizSection
+                  // Remove the dynamic key - use stable key instead
+                  key={`quiz-${lessonData.lesson._id}`}
                   quiz={lessonData.quiz}
                   courseId={courseId}
                   lessonId={lessonData.lesson._id}
                   onCompleted={() => {
+                    console.log("📝 Quiz completed, refreshing...");
                     setQuizDone(true);
+                    refreshAfterStep();
                   }}
                   onPassed={(passed) => {
-                    console.log("📝 Quiz onPassed called with:", passed);
+                    console.log("📝 Quiz passed:", passed);
                     setQuizPassed(passed);
                     setQuizDone(true);
-                    setTimeout(() => refreshAfterStep(), 500);
+                    // Don't force multiple refreshes - just do one
+                    refreshAfterStep();
                   }}
                 />
-              ) : lessonData.lesson.requiresQuiz && !lessonData.quiz ? (
-                <div
-                  className="rounded-xl p-4 flex items-center gap-2"
-                  style={{
-                    background: "#f59e0b22",
-                    border: "1px solid #f59e0b44",
-                  }}
-                >
-                  <span className="material-symbols-outlined text-amber-500 text-base">
-                    info
-                  </span>
-                  <p className="text-sm text-amber-400">
-                    Quiz required but not yet published by the instructor.
-                  </p>
-                </div>
               ) : null}
 
               {lessonData.lesson.requiresLab && lessonData.lab ? (
                 <LabSection
+                  // Remove the dynamic key - use stable key instead
+                  key={`lab-${lessonData.lesson._id}`}
                   lab={lessonData.lab}
                   lessonId={lessonData.lesson._id}
                   courseId={courseId}
                   onCompleted={() => {
+                    console.log("🔬 Lab completed, refreshing...");
                     setLabDone(true);
+                    refreshAfterStep();
                   }}
                   onPassed={(passed) => {
-                    console.log("🔬 Lab onPassed called with:", passed);
+                    console.log("🔬 Lab passed:", passed);
                     setLabPassed(passed);
                     setLabDone(true);
-                    setTimeout(() => refreshAfterStep(), 500);
+                    refreshAfterStep();
                   }}
                 />
-              ) : lessonData.lesson.requiresLab && !lessonData.lab ? (
-                <div
-                  className="rounded-xl p-4 flex items-center gap-2"
-                  style={{
-                    background: "#f59e0b22",
-                    border: "1px solid #f59e0b44",
-                  }}
-                >
-                  <span className="material-symbols-outlined text-amber-500 text-base">
-                    info
-                  </span>
-                  <p className="text-sm text-amber-400">
-                    Lab required but not yet published by the instructor.
-                  </p>
-                </div>
               ) : null}
+              {/* Next Lesson / Completion Section - Enhanced with better messaging */}
+              {(() => {
+                const viewed = lessonData.progress?.lessonViewed || false;
+                const quizRequired =
+                  lessonData.lesson.requiresQuiz && !!lessonData.quiz;
+                const labRequired =
+                  lessonData.lesson.requiresLab && !!lessonData.lab;
 
-              {canGoNext ? (
-                <div className="mt-4 p-5 rounded-2xl" style={{ background: "linear-gradient(135deg, #22c55e22, #16a34a22)", border: "1px solid #22c55e44" }}>
-                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                    <div>
-                      <p className="font-bold text-emerald-400 text-sm flex items-center gap-2">
-                        <span className="material-symbols-outlined text-emerald-400 text-lg">check_circle</span>
-                        Lesson complete! Ready for next lesson.
-                      </p>
-                    </div>
-                    <button
-                      onClick={handleNextLesson}
-                      disabled={navigatingNext}
-                      className="flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold text-white transition-all hover:scale-105 disabled:opacity-60"
-                      style={{ background: "linear-gradient(135deg, #22c55e, #16a34a)" }}
+                const quizMet = !quizRequired || (quizDone && quizPassed);
+                const labMet = !labRequired || (labDone && labPassed);
+                const allRequirementsMet = viewed && quizMet && labMet;
+                const hasNextLesson = lessons.some(
+                  (l) => l.order === lessonData.lesson.order + 1,
+                );
+
+                // Check specific failures
+                const quizFailed = quizRequired && (!quizDone || !quizPassed);
+                const labFailed = labRequired && (!labDone || !labPassed);
+                const notViewed = !viewed;
+
+                if (allRequirementsMet && hasNextLesson) {
+                  // Show next lesson button
+                  return (
+                    <div
+                      className="mt-4 p-5 rounded-2xl"
+                      style={{
+                        background:
+                          "linear-gradient(135deg, #22c55e22, #16a34a22)",
+                        border: "1px solid #22c55e44",
+                      }}
                     >
-                      {navigatingNext ? <LoadingSpinner size="sm" /> : <span className="material-symbols-outlined text-base">arrow_forward</span>}
-                      Next Lesson
-                    </button>
-                  </div>
-                </div>
-              ) : (lessonData.lesson.order !== 1 && ((quizRequired && !quizPassed) || (labRequired && !labPassed))) ? (
-                <div className="mt-4 p-5 rounded-2xl" style={{ background: "#ef444422", border: "1px solid #ef444444" }}>
-                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                    <div>
-                      <p className="font-bold text-red-400 text-sm flex items-center gap-2">
-                        <span className="material-symbols-outlined text-red-400 text-lg">priority_high</span>
-                        {!quizPassed && quizRequired ? "❌ Quiz not passed! " : ""}
-                        {!labPassed && labRequired ? "❌ Lab not passed! " : ""}
-                        Please retake and pass to unlock next lesson.
-                      </p>
-                      <p className="text-xs text-red-300/80 mt-1">
-                        {!quizPassed && quizRequired ? "• Review quiz material and try again" : ""}
-                        {!labPassed && labRequired ? "• Review lab instructions and resubmit" : ""}
-                      </p>
+                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                        <div>
+                          <p className="font-bold text-emerald-400 text-sm flex items-center gap-2">
+                            <span className="material-symbols-outlined text-emerald-400 text-lg">
+                              check_circle
+                            </span>
+                            Lesson complete! Ready for next lesson.
+                          </p>
+                        </div>
+                        <button
+                          onClick={handleNextLesson}
+                          disabled={navigatingNext}
+                          className="flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold text-white transition-all hover:scale-105 disabled:opacity-60"
+                          style={{
+                            background:
+                              "linear-gradient(135deg, #22c55e, #16a34a)",
+                          }}
+                        >
+                          {navigatingNext ? (
+                            <LoadingSpinner size="sm" />
+                          ) : (
+                            <span className="material-symbols-outlined text-base">
+                              arrow_forward
+                            </span>
+                          )}
+                          Next Lesson
+                        </button>
+                      </div>
                     </div>
-                  </div>
-                </div>
-              ) : lessonData.progress?.isCompleted && !lessons.some((l) => l.order === lessonData.lesson.order + 1) ? (
-                <div className="mt-4 p-5 rounded-2xl text-center" style={{ background: "linear-gradient(135deg, #22c55e22, #16a34a22)", border: "1px solid #22c55e44" }}>
-                  <p className="font-bold text-emerald-400 text-base">🎉 Course Complete!</p>
-                  <p className="text-sm text-emerald-400/80 mt-1">You have finished all lessons in this course. Well done!</p>
-                  <button onClick={() => navigate("/student/dashboard")} className="mt-4 px-5 py-2 rounded-xl text-sm font-bold text-white transition-all hover:scale-105" style={{ background: "linear-gradient(135deg, #22c55e, #16a34a)" }}>
-                    Back to Dashboard
-                  </button>
-                </div>
-              ) : null}
+                  );
+                } else if (!allRequirementsMet && hasNextLesson) {
+                  // Show requirements not met message with specific instructions
+                  return (
+                    <div
+                      className="mt-4 p-5 rounded-2xl"
+                      style={{
+                        background: "#ef444422",
+                        border: "1px solid #ef444444",
+                      }}
+                    >
+                      <div className="flex flex-col gap-3">
+                        <div>
+                          <p className="font-bold text-red-400 text-sm flex items-center gap-2 mb-3">
+                            <span className="material-symbols-outlined text-red-400 text-lg">
+                              priority_high
+                            </span>
+                            Complete requirements to unlock next lesson:
+                          </p>
+
+                          <div className="space-y-2">
+                            {notViewed && (
+                              <div
+                                className="flex items-center gap-2 text-xs text-red-300/80 p-2 rounded-lg"
+                                style={{ background: "#ef444410" }}
+                              >
+                                <span className="material-symbols-outlined text-sm">
+                                  menu_book
+                                </span>
+                                <span>Read the lesson content first</span>
+                              </div>
+                            )}
+
+                            {quizRequired && (
+                              <div
+                                className={`flex items-center gap-2 text-xs p-2 rounded-lg ${quizFailed ? "text-red-300/80 bg-red-500/10" : "text-green-400 bg-green-500/10"}`}
+                              >
+                                <span className="material-symbols-outlined text-sm">
+                                  quiz
+                                </span>
+                                <span>
+                                  {!quizDone
+                                    ? "Submit the quiz"
+                                    : !quizPassed
+                                      ? `Pass the quiz (need ${lessonData.quiz?.passingScore || 70}%)`
+                                      : "✓ Quiz completed and passed"}
+                                </span>
+                                {!quizFailed && quizDone && quizPassed && (
+                                  <span className="material-symbols-outlined text-sm text-green-400 ml-auto">
+                                    check_circle
+                                  </span>
+                                )}
+                                {quizFailed && (
+                                  <span className="material-symbols-outlined text-sm text-red-400 ml-auto">
+                                    cancel
+                                  </span>
+                                )}
+                              </div>
+                            )}
+
+                            {labRequired && (
+                              <div
+                                className={`flex items-center gap-2 text-xs p-2 rounded-lg ${labFailed ? "text-red-300/80 bg-red-500/10" : "text-green-400 bg-green-500/10"}`}
+                              >
+                                <span className="material-symbols-outlined text-sm">
+                                  science
+                                </span>
+                                <span>
+                                  {!labDone
+                                    ? "Submit the lab"
+                                    : !labPassed
+                                      ? "Pass the lab (need 70%)"
+                                      : "✓ Lab completed and passed"}
+                                </span>
+                                {!labFailed && labDone && labPassed && (
+                                  <span className="material-symbols-outlined text-sm text-green-400 ml-auto">
+                                    check_circle
+                                  </span>
+                                )}
+                                {labFailed && (
+                                  <span className="material-symbols-outlined text-sm text-red-400 ml-auto">
+                                    cancel
+                                  </span>
+                                )}
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Specific failure message */}
+                          {quizRequired &&
+                            labRequired &&
+                            quizFailed &&
+                            labFailed && (
+                              <p
+                                className="text-xs text-red-300/80 mt-3 p-2 rounded-lg"
+                                style={{ background: "#ef444410" }}
+                              >
+                                ⚠️ You need to pass BOTH the quiz and the lab to
+                                proceed to the next lesson.
+                              </p>
+                            )}
+                          {quizRequired && !labRequired && quizFailed && (
+                            <p
+                              className="text-xs text-red-300/80 mt-3 p-2 rounded-lg"
+                              style={{ background: "#ef444410" }}
+                            >
+                              ⚠️ You need to pass the quiz to proceed to the
+                              next lesson.
+                            </p>
+                          )}
+                          {!quizRequired && labRequired && labFailed && (
+                            <p
+                              className="text-xs text-red-300/80 mt-3 p-2 rounded-lg"
+                              style={{ background: "#ef444410" }}
+                            >
+                              ⚠️ You need to pass the lab to proceed to the next
+                              lesson.
+                            </p>
+                          )}
+                          {quizRequired &&
+                            labRequired &&
+                            quizFailed &&
+                            !labFailed && (
+                              <p
+                                className="text-xs text-amber-300/80 mt-3 p-2 rounded-lg"
+                                style={{ background: "#f59e0b10" }}
+                              >
+                                ℹ️ You passed the lab, but you still need to
+                                pass the quiz to proceed.
+                              </p>
+                            )}
+                          {quizRequired &&
+                            labRequired &&
+                            !quizFailed &&
+                            labFailed && (
+                              <p
+                                className="text-xs text-amber-300/80 mt-3 p-2 rounded-lg"
+                                style={{ background: "#f59e0b10" }}
+                              >
+                                ℹ️ You passed the quiz, but you still need to
+                                pass the lab to proceed.
+                              </p>
+                            )}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                } else if (allRequirementsMet && !hasNextLesson) {
+                  // Course complete
+                  return (
+                    <div
+                      className="mt-4 p-5 rounded-2xl text-center"
+                      style={{
+                        background:
+                          "linear-gradient(135deg, #22c55e22, #16a34a22)",
+                        border: "1px solid #22c55e44",
+                      }}
+                    >
+                      <p className="font-bold text-emerald-400 text-base">
+                        🎉 Course Complete!
+                      </p>
+                      <p className="text-sm text-emerald-400/80 mt-1">
+                        You have finished all lessons in this course. Well done!
+                      </p>
+                      <button
+                        onClick={() => navigate("/student/dashboard")}
+                        className="mt-4 px-5 py-2 rounded-xl text-sm font-bold text-white transition-all hover:scale-105"
+                        style={{
+                          background:
+                            "linear-gradient(135deg, #22c55e, #16a34a)",
+                        }}
+                      >
+                        Back to Dashboard
+                      </button>
+                    </div>
+                  );
+                }
+                return null;
+              })()}
             </div>
           ) : (
             <div className="flex items-center justify-center h-full">
@@ -2663,31 +3230,56 @@ const LessonViewer = () => {
       </div>
 
       {showResetConfirm && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={() => setShowResetConfirm(false)}>
-          <div className="rounded-2xl w-full max-w-md overflow-hidden" style={{ background: "#0f1629", border: "1px solid #1e293b" }} onClick={(e) => e.stopPropagation()}>
-            <div className="px-5 py-4" style={{ background: "linear-gradient(135deg, #f59e0b, #d97706)" }}>
+        <div
+          className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+          onClick={() => setShowResetConfirm(false)}
+        >
+          <div
+            className="rounded-2xl w-full max-w-md overflow-hidden"
+            style={{ background: "#0f1629", border: "1px solid #1e293b" }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div
+              className="px-5 py-4"
+              style={{
+                background: "linear-gradient(135deg, #f59e0b, #d97706)",
+              }}
+            >
               <div className="flex items-center gap-3">
                 <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-white/20">
-                  <span className="material-symbols-outlined text-white">refresh</span>
+                  <span className="material-symbols-outlined text-white">
+                    refresh
+                  </span>
                 </div>
                 <h3 className="text-lg font-bold text-white">Reset Lesson</h3>
               </div>
             </div>
             <div className="p-5">
               <p className="text-gray-300 text-sm mb-2">
-                Are you sure you want to reset <strong className="text-white">{lessonData?.lesson?.title}</strong>?
+                Are you sure you want to reset{" "}
+                <strong className="text-white">
+                  {lessonData?.lesson?.title}
+                </strong>
+                ?
               </p>
               <p className="text-gray-500 text-xs mb-4">
-                This will reset your quiz attempts and lab submissions for this lesson. You can retake the quiz and resubmit the lab.
+                This will reset your quiz attempts and lab submissions for this
+                lesson. You can retake the quiz and resubmit the lab.
               </p>
               <div className="flex gap-3">
                 <button
                   onClick={resetLesson}
                   disabled={loadingLesson}
                   className="flex-1 py-2 rounded-xl text-sm font-bold text-white transition-all hover:scale-105 disabled:opacity-50"
-                  style={{ background: "linear-gradient(135deg, #f59e0b, #d97706)" }}
+                  style={{
+                    background: "linear-gradient(135deg, #f59e0b, #d97706)",
+                  }}
                 >
-                  {loadingLesson ? <LoadingSpinner size="sm" /> : "Yes, Reset Lesson"}
+                  {loadingLesson ? (
+                    <LoadingSpinner size="sm" />
+                  ) : (
+                    "Yes, Reset Lesson"
+                  )}
                 </button>
                 <button
                   onClick={() => setShowResetConfirm(false)}

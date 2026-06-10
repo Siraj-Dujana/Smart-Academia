@@ -303,11 +303,15 @@ const startQuizAttempt = async (req, res) => {
     if (attemptCount >= quiz.maxAttempts)
       return res.status(400).json({ message: `Maximum ${quiz.maxAttempts} attempts reached` });
 
+    // ✅ Calculate next attempt number correctly
+    const nextAttemptNumber = attemptCount + 1;
+    console.log(`📝 Starting quiz attempt #${nextAttemptNumber} for: ${quiz.title}`);
+
     const attempt = await QuizAttempt.create({
       quiz:          quiz._id,
       student:       req.user._id,
       course:        quiz.course,
-      attemptNumber: attemptCount + 1,
+      attemptNumber: nextAttemptNumber,
       answers:       [],
       score:         0,
       passed:        false,
@@ -341,7 +345,7 @@ const startQuizAttempt = async (req, res) => {
   }
 };
 
-// ── STUDENT: Submit quiz ─────────────────────────────────────
+// ── STUDENT: Submit quiz (WITH ATTEMPT TRACKING) ─────────────────────────────────────
 const submitQuiz = async (req, res) => {
   try {
     const { attemptId, answers, timeTaken, tabSwitchCount } = req.body;
@@ -399,21 +403,26 @@ const submitQuiz = async (req, res) => {
     const score  = questions.length > 0 ? Math.round((correctCount / questions.length) * 100) : 0;
     const passed = score >= quiz.passingScore;
 
+    console.log(`📊 Quiz attempt #${attempt.attemptNumber} - Score: ${score}%, Passed: ${passed}`);
+
     if (passed) {
       try {
-         await PointsService.addPoints(
-    req.user._id,
-    POINTS_CONFIG.QUIZ_PASSED,
-    `Passed quiz: ${quiz.title}`
-  );
-    if (score === 100) {
-    await PointsService.addPoints(
-      req.user._id,
-      POINTS_CONFIG.QUIZ_PERFECT_SCORE,
-      `Perfect score on quiz: ${quiz.title}`
-    );
-    await PointsService.awardBadge(req.user._id, "PERFECT_SCORE");
-  }
+        const PointsService = require('../services/pointsService');
+        const { POINTS_CONFIG } = require('../config/pointsConfig');
+        
+        await PointsService.addPoints(
+          req.user._id,
+          POINTS_CONFIG.QUIZ_PASSED,
+          `Passed quiz: ${quiz.title} (Attempt #${attempt.attemptNumber})`
+        );
+        if (score === 100) {
+          await PointsService.addPoints(
+            req.user._id,
+            POINTS_CONFIG.QUIZ_PERFECT_SCORE,
+            `Perfect score on quiz: ${quiz.title} (Attempt #${attempt.attemptNumber})`
+          );
+          await PointsService.awardBadge(req.user._id, "PERFECT_SCORE");
+        }
         const student = await User.findById(req.user._id).select("fullName email");
         await notifyQuizPassed({
           studentId: req.user._id,
@@ -437,6 +446,45 @@ const submitQuiz = async (req, res) => {
     attempt.submittedAt        = new Date();
     await attempt.save();
 
+    console.log(`✅ Quiz attempt #${attempt.attemptNumber} saved successfully`);
+
+    // ✅ Update LessonProgress with best score tracking
+    if (quiz.lesson) {
+      const progress = await LessonProgress.findOne({ 
+        student: req.user._id, 
+        lesson: quiz.lesson 
+      });
+      
+      const totalAttempts = await QuizAttempt.countDocuments({
+        quiz: quiz._id,
+        student: req.user._id,
+      });
+      
+      const updateFields = {
+        quizCompleted: true,
+        quizPassed: passed,
+        quizTotalAttempts: totalAttempts,
+      };
+      
+      // Update best score if this attempt is better
+      if (!progress?.quizBestScore || score > progress.quizBestScore) {
+        updateFields.quizBestScore = score;
+        updateFields.quizBestAttempt = attempt.attemptNumber;
+        updateFields.quizScore = score; // Keep for backward compatibility
+        console.log(`🏆 New best score for quiz: ${score}% (Attempt #${attempt.attemptNumber})`);
+      }
+      
+      await LessonProgress.findOneAndUpdate(
+        { student: req.user._id, lesson: quiz.lesson },
+        { $set: updateFields },
+        { upsert: true }
+      );
+      
+      if (passed) {
+        await checkAndUnlockNext(req.user._id, quiz.lesson, quiz.course);
+      }
+    }
+
     const results = gradedAnswers.map(ga => {
       const question = questions.find(q => q._id.toString() === ga.questionId.toString());
       const correctIndex = question ? question.options.findIndex(
@@ -452,24 +500,8 @@ const submitQuiz = async (req, res) => {
       };
     });
 
-    if (quiz.lesson && passed) {
-      await LessonProgress.findOneAndUpdate(
-        { student: req.user._id, lesson: quiz.lesson },
-        {
-          $set: { quizCompleted: true, quizScore: score, quizPassed: passed },
-          $setOnInsert: {
-            student: req.user._id,
-            lesson:  quiz.lesson,
-            course:  quiz.course,
-          },
-        },
-        { upsert: true }
-      );
-      await checkAndUnlockNext(req.user._id, quiz.lesson, quiz.course);
-    }
-
     res.status(200).json({
-      message:        passed ? "Quiz passed!" : "Quiz submitted",
+      message:        passed ? `Quiz passed! (Attempt #${attempt.attemptNumber})` : `Quiz submitted (Attempt #${attempt.attemptNumber})`,
       score,
       passed,
       correctCount,
@@ -478,7 +510,13 @@ const submitQuiz = async (req, res) => {
       totalPoints,
       timeTaken:      attempt.timeTaken,
       results,
-      attempt,
+      attempt: {
+        _id: attempt._id,
+        attemptNumber: attempt.attemptNumber,
+        score: attempt.score,
+        passed: attempt.passed,
+        submittedAt: attempt.submittedAt,
+      },
     });
   } catch (err) {
     console.error("submitQuiz error:", err.message);
@@ -486,30 +524,56 @@ const submitQuiz = async (req, res) => {
   }
 };
 
-// ── STUDENT: Get my attempts ────────────────────────────────
+// ── STUDENT: Get my attempts (ALL attempts with details) ────────────────────────────────
 const getMyAttempts = async (req, res) => {
   try {
     const attempts = await QuizAttempt.find({
       quiz:    req.params.quizId,
       student: req.user._id,
-    }).sort({ createdAt: -1 });
-    res.status(200).json({ attempts });
+    }).sort({ attemptNumber: 1 }); // Sort by attempt number ascending
+    
+    const quiz = await Quiz.findById(req.params.quizId);
+    const passingScore = quiz?.passingScore || 70;
+    
+    res.status(200).json({ 
+      attempts: attempts.map(a => ({
+        _id: a._id,
+        attemptNumber: a.attemptNumber,
+        score: a.score,
+        passed: a.passed,
+        submittedAt: a.submittedAt,
+        timeTaken: a.timeTaken,
+        flaggedForCheating: a.flaggedForCheating,
+        isBest: a.score === Math.max(...attempts.map(at => at.score), 0),
+      })),
+      totalAttempts: attempts.length,
+      bestScore: attempts.length > 0 ? Math.max(...attempts.map(a => a.score)) : null,
+      passed: attempts.some(a => a.passed),
+      passingScore: passingScore,
+    });
   } catch (err) {
-    console.error(err);
+    console.error("getMyAttempts error:", err.message);
     res.status(500).json({ message: "Server error" });
   }
 };
 
-// ── STUDENT: Get best result ─────────────────────────────────
+// ── STUDENT: Get best result (for backward compatibility) ─────────────────────────────────
 const getMyResults = async (req, res) => {
   try {
     const attempts = await QuizAttempt.find({
       quiz:    req.params.quizId,
       student: req.user._id,
-    }).sort({ score: -1 });
-    res.status(200).json({ attempts });
+    }).sort({ score: -1, attemptNumber: -1 });
+    
+    const bestAttempt = attempts[0] || null;
+    
+    res.status(200).json({ 
+      attempts,
+      bestAttempt,
+      totalAttempts: attempts.length,
+    });
   } catch (err) {
-    console.error(err);
+    console.error("getMyResults error:", err.message);
     res.status(500).json({ message: "Server error" });
   }
 };

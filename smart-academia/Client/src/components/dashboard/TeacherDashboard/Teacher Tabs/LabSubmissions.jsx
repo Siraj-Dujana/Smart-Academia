@@ -94,6 +94,7 @@ const LabSubmissions = () => {
   const [filter,            setFilter]            = useState("all");
   const [searchTerm,        setSearchTerm]        = useState("");
   const [grading, setGrading] = useState(false);
+  const [aiWarning, setAiWarning] = useState("");
 
   // Target values for progress bars
   const MAX_TOTAL_TARGET = 100;
@@ -161,10 +162,41 @@ const LabSubmissions = () => {
     if (isNaN(numMarks) || numMarks < 0) { setError("Marks must be a valid non-negative number"); return; }
     if (numMarks > (selectedLab.totalMarks || 100)) { setError(`Marks cannot exceed ${selectedLab.totalMarks || 100}`); return; }
 
+    // Find the submission to check AI score
+    const submission = submissions.find(s => s._id === submissionId);
+    const aiScore = submission?.aiSuggestedMarks;
+    
+    // Warn if teacher is scoring higher than AI evaluation
+    if (aiScore !== null && aiScore !== undefined && numMarks > aiScore) {
+      const difference = numMarks - aiScore;
+      const confirmed = window.confirm(
+        `⚠️ WARNING: You are giving ${numMarks} marks, which is ${difference} marks HIGHER than the AI evaluation score of ${aiScore}.\n\n` +
+        `The student saw an AI score of ${aiScore}/${selectedLab.totalMarks || 100}.\n\n` +
+        `Are you sure you want to give a higher score? Click OK to continue, Cancel to review.`
+      );
+      if (!confirmed) {
+        setAiWarning(`Consider reviewing: AI suggested ${aiScore} marks`);
+        setTimeout(() => setAiWarning(""), 3000);
+        return;
+      }
+    }
+    
+    // Also warn if scoring significantly lower (more than 30% lower)
+    if (aiScore !== null && aiScore !== undefined && numMarks < aiScore * 0.7) {
+      const confirmed = window.confirm(
+        `⚠️ NOTE: You are giving ${numMarks} marks, which is significantly LOWER than the AI evaluation score of ${aiScore}.\n\n` +
+        `The student saw an AI score of ${aiScore}/${selectedLab.totalMarks || 100}.\n\n` +
+        `Consider adding specific feedback explaining why. Click OK to continue.`
+      );
+      if (!confirmed) return;
+    }
+
     setError("");
     setGrading(true); 
+    setAiWarning("");
+    
     try {
-      const res  = await apiFetch(
+      const res = await apiFetch(
         `/api/courses/${selectedCourse}/lessons/${selectedLesson}/lab/${selectedLab._id}/submissions/${submissionId}/grade`,
         { method: "PUT", body: JSON.stringify(gradeForm) }
       );
@@ -175,8 +207,11 @@ const LabSubmissions = () => {
       setAiEvaluation(null);
       fetchSubmissions();
       setTimeout(() => setSuccess(""), 3000);
-    } catch { setError("Cannot connect to server"); }
-    finally { setGrading(false); }
+    } catch { 
+      setError("Cannot connect to server"); 
+    } finally { 
+      setGrading(false); 
+    }
   };
 
   const handleAiEvaluate = async (submissionId) => {
@@ -262,6 +297,15 @@ const LabSubmissions = () => {
         <div className="rounded-xl p-3 flex items-center gap-2" style={{ background: "#22c55e22", border: "1px solid #22c55e44" }}>
           <span className="material-symbols-outlined text-sm text-emerald-400">check_circle</span>
           <p className="text-sm text-emerald-400 flex-1">{success}</p>
+        </div>
+      )}
+      {aiWarning && (
+        <div className="rounded-xl p-3 flex items-center gap-2" style={{ background: "#f59e0b22", border: "1px solid #f59e0b44" }}>
+          <span className="material-symbols-outlined text-sm text-amber-400">warning</span>
+          <p className="text-sm text-amber-400 flex-1">{aiWarning}</p>
+          <button onClick={() => setAiWarning("")} className="text-amber-400 hover:text-amber-300">
+            <span className="material-symbols-outlined text-sm">close</span>
+          </button>
         </div>
       )}
 
@@ -464,6 +508,97 @@ const LabSubmissions = () => {
                           </div>
                         </div>
 
+                        {/* AI Auto-Score Indicator (what the student already saw) */}
+                        {sub.aiSuggestedMarks !== null && sub.aiSuggestedMarks !== undefined && sub.status !== "graded" && (
+                          <div className="mt-2 p-3 rounded-lg" style={{ background: "#a855f722", border: "1px solid #a855f744" }}>
+                            <div className="flex items-center justify-between mb-2">
+                              <div className="flex items-center gap-1.5">
+                                <span className="material-symbols-outlined text-sm text-purple-400">auto_awesome</span>
+                                <span className="text-[10px] font-semibold text-purple-400">AI Auto-Score (Student View)</span>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                {sub.marks !== null && sub.marks !== undefined && (
+                                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${sub.marks > sub.aiSuggestedMarks ? "bg-red-500/20 text-red-400" : sub.marks < sub.aiSuggestedMarks ? "bg-amber-500/20 text-amber-400" : "bg-green-500/20 text-green-400"}`}>
+                                    {sub.marks > sub.aiSuggestedMarks ? `+${sub.marks - sub.aiSuggestedMarks} above AI` : 
+                                     sub.marks < sub.aiSuggestedMarks ? `${sub.marks - sub.aiSuggestedMarks} below AI` : 
+                                     "Matches AI"}
+                                  </span>
+                                )}
+                                <span className="text-sm font-bold text-purple-400">
+                                  {sub.aiSuggestedMarks} / {selectedLab.totalMarks}
+                                </span>
+                              </div>
+                            </div>
+                            
+                            {sub.aiSuggestedFeedback && (
+                              <div className="mb-2 p-2 rounded" style={{ background: "#1e293b" }}>
+                                <p className="text-[10px] text-gray-300 leading-relaxed">{sub.aiSuggestedFeedback}</p>
+                              </div>
+                            )}
+                            
+                            <div className="flex gap-2 mt-2">
+                              <button
+                                onClick={() => {
+                                  setGradingId(sub._id);
+                                  setGradeForm({
+                                    marks: sub.aiSuggestedMarks,
+                                    feedback: sub.aiSuggestedFeedback || "",
+                                  });
+                                  setAiEvaluation(null);
+                                }}
+                                className="flex-1 text-[10px] py-1.5 rounded-lg font-medium transition-all hover:scale-105 flex items-center justify-center gap-1"
+                                style={{ background: "#a855f722", color: "#c084fc", border: "1px solid #a855f744" }}
+                              >
+                                <span className="material-symbols-outlined text-xs">check_circle</span>
+                                Use AI Score
+                              </button>
+                              <button
+                                onClick={() => {
+                                  setGradingId(sub._id);
+                                  setGradeForm({
+                                    marks: "",
+                                    feedback: "",
+                                  });
+                                  setAiEvaluation(null);
+                                }}
+                                className="flex-1 text-[10px] py-1.5 rounded-lg font-medium transition-all hover:scale-105 flex items-center justify-center gap-1"
+                                style={{ background: "#6366f122", color: "#818cf8", border: "1px solid #6366f144" }}
+                              >
+                                <span className="material-symbols-outlined text-xs">edit</span>
+                                Manual Grade
+                              </button>
+                            </div>
+                            
+                            <p className="text-[9px] text-gray-500 mt-2 text-center">
+                              Student already saw this AI evaluation. Review and adjust if needed.
+                            </p>
+                          </div>
+                        )}
+
+                        {/* Show original AI score even after grading with comparison */}
+                        {sub.aiSuggestedMarks !== null && sub.aiSuggestedMarks !== undefined && sub.status === "graded" && (
+                          <div className="mt-2 p-2 rounded-lg" style={{ background: "#1e293b", border: "1px solid #334155" }}>
+                            <div className="flex items-center justify-between">
+                              <span className="text-[9px] text-gray-500 flex items-center gap-1">
+                                <span className="material-symbols-outlined text-xs">history</span>
+                                Original AI Score
+                              </span>
+                              <div className="flex items-center gap-2">
+                                {sub.marks !== null && sub.marks !== undefined && (
+                                  <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full ${sub.marks > sub.aiSuggestedMarks ? "bg-red-500/20 text-red-400" : sub.marks < sub.aiSuggestedMarks ? "bg-amber-500/20 text-amber-400" : "bg-green-500/20 text-green-400"}`}>
+                                    {sub.marks > sub.aiSuggestedMarks ? `+${sub.marks - sub.aiSuggestedMarks}` : 
+                                     sub.marks < sub.aiSuggestedMarks ? `${sub.marks - sub.aiSuggestedMarks}` : 
+                                     "Match"}
+                                  </span>
+                                )}
+                                <span className="text-[10px] text-gray-400">
+                                  {sub.aiSuggestedMarks} / {selectedLab.totalMarks}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+
                         {/* Submitted answer preview */}
                         {sub.answer && (
                           <div className="mt-2 p-3 rounded-xl max-h-32 overflow-y-auto" style={{ background: selectedLab.labType === "programming" ? "#1e293b" : "#0a0f1e", border: "1px solid #334155" }}>
@@ -565,6 +700,43 @@ const LabSubmissions = () => {
                     {gradingId === sub._id && (
                       <div className="mt-3 p-4 rounded-xl space-y-3" style={{ background: "#6366f122", border: "1px solid #6366f144" }}>
                         <p className="text-sm font-bold text-indigo-400">Grade Submission</p>
+                        
+                        {/* AI Score Warning */}
+                        {sub.aiSuggestedMarks !== null && sub.aiSuggestedMarks !== undefined && (
+                          <div className={`p-2 rounded-lg text-xs ${Number(gradeForm.marks) > sub.aiSuggestedMarks ? "bg-red-500/20 border border-red-500/50" : "bg-blue-500/20 border border-blue-500/50"}`}>
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-1.5">
+                                <span className="material-symbols-outlined text-sm">
+                                  {Number(gradeForm.marks) > sub.aiSuggestedMarks ? "warning" : "info"}
+                                </span>
+                                <span className="font-semibold" style={{ color: Number(gradeForm.marks) > sub.aiSuggestedMarks ? "#ef4444" : "#60a5fa" }}>
+                                  AI Suggested Score: {sub.aiSuggestedMarks} / {selectedLab.totalMarks}
+                                </span>
+                              </div>
+                              {Number(gradeForm.marks) > sub.aiSuggestedMarks && (
+                                <span className="text-[10px] text-red-400 font-medium">
+                                  +{Number(gradeForm.marks) - sub.aiSuggestedMarks} above AI
+                                </span>
+                              )}
+                              {Number(gradeForm.marks) < sub.aiSuggestedMarks && gradeForm.marks !== "" && (
+                                <span className="text-[10px] text-amber-400 font-medium">
+                                  -{sub.aiSuggestedMarks - Number(gradeForm.marks)} below AI
+                                </span>
+                              )}
+                            </div>
+                            {Number(gradeForm.marks) > sub.aiSuggestedMarks && (
+                              <p className="text-[10px] text-red-400/80 mt-1">
+                                ⚠️ You're scoring above the AI evaluation. Consider reviewing the submission carefully.
+                              </p>
+                            )}
+                            {Number(gradeForm.marks) < sub.aiSuggestedMarks && gradeForm.marks !== "" && (
+                              <p className="text-[10px] text-amber-400/80 mt-1">
+                                ℹ️ You're scoring below the AI evaluation. Add specific feedback to explain.
+                              </p>
+                            )}
+                          </div>
+                        )}
+                        
                         <div className="grid grid-cols-2 gap-3">
                           <div>
                             <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">

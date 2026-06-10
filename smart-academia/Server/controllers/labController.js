@@ -541,32 +541,42 @@ Return ONLY valid JSON. No markdown, no explanation outside the JSON.
 };
 
 // ─────────────────────────────────────────────────────────────
-// STUDENT: Submit lab (WITH AI AUTO-EVALUATION)
+// HELPER: Get next attempt number for a lab
+// ─────────────────────────────────────────────────────────────
+const getNextAttemptNumber = async (labId, studentId) => {
+  const count = await LabSubmission.countDocuments({
+    lab: labId,
+    student: studentId,
+  });
+  return count + 1;
+};
+
+// ─────────────────────────────────────────────────────────────
+// STUDENT: Submit lab (WITH MULTIPLE ATTEMPTS SUPPORT)
 // ─────────────────────────────────────────────────────────────
 const submitLab = async (req, res) => {
   try {
     const { courseId, lessonId, labId } = req.params;
 
     const lab = await Lab.findById(labId);
-    if (!lab)
-      return res.status(404).json({ message: "Lab not found" });
-    if (!lab.isPublished)
-      return res.status(400).json({ message: "Lab is not available" });
+    if (!lab) return res.status(404).json({ message: "Lab not found" });
+    if (!lab.isPublished) return res.status(400).json({ message: "Lab is not available" });
 
     const answer = req.body.answer?.trim() || "";
-    let pdfUrl      = null;
+    let pdfUrl = null;
     let pdfFileName = null;
     let pdfPublicId = null;
 
+    // Handle PDF upload
     if (req.file) {
       try {
         const uploadResult = await cloudinary.uploader.upload(req.file.path, {
-          folder:        `smartacademia/labs/${labId}`,
+          folder: `smartacademia/labs/${labId}`,
           resource_type: "raw",
-          public_id:     `${req.user._id}_${Date.now()}`,
-          use_filename:  false,
+          public_id: `${req.user._id}_${Date.now()}`,
+          use_filename: false,
         });
-        pdfUrl      = uploadResult.secure_url;
+        pdfUrl = uploadResult.secure_url;
         pdfPublicId = uploadResult.public_id;
         pdfFileName = req.file.originalname;
       } catch (uploadErr) {
@@ -582,151 +592,176 @@ const submitLab = async (req, res) => {
     if (!answer && !pdfUrl)
       return res.status(400).json({ message: "Please write an answer or upload a PDF" });
 
-    const existing = await LabSubmission.findOne({ lab: labId, student: req.user._id });
-    if (existing?.pdfPublicId && pdfUrl && existing.pdfPublicId !== pdfPublicId) {
+    // ✅ Get the next attempt number
+    const attemptNumber = await getNextAttemptNumber(labId, req.user._id);
+    console.log(`📝 Creating attempt #${attemptNumber} for lab: ${lab.title}`);
+
+    // Get content to evaluate
+    let contentToEvaluate = "";
+    let contentSource = "none";
+    
+    if (pdfUrl) {
       try {
-        await cloudinary.uploader.destroy(existing.pdfPublicId, { resource_type: "raw" });
-      } catch (err) {
-        console.warn("Failed to delete old PDF from Cloudinary:", err.message);
+        const pdfBuffer = await fetchPdfBuffer(pdfUrl);
+        const pdfText = await extractPdfText(pdfBuffer);
+        if (pdfText && pdfText.length > 10) {
+          contentToEvaluate = pdfText;
+          contentSource = "pdf";
+          console.log("📄 Using PDF content for evaluation, length:", contentToEvaluate.length);
+        }
+      } catch (pdfErr) {
+        console.error("PDF extraction failed:", pdfErr.message);
       }
     }
+    
+    if (!contentToEvaluate && answer) {
+      contentToEvaluate = answer;
+      contentSource = "text";
+      console.log("📝 Using text answer for evaluation, length:", contentToEvaluate.length);
+    }
 
-    const submission = await LabSubmission.findOneAndUpdate(
-      { lab: labId, student: req.user._id },
-      {
-        $set: {
-          answer,
-          ...(pdfUrl ? { pdfUrl, pdfFileName, pdfPublicId } : {}),
-          submittedAt: new Date(),
-          marks:       null,
-          feedback:    null,
-          status:      "submitted",
-          gradedAt:    null,
-          gradedBy:    null,
-          aiSuggestedMarks: null,
-          aiSuggestedFeedback: null,
-          aiEvaluatedAt: null,
-        },
-        $setOnInsert: {
-          lab:     labId,
-          lesson:  lessonId,
-          course:  courseId,
-          student: req.user._id,
-        },
-      },
-      { upsert: true, new: true }
-    );
-
-    await LessonProgress.findOneAndUpdate(
-      { student: req.user._id, lesson: lessonId },
-      {
-        $set: { labCompleted: true },
-        $setOnInsert: {
-          student: req.user._id,
-          lesson:  lessonId,
-          course:  courseId,
-        },
-      },
-      { upsert: true }
-    );
-
-    await PointsService.addPoints(
-      req.user._id,
-      POINTS_CONFIG.LAB_SUBMITTED,
-      `Submitted lab: ${lab.title}`
-    );
-
-    // ✅ AUTO AI EVALUATION - SIMPLIFIED & RELIABLE
+    // AI Evaluation
     let aiSuggestedMarks = null;
     let aiSuggestedFeedback = null;
+    let aiDetailedFeedback = null;
 
-    try {
-      console.log("🤖 Starting AI evaluation for lab submission...");
-      
-      if ((answer && answer.trim()) || pdfUrl) {
+    if (contentToEvaluate && contentToEvaluate.trim()) {
+      try {
+        console.log(`🤖 Starting AI evaluation for attempt #${attemptNumber}...`);
+        
         const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
         const totalMarks = lab.totalMarks || 100;
         
-        let contentToEvaluate = answer;
-        
-        if (pdfUrl) {
-          try {
-            const pdfBuffer = await fetchPdfBuffer(pdfUrl);
-            const pdfText = await extractPdfText(pdfBuffer);
-            if (pdfText && pdfText.length > 10) {
-              contentToEvaluate = pdfText;
-              console.log("📄 Using PDF content, length:", contentToEvaluate.length);
-            }
-          } catch (pdfErr) {
-            console.error("PDF extraction failed:", pdfErr.message);
-          }
-        }
-        
-        if (contentToEvaluate && contentToEvaluate.trim()) {
-          const prompt = `Evaluate this student's lab submission and give a score out of ${totalMarks}.
+        let evaluationPrompt = lab.labType === "programming" 
+          ? `You are evaluating a programming lab submission. Give a score out of ${totalMarks}.
+
+LAB: ${lab.title}
+INSTRUCTIONS: ${lab.instructions || "Complete the programming task"}
+
+STUDENT'S SUBMISSION (Attempt #${attemptNumber}):
+${contentToEvaluate.slice(0, 4000)}
+
+Return ONLY JSON: {"score": number, "feedback": "feedback", "strengths": [], "areasForImprovement": []}`
+          : `You are evaluating a lab submission. Give a score out of ${totalMarks}.
 
 LAB: ${lab.title}
 INSTRUCTIONS: ${lab.instructions || "Complete the lab requirements"}
 
-STUDENT SUBMISSION:
+STUDENT'S SUBMISSION (Attempt #${attemptNumber}):
 ${contentToEvaluate.slice(0, 4000)}
 
-Return ONLY JSON: {"score": number between 0 and ${totalMarks}, "feedback": "brief feedback"}`;
+Return ONLY JSON: {"score": number, "feedback": "feedback", "strengths": [], "areasForImprovement": []}`;
 
-          console.log("📤 Calling Gemini API...");
-          const response = await ai.models.generateContent({
-            model: "gemini-2.5-flash-lite",
-            contents: prompt,
-          });
+        const response = await ai.models.generateContent({
+          model: "gemini-2.5-flash-lite",
+          contents: evaluationPrompt,
+        });
 
-          let text = response.text;
-          console.log("🤖 AI Response received:", text);
+        let text = response.text;
+        if (text) {
+          text = text.trim()
+            .replace(/^```json\s*/i, "")
+            .replace(/^```\s*/i, "")
+            .replace(/```\s*$/i, "")
+            .trim();
           
-          if (text) {
-            text = text.trim()
-              .replace(/^```json\s*/i, "")
-              .replace(/^```\s*/i, "")
-              .replace(/```\s*$/i, "")
-              .trim();
-            
-            try {
-              const evaluation = JSON.parse(text);
-              if (evaluation && typeof evaluation.score === 'number') {
-                aiSuggestedMarks = Math.max(0, Math.min(totalMarks, Math.round(evaluation.score)));
-                aiSuggestedFeedback = evaluation.feedback || "";
-                
-                submission.aiSuggestedMarks = aiSuggestedMarks;
-                submission.aiSuggestedFeedback = aiSuggestedFeedback;
-                submission.aiEvaluatedAt = new Date();
-                await submission.save();
-                
-                console.log(`✅ AI Evaluation complete: ${aiSuggestedMarks}/${totalMarks} marks`);
-              }
-            } catch (parseErr) {
-              console.error("Failed to parse AI response:", parseErr.message);
+          try {
+            const evaluation = JSON.parse(text);
+            if (evaluation && typeof evaluation.score === 'number') {
+              aiSuggestedMarks = Math.max(0, Math.min(totalMarks, Math.round(evaluation.score)));
+              aiSuggestedFeedback = evaluation.feedback || "";
+              aiDetailedFeedback = {
+                strengths: evaluation.strengths || [],
+                areasForImprovement: evaluation.areasForImprovement || []
+              };
+              console.log(`✅ AI Evaluation complete: ${aiSuggestedMarks}/${totalMarks} marks`);
             }
+          } catch (parseErr) {
+            console.error("Failed to parse AI response:", parseErr.message);
           }
-        } else {
-          console.log("⚠️ No content to evaluate");
         }
+      } catch (aiErr) {
+        console.error("❌ Auto AI evaluation failed:", aiErr.message);
       }
-    } catch (aiErr) {
-      console.error("❌ Auto AI evaluation failed:", aiErr.message);
     }
 
-    await checkAndUnlockNext(req.user._id, lessonId, courseId);
+    // ✅ CREATE NEW SUBMISSION (not update existing)
+    const newSubmission = await LabSubmission.create({
+      lab: labId,
+      lesson: lessonId,
+      course: courseId,
+      student: req.user._id,
+      attemptNumber: attemptNumber,
+      answer: answer,
+      pdfUrl: pdfUrl,
+      pdfFileName: pdfFileName,
+      pdfPublicId: pdfPublicId,
+      submittedAt: new Date(),
+      status: "submitted",
+      aiSuggestedMarks: aiSuggestedMarks,
+      aiSuggestedFeedback: aiSuggestedFeedback,
+      aiDetailedFeedback: aiDetailedFeedback,
+      aiEvaluatedFrom: contentSource,
+      aiEvaluatedAt: aiSuggestedMarks ? new Date() : null,
+    });
+
+    console.log(`✅ Created new submission with ID: ${newSubmission._id}, Attempt #${attemptNumber}`);
+
+    // ✅ Update LessonProgress with attempt tracking
+    const progress = await LessonProgress.findOne({ student: req.user._id, lesson: lessonId });
+    
+    const updateFields = {
+      labSubmitted: true,
+      labTotalAttempts: attemptNumber,
+    };
+    
+    // Update best score if this attempt is better
+    if (aiSuggestedMarks && (!progress?.labBestScore || aiSuggestedMarks > progress.labBestScore)) {
+      updateFields.labBestScore = aiSuggestedMarks;
+      updateFields.labBestAttempt = attemptNumber;
+    }
+    
+    // Check if this attempt passes (70% or higher)
+    const totalMarks = lab.totalMarks || 100;
+    const scorePercent = aiSuggestedMarks ? (aiSuggestedMarks / totalMarks) * 100 : 0;
+    const passed = scorePercent >= 70;
+    
+    if (passed) {
+      updateFields.labCompleted = true;
+      updateFields.labPassed = true;
+    }
+    
+    await LessonProgress.findOneAndUpdate(
+      { student: req.user._id, lesson: lessonId },
+      { $set: updateFields },
+      { upsert: true }
+    );
+
+    // Add points for submission
+    await PointsService.addPoints(
+      req.user._id,
+      POINTS_CONFIG.LAB_SUBMITTED,
+      `Submitted lab: ${lab.title} (Attempt #${attemptNumber})`
+    );
+
+    // Only unlock next lesson if lab is passed
+    if (passed) {
+      await checkAndUnlockNext(req.user._id, lessonId, courseId);
+    }
 
     res.status(200).json({
-      message: aiSuggestedMarks ? "Lab submitted with AI evaluation" : "Lab submitted successfully",
+      message: aiSuggestedMarks ? `Lab submitted! Attempt #${attemptNumber} - Score: ${aiSuggestedMarks}/${totalMarks}` : `Lab submitted! Attempt #${attemptNumber}`,
       submission: {
-        _id: submission._id,
-        answer: submission.answer,
-        pdfUrl: submission.pdfUrl,
-        pdfFileName: submission.pdfFileName,
-        status: submission.status,
-        submittedAt: submission.submittedAt,
-        aiSuggestedMarks: submission.aiSuggestedMarks || aiSuggestedMarks,
-        aiSuggestedFeedback: submission.aiSuggestedFeedback || aiSuggestedFeedback,
+        _id: newSubmission._id,
+        attemptNumber: newSubmission.attemptNumber,
+        answer: newSubmission.answer,
+        pdfUrl: newSubmission.pdfUrl,
+        pdfFileName: newSubmission.pdfFileName,
+        status: newSubmission.status,
+        submittedAt: newSubmission.submittedAt,
+        aiSuggestedMarks: newSubmission.aiSuggestedMarks,
+        aiSuggestedFeedback: newSubmission.aiSuggestedFeedback,
+        aiDetailedFeedback: newSubmission.aiDetailedFeedback,
       },
     });
   } catch (err) {
@@ -736,19 +771,21 @@ Return ONLY JSON: {"score": number between 0 and ${totalMarks}, "feedback": "bri
 };
 
 // ─────────────────────────────────────────────────────────────
-// STUDENT: Get my submission for a lab
+// STUDENT: Get my latest submission for a lab
 // ─────────────────────────────────────────────────────────────
 const getMySubmission = async (req, res) => {
   try {
+    // Get the most recent submission (highest attempt number)
     const submission = await LabSubmission.findOne({
-      lab:     req.params.labId,
+      lab: req.params.labId,
       student: req.user._id,
-    });
+    }).sort({ attemptNumber: -1 });
     
     if (submission) {
       res.status(200).json({ 
         submission: {
           _id: submission._id,
+          attemptNumber: submission.attemptNumber,
           answer: submission.answer,
           pdfUrl: submission.pdfUrl,
           pdfFileName: submission.pdfFileName,
@@ -759,6 +796,7 @@ const getMySubmission = async (req, res) => {
           gradedAt: submission.gradedAt,
           aiSuggestedMarks: submission.aiSuggestedMarks,
           aiSuggestedFeedback: submission.aiSuggestedFeedback,
+          aiDetailedFeedback: submission.aiDetailedFeedback,
           aiEvaluatedAt: submission.aiEvaluatedAt,
         }
       });
@@ -770,6 +808,40 @@ const getMySubmission = async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 };
+
+// ─────────────────────────────────────────────────────────────
+// STUDENT: Get ALL attempts for a lab (for analytics)
+// ─────────────────────────────────────────────────────────────
+const getMyLabAttempts = async (req, res) => {
+  try {
+    const attempts = await LabSubmission.find({
+      lab: req.params.labId,
+      student: req.user._id,
+    })
+      .sort({ attemptNumber: 1 })
+      .select("attemptNumber submittedAt aiSuggestedMarks marks status feedback");
+
+    const totalMarks = req.body.totalMarks || 100;
+    
+    res.status(200).json({ 
+      attempts: attempts.map(a => ({
+        attemptNumber: a.attemptNumber,
+        submittedAt: a.submittedAt,
+        aiScore: a.aiSuggestedMarks,
+        teacherScore: a.marks,
+        finalScore: a.marks || a.aiSuggestedMarks,
+        status: a.status,
+        feedback: a.feedback,
+        percentage: a.marks || a.aiSuggestedMarks ? Math.round(((a.marks || a.aiSuggestedMarks) / totalMarks) * 100) : null,
+      })),
+      totalAttempts: attempts.length,
+    });
+  } catch (err) {
+    console.error("getMyLabAttempts error:", err.message);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
 
 // ─────────────────────────────────────────────────────────────
 // TEACHER/STUDENT: Get PDF file through backend proxy
@@ -860,5 +932,6 @@ module.exports = {
   aiEvaluateSubmission,
   submitLab,
   getMySubmission,
+   getMyLabAttempts,  // ✅ Add this
   getSubmissionPDF,
 };

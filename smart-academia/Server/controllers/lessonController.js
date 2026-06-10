@@ -1,6 +1,8 @@
 const Lesson         = require("../models/Lesson");
 const LessonProgress = require("../models/LessonProgress");
 const Enrollment     = require("../models/Enrollment");
+const QuizAttempt = require("../models/QuizAttempt");
+const LabSubmission = require("../models/LabSubmission");
 const Course         = require("../models/Course");
 const Quiz           = require("../models/Quiz");
 const Lab            = require("../models/Lab");
@@ -590,6 +592,28 @@ const getLessonContent = async (req, res) => {
     const quiz = await Quiz.findOne({ lesson: lesson._id, isPublished: true });
     const lab  = await Lab.findOne({  lesson: lesson._id, isPublished: true });
 
+    // ✅ ADD THIS: Get quiz attempts with passed field
+    let quizAttempts = [];
+    if (quiz) {
+      quizAttempts = await QuizAttempt.find({
+        quiz: quiz._id,
+        student: req.user._id,
+      })
+        .sort({ submittedAt: -1 })
+        .select("score passed submittedAt attemptNumber");
+      console.log(`📊 Found ${quizAttempts.length} quiz attempts for student`);
+    }
+
+    // ✅ ADD THIS: Get lab submission (latest)
+    let labSubmission = null;
+    if (lab) {
+      labSubmission = await LabSubmission.findOne({
+        lab: lab._id,
+        student: req.user._id,
+      }).sort({ submittedAt: -1 });
+      console.log(`📊 Found lab submission for student:`, labSubmission?._id);
+    }
+
     await checkAndUnlockNext(req.user._id, lesson._id, lesson.course);
 
     const updatedProgress = await LessonProgress.findOne({
@@ -607,21 +631,24 @@ const getLessonContent = async (req, res) => {
         content: lesson.content,
         videoUrl: lesson.videoUrl,
         images: lesson.images,
-        contentBlocks: lesson.contentBlocks || [],  // ✅ NEW: send contentBlocks
+        contentBlocks: lesson.contentBlocks || [],
         duration: lesson.duration,
         points: lesson.points,
         requiresQuiz: lesson.requiresQuiz,
         requiresLab: lesson.requiresLab,
       }, 
-      progress: updatedProgress || progress, 
-      quiz, 
-      lab 
+      progress: updatedProgress || progress,
+      quiz,
+      lab,
+      quizAttempts,    // ✅ ADD THIS
+      labSubmission,   // ✅ ADD THIS
     });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: "Server error" });
   }
 };
+
 module.exports.getLessonContent = getLessonContent;
 
 // ── STUDENT: Get course progress ────────────────────────────

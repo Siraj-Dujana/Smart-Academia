@@ -57,6 +57,174 @@ const RingProgress = ({ value = 0, size = 80, stroke = 7, color = C.accent, trac
   );
 };
 
+// ── Line Chart for Attempt Progression ─────────────────────────
+const ProgressLineChart = ({ attempts, title, passingScore = 70, color = C.accent }) => {
+  if (!attempts || attempts.length === 0) return null;
+  
+  const maxH = 80;
+  const maxScore = 100;
+  
+  return (
+    <div className="mt-3">
+      <p className="text-[10px] font-semibold text-gray-500 mb-2 flex items-center gap-2">
+        <span className="material-symbols-outlined text-sm">trending_up</span>
+        {title} - Score Progression
+      </p>
+      <div className="relative" style={{ height: maxH + 30 }}>
+        {/* Passing line */}
+        <div className="absolute left-0 right-0 border-t border-dashed" style={{ top: `${(1 - passingScore / 100) * maxH}px`, borderColor: C.green + '66', zIndex: 1 }}>
+          <span className="absolute -left-1 -top-2 text-[8px]" style={{ color: C.green }}>{passingScore}%</span>
+        </div>
+        
+        {/* Line chart */}
+        <svg width="100%" height={maxH} style={{ position: 'absolute', top: 0, left: 0 }}>
+          {/* Line */}
+          <polyline
+            points={attempts.map((a, i) => `${(i / (attempts.length - 1)) * 100}%, ${(1 - a.score / 100) * maxH}`).join(' ')}
+            fill="none"
+            stroke={color}
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            style={{ filter: `drop-shadow(0 0 4px ${color}66)` }}
+          />
+          {/* Points */}
+          {attempts.map((a, i) => (
+            <circle
+              key={i}
+              cx={`${(i / (attempts.length - 1)) * 100}%`}
+              cy={`${(1 - a.score / 100) * maxH}`}
+              r="4"
+              fill={a.passed ? C.green : color}
+              stroke={C.surface}
+              strokeWidth="2"
+            />
+          ))}
+        </svg>
+        
+        {/* X-axis labels */}
+        <div className="absolute bottom-0 left-0 right-0 flex justify-between text-[8px]" style={{ color: C.textFaint, top: maxH + 5 }}>
+          {attempts.map((a, i) => (
+            <span key={i} className="text-center" style={{ width: `${100 / attempts.length}%` }}>
+              #{a.attemptNumber}
+            </span>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ── Attempt History Modal ──────────────────────────────────────
+const AttemptHistoryModal = ({ item, type, onClose }) => {
+  const [attempts, setAttempts] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchAttempts();
+  }, [item, type]);
+
+  const fetchAttempts = async () => {
+    try {
+      const endpoint = type === 'quiz' 
+        ? `/api/student/quiz/${item._id}/attempts`
+        : `/api/student/lab/${item._id}/attempts`;
+      const res = await fetch(`${API}${endpoint}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      if (res.ok) setAttempts(data.attempts || []);
+    } catch (err) {
+      console.error("Failed to fetch attempts:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const bestScore = attempts.length > 0 ? Math.max(...attempts.map(a => a.score || a.finalScore || 0)) : null;
+  const improvement = attempts.length >= 2 
+    ? (attempts[attempts.length - 1].score || attempts[attempts.length - 1].finalScore || 0) - (attempts[0].score || attempts[0].finalScore || 0)
+    : 0;
+
+  return (
+    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={onClose}>
+      <div className="rounded-2xl w-full max-w-lg overflow-hidden" style={{ background: C.surface, border: `1px solid ${C.border}` }} onClick={(e) => e.stopPropagation()}>
+        <div className="px-5 py-4 flex items-center justify-between" style={{ background: C.surface2, borderBottom: `1px solid ${C.border}` }}>
+          <div className="flex items-center gap-2">
+            <span className="material-symbols-outlined text-lg" style={{ color: type === 'quiz' ? C.amber : C.accent2 }}>{type === 'quiz' ? 'quiz' : 'science'}</span>
+            <h3 className="font-bold text-white text-sm">{item.title}</h3>
+          </div>
+          <button onClick={onClose} className="text-gray-500 hover:text-white">
+            <span className="material-symbols-outlined text-sm">close</span>
+          </button>
+        </div>
+        
+        <div className="p-5">
+          {loading ? (
+            <div className="flex justify-center py-8"><LoadingSpinner size="sm" /></div>
+          ) : attempts.length === 0 ? (
+            <p className="text-center text-gray-500 text-sm">No attempts found</p>
+          ) : (
+            <>
+              {/* Summary Stats */}
+              <div className="grid grid-cols-3 gap-2 mb-4">
+                <div className="text-center p-2 rounded-lg" style={{ background: C.surface2 }}>
+                  <p className="text-2xl font-bold text-white">{attempts.length}</p>
+                  <p className="text-[9px] text-gray-500">Total Attempts</p>
+                </div>
+                <div className="text-center p-2 rounded-lg" style={{ background: C.surface2 }}>
+                  <p className="text-2xl font-bold" style={{ color: bestScore >= 70 ? C.greenLight : C.amberLight }}>{bestScore || 0}%</p>
+                  <p className="text-[9px] text-gray-500">Best Score</p>
+                </div>
+                <div className="text-center p-2 rounded-lg" style={{ background: C.surface2 }}>
+                  <p className="text-2xl font-bold" style={{ color: improvement >= 0 ? C.greenLight : C.redLight }}>
+                    {improvement >= 0 ? `+${improvement}` : improvement}%
+                  </p>
+                  <p className="text-[9px] text-gray-500">Improvement</p>
+                </div>
+              </div>
+              
+              {/* Progress Chart */}
+              <ProgressLineChart 
+                attempts={attempts.map(a => ({ 
+                  attemptNumber: a.attemptNumber, 
+                  score: a.score || a.finalScore || a.percentage || 0,
+                  passed: a.passed || (a.score >= 70)
+                }))} 
+                title="Score Progression"
+                passingScore={70}
+                color={type === 'quiz' ? C.amber : C.accent2}
+              />
+              
+              {/* Attempts List */}
+              <div className="mt-4 space-y-2 max-h-64 overflow-y-auto">
+                {attempts.map((a, i) => {
+                  const score = a.score || a.finalScore || a.percentage || 0;
+                  const passed = a.passed || (score >= 70);
+                  const isBest = score === bestScore;
+                  return (
+                    <div key={i} className="flex items-center justify-between p-3 rounded-xl" style={{ background: isBest ? `${C.green}15` : C.surface2, border: isBest ? `1px solid ${C.green}44` : `1px solid ${C.border}` }}>
+                      <div className="flex items-center gap-3">
+                        <span className="text-xs font-bold text-gray-500 w-12">#{a.attemptNumber}</span>
+                        <span className="text-xs text-gray-400">{new Date(a.submittedAt).toLocaleDateString()}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-bold" style={{ color: passed ? C.greenLight : score >= 50 ? C.amberLight : C.redLight }}>{score}%</span>
+                        {passed && <span className="text-[10px] text-emerald-400">✓</span>}
+                        {isBest && <span className="text-[10px] text-amber-400">★ Best</span>}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
 // ── Stat Glow Card ────────────────────────────────────────────
 const GlowCard = ({ icon, label, value, color, sub }) => (
   <div className="relative rounded-2xl overflow-hidden p-5 flex flex-col gap-2 group"
@@ -159,6 +327,18 @@ const SectionHeader = ({ icon, title, color = C.accent, rightElement }) => (
     {rightElement}
   </div>
 );
+
+// ── Loading Spinner ───────────────────────────────────────────
+const LoadingSpinner = ({ size = "md" }) => {
+  const dimensions = size === "sm" ? "w-8 h-8" : size === "lg" ? "w-16 h-16" : "w-12 h-12";
+  return (
+    <div className={`relative ${dimensions} mx-auto`}>
+      <div className="absolute inset-0 rounded-full border-4 border-indigo-900" />
+      <div className="absolute inset-0 rounded-full border-4 border-transparent border-t-indigo-500 animate-spin" />
+      <div className="absolute inset-2 rounded-full border-4 border-transparent border-t-purple-500 animate-spin" style={{ animationDirection: "reverse", animationDuration: "0.8s" }} />
+    </div>
+  );
+};
 
 // ── Course Card (Student View) ──────────────────────────────────
 const CourseCard = ({ course, expanded, onToggle }) => {
@@ -271,6 +451,8 @@ const StudentAnalytics = () => {
   const [error, setError] = useState("");
   const [expandedCourse, setExpandedCourse] = useState(null);
   const [activeTab, setActiveTab] = useState("overview");
+  const [selectedItem, setSelectedItem] = useState(null);
+  const [modalType, setModalType] = useState(null);
 
   useEffect(() => { fetchAnalytics(); }, []);
 
@@ -289,14 +471,20 @@ const StudentAnalytics = () => {
     }
   };
 
+  const openAttemptHistory = (item, type) => {
+    setSelectedItem(item);
+    setModalType(type);
+  };
+
+  const closeModal = () => {
+    setSelectedItem(null);
+    setModalType(null);
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-24">
-        <div className="relative w-16 h-16">
-          <div className="absolute inset-0 rounded-full border-4 border-indigo-900" />
-          <div className="absolute inset-0 rounded-full border-4 border-transparent border-t-indigo-500 animate-spin" />
-          <div className="absolute inset-2 rounded-full border-4 border-transparent border-t-purple-500 animate-spin" style={{ animationDirection: "reverse", animationDuration: "0.8s" }} />
-        </div>
+        <LoadingSpinner size="lg" />
       </div>
     );
   }
@@ -343,7 +531,7 @@ const StudentAnalytics = () => {
 
   // Quiz Data
   const allQuizzes = courses.flatMap(c =>
-    c.lessons.filter(l => l.quiz).map(l => ({ ...l.quiz, lessonTitle: l.title, courseName: c.title, courseCode: c.code }))
+    c.lessons.filter(l => l.quiz).map(l => ({ ...l.quiz, lessonTitle: l.title, courseName: c.title, courseCode: c.code, _id: l.quiz._id }))
   );
 
   const quizPassed = allQuizzes.filter(q => q.passed).length;
@@ -353,7 +541,7 @@ const StudentAnalytics = () => {
 
   // Lab Data
   const allLabs = courses.flatMap(c =>
-    c.lessons.filter(l => l.lab).map(l => ({ ...l.lab, lessonTitle: l.title, courseName: c.title }))
+    c.lessons.filter(l => l.lab).map(l => ({ ...l.lab, lessonTitle: l.title, courseName: c.title, _id: l.lab._id }))
   );
 
   const labSubmitted = allLabs.filter(l => l.submitted).length;
@@ -362,7 +550,7 @@ const StudentAnalytics = () => {
     ? Math.round(allLabs.filter(l => l.scorePercent != null).reduce((a, b) => a + b.scorePercent, 0) / allLabs.filter(l => l.scorePercent != null).length)
     : null;
 
-    const colors = {
+  const colors = {
     accent: "#6366f1",
     accent2: "#a855f7",
     amber: "#f59e0b",
@@ -378,7 +566,12 @@ const StudentAnalytics = () => {
   return (
     <div className="space-y-5 pb-10" style={{ fontFamily: "'Lexend', sans-serif", background: C.bg, minHeight: "100vh" }}>
       
-    <div>
+      {/* Modal for Attempt History */}
+      {selectedItem && modalType && (
+        <AttemptHistoryModal item={selectedItem} type={modalType} onClose={closeModal} />
+      )}
+
+      <div>
         <div className="flex items-center gap-2 mb-1">
           <span className="w-2 h-2 rounded-full animate-pulse" style={{ background: colors.accent }} />
           <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: "#818cf8" }}>Progress</p>
@@ -387,7 +580,6 @@ const StudentAnalytics = () => {
           Your Performance at a Glance
         </h1>
       </div>
-
 
       {/* Stats Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
@@ -522,7 +714,11 @@ const StudentAnalytics = () => {
             </div>
             <div className="divide-y max-h-96 overflow-y-auto" style={{ borderColor: C.border }}>
               {allQuizzes.map((q, i) => (
-                <div key={i} className="flex items-center gap-4 px-5 py-4 hover:bg-white/5 transition-colors">
+                <div 
+                  key={i} 
+                  className="flex items-center gap-4 px-5 py-4 hover:bg-white/5 transition-colors cursor-pointer"
+                  onClick={() => openAttemptHistory(q, 'quiz')}
+                >
                   <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: q.passed ? `${C.green}22` : q.bestScore != null ? `${C.amber}22` : C.surface2, border: `1px solid ${q.passed ? C.green : q.bestScore != null ? C.amber : C.border}` }}>
                     <span className="material-symbols-outlined text-sm" style={{ color: q.passed ? C.greenLight : q.bestScore != null ? C.amberLight : C.textFaint }}>
                       {q.passed ? "emoji_events" : q.bestScore != null ? "replay" : "lock"}
@@ -534,7 +730,7 @@ const StudentAnalytics = () => {
                   </div>
                   <div className="flex flex-col items-end gap-1 flex-shrink-0">
                     <ScoreBadge score={q.bestScore} />
-                    <p className="text-[10px]" style={{ color: C.textFaint }}>Best score</p>
+                    <p className="text-[10px]" style={{ color: C.textFaint }}>Click to view attempts</p>
                   </div>
                 </div>
               ))}
@@ -566,7 +762,11 @@ const StudentAnalytics = () => {
                 };
                 const dc = diffColors[l.difficulty] || diffColors.medium;
                 return (
-                  <div key={i} className="px-5 py-4 hover:bg-white/5 transition-colors">
+                  <div 
+                    key={i} 
+                    className="px-5 py-4 hover:bg-white/5 transition-colors cursor-pointer"
+                    onClick={() => openAttemptHistory(l, 'lab')}
+                  >
                     <div className="flex items-start gap-4">
                       <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: l.status === "graded" ? `${C.accent2}22` : C.surface2, border: `1px solid ${l.status === "graded" ? C.accent2 : C.border}` }}>
                         <span className="material-symbols-outlined text-sm" style={{ color: l.status === "graded" ? C.purpleLight : l.status === "submitted" ? C.amberLight : C.textFaint }}>
@@ -597,6 +797,7 @@ const StudentAnalytics = () => {
                             {l.status === "submitted" ? "Awaiting review" : "Not submitted"}
                           </span>
                         )}
+                        <p className="text-[9px] text-gray-600 mt-1">Click to view attempts</p>
                       </div>
                     </div>
                   </div>

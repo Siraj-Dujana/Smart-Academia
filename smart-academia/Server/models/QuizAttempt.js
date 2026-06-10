@@ -51,4 +51,16 @@ const QuizAttemptSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+// ✅ Unique index: one attempt number per student per quiz
+QuizAttemptSchema.index({ quiz: 1, student: 1, attemptNumber: 1 }, { unique: true });
+
+// ✅ Index for fetching latest attempt quickly
+QuizAttemptSchema.index({ student: 1, quiz: 1, attemptNumber: -1 });
+
+// ✅ Index for analytics - get all attempts for a quiz
+QuizAttemptSchema.index({ quiz: 1, student: 1, submittedAt: -1 });
+
+// ✅ Index for finding best score per student per quiz
+QuizAttemptSchema.index({ quiz: 1, student: 1, score: -1 });
+
 module.exports = mongoose.model("QuizAttempt", QuizAttemptSchema);

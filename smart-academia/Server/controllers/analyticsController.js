@@ -1,3 +1,5 @@
+
+
 // controllers/analyticsController.js
 const Enrollment     = require("../models/Enrollment");
 const LessonProgress = require("../models/LessonProgress");
@@ -7,15 +9,10 @@ const Course         = require("../models/Course");
 const Lesson         = require("../models/Lesson");
 const Quiz           = require("../models/Quiz");
 const Lab            = require("../models/Lab");
-const Question       = require("../models/Question");
 
 /**
  * GET /api/analytics/student
  * Returns a full analytics snapshot for the authenticated student.
- *
- * Architecture: Query-time aggregation using parallel Promise.all calls.
- * All source data lives in existing collections — no denormalization needed.
- * Response shape is stable so the frontend can cache it.
  */
 const getStudentAnalytics = async (req, res) => {
   try {
@@ -55,6 +52,7 @@ const getStudentAnalytics = async (req, res) => {
 
       LabSubmission.find({ student: studentId, course: { $in: courseIds } })
         .populate("lab", "title totalMarks lesson difficulty")
+        .select("marks aiSuggestedMarks status submittedAt feedback")
         .lean(),
 
       Lesson.find({ course: { $in: courseIds }, isPublished: true })
@@ -76,7 +74,7 @@ const getStudentAnalytics = async (req, res) => {
       progressByLesson[p.lesson?._id?.toString()] = p;
     });
 
-    // Group quiz attempts by quiz ID — keep all attempts per quiz
+    // Group quiz attempts by quiz ID
     const attemptsByQuiz = {};
     allQuizAttempts.forEach(a => {
       const qId = a.quiz?._id?.toString();
@@ -90,7 +88,7 @@ const getStudentAnalytics = async (req, res) => {
     allLabSubmissions.forEach(s => {
       const lId = s.lab?._id?.toString();
       if (!lId) return;
-      submissionByLab[lId] = s; // one submission per student per lab
+      submissionByLab[lId] = s;
     });
 
     // Group lessons/quizzes/labs by course
@@ -166,27 +164,74 @@ const getStudentAnalytics = async (req, res) => {
         }
 
         // ── Per-lab detail ─────────────────────────────────────────────────
-        let labDetail = null;
-        if (lessonLab) {
-          const labId = lessonLab._id.toString();
-          const sub   = submissionByLab[labId];
+let labDetail = null;
+if (lessonLab) {
+  const labId = lessonLab._id.toString();
+  // ✅ Get ALL submissions for this lab
+  const allSubs = allLabSubmissions.filter(s => s.lab?._id?.toString() === labId);
+  
+  let bestSubmission = null;
+  let bestScore = -1;
+  
+  // ✅ Find the best submission (highest score from either marks or AI marks)
+  if (allSubs.length > 0) {
+    for (const sub of allSubs) {
+      let subScore = null;
+      // Priority: teacher marks > AI marks
+      if (sub.marks !== null && sub.marks !== undefined) {
+        subScore = sub.marks;
+      } else if (sub.aiSuggestedMarks !== null && sub.aiSuggestedMarks !== undefined) {
+        subScore = sub.aiSuggestedMarks;
+      }
+      
+      if (subScore !== null && subScore > bestScore) {
+        bestScore = subScore;
+        bestSubmission = sub;
+      }
+    }
+  }
+  
+  // If no best submission found, use the latest
+  if (!bestSubmission && allSubs.length > 0) {
+    bestSubmission = allSubs.sort((a, b) => b.submittedAt - a.submittedAt)[0];
+  }
+  
+  // Calculate score percent from best submission
+  let scorePercent = null;
+  let finalMarks = null;
+  let bestAttemptNumber = null;
+  
+  if (bestSubmission) {
+    bestAttemptNumber = bestSubmission.attemptNumber;
+    
+    if (bestSubmission.marks !== null && bestSubmission.marks !== undefined) {
+      finalMarks = bestSubmission.marks;
+      scorePercent = Math.round((bestSubmission.marks / (lessonLab.totalMarks || 100)) * 100);
+    } 
+    else if (bestSubmission.aiSuggestedMarks !== null && bestSubmission.aiSuggestedMarks !== undefined) {
+      finalMarks = bestSubmission.aiSuggestedMarks;
+      scorePercent = Math.round((bestSubmission.aiSuggestedMarks / (lessonLab.totalMarks || 100)) * 100);
+    }
+  }
 
-          labDetail = {
-            _id:         lessonLab._id,
-            title:       lessonLab.title,
-            totalMarks:  lessonLab.totalMarks,
-            difficulty:  lessonLab.difficulty,
-            submitted:   !!sub,
-            status:      sub?.status ?? "not_submitted",
-            marks:       sub?.marks ?? null,
-            feedback:    sub?.feedback ?? null,
-            submittedAt: sub?.submittedAt ?? null,
-            gradedAt:    sub?.gradedAt ?? null,
-            scorePercent: sub?.marks != null
-              ? Math.round((sub.marks / (lessonLab.totalMarks || 100)) * 100)
-              : null,
-          };
-        }
+  labDetail = {
+    _id:         lessonLab._id,
+    title:       lessonLab.title,
+    totalMarks:  lessonLab.totalMarks,
+    difficulty:  lessonLab.difficulty,
+    submitted:   allSubs.length > 0,
+    status:      bestSubmission?.status ?? "not_submitted",
+    marks:       bestSubmission?.marks ?? null,
+    aiSuggestedMarks: bestSubmission?.aiSuggestedMarks ?? null,
+    finalScore:  finalMarks,
+    bestAttemptNumber: bestAttemptNumber,
+    totalAttempts: allSubs.length,
+    feedback:    bestSubmission?.feedback ?? null,
+    submittedAt: bestSubmission?.submittedAt ?? null,
+    gradedAt:    bestSubmission?.gradedAt ?? null,
+    scorePercent: scorePercent,
+  };
+}
 
         return {
           _id:           lesson._id,
@@ -220,18 +265,30 @@ const getStudentAnalytics = async (req, res) => {
         ? Math.round(quizScores.reduce((a, b) => a + b, 0) / quizScores.length)
         : null;
 
-      // Lab aggregates
+      // ✅ Lab aggregates - FIXED: Now includes AI scores
       const labDetails    = lessonDetails.filter(l => l.lab).map(l => l.lab);
       const totalLabs     = labDetails.length;
       const submittedLabs = labDetails.filter(l => l.submitted).length;
       const gradedLabs    = labDetails.filter(l => l.status === "graded").length;
-      const labScores     = labDetails.filter(l => l.scorePercent != null).map(l => l.scorePercent);
-      const avgLabScore   = labScores.length
+      
+      // ✅ IMPORTANT: Get scores from either marks OR aiSuggestedMarks
+      const labScores = labDetails
+        .filter(l => l.scorePercent != null)
+        .map(l => l.scorePercent);
+      
+      const avgLabScore = labScores.length
         ? Math.round(labScores.reduce((a, b) => a + b, 0) / labScores.length)
         : null;
 
-      // Compute a weighted course score:
-      // 50% progress + 30% quiz avg + 20% lab avg
+      // ✅ Debug logs (remove in production)
+      if (labDetails.length > 0) {
+        console.log(`Course: ${course.title}`);
+        labDetails.forEach(lab => {
+          console.log(`  Lab: ${lab.title}, scorePercent: ${lab.scorePercent}, status: ${lab.status}, aiMarks: ${lab.aiSuggestedMarks}`);
+        });
+        console.log(`  labScores: [${labScores.join(', ')}], avgLabScore: ${avgLabScore}`);
+      }
+
       const progressScore = totalLessons > 0 ? (completedLessons / totalLessons) * 100 : 0;
       const weightedScore = computeWeightedScore(progressScore, avgQuizScore, avgLabScore);
 
@@ -244,31 +301,25 @@ const getStudentAnalytics = async (req, res) => {
         semester:         course.semester,
         teacher:          course.teacher?.fullName || "Instructor",
         enrolledAt:       enrollment.enrolledAt,
-        // Progress
         progress:         enrollment.progress || 0,
         isCompleted:      enrollment.isCompleted || false,
-        // Lesson counts
         totalLessons,
         completedLessons,
         viewedLessons,
-        // Quiz counts
         totalQuizzes,
         passedQuizzes,
         avgQuizScore,
-        // Lab counts
         totalLabs,
         submittedLabs,
         gradedLabs,
         avgLabScore,
-        // Composite
         weightedScore,
-        creditsEarned:    ((weightedScore || 0) / 100) * (course.credits || 0),
-        // Drill-down
+        creditsEarned: Number(((weightedScore || 0) / 100) * (course.credits || 0)),
         lessons:          lessonDetails,
-    };
-});
+      };
+    });
 
-    // ── Overall analytics (Layer 1) ───────────────────────────────────────────
+    // ── Overall analytics ───────────────────────────────────────────
     const totalCourses     = courses.length;
     const completedCourses = courses.filter(c => c.isCompleted).length;
     const inProgressCourses= courses.filter(c => !c.isCompleted && c.progress > 0).length;
@@ -293,13 +344,11 @@ const getStudentAnalytics = async (req, res) => {
       ? Math.round(courses.reduce((s, c) => s + c.progress, 0) / courses.length)
       : 0;
 
-    // Total quiz/lab attempts across platform
     const totalQuizAttempts = allQuizAttempts.length;
     const totalQuizPasses   = allQuizAttempts.filter(a => a.passed).length;
     const totalLabSubmissions = allLabSubmissions.length;
     const totalLabsGraded   = allLabSubmissions.filter(s => s.status === "graded").length;
 
-    // Streak computation: days with any learning activity in last 30 days
     const activityDates = new Set([
       ...allLessonProgress.filter(p => p.lessonViewed).map(p =>
         new Date(p.updatedAt).toISOString().slice(0, 10)
@@ -340,24 +389,95 @@ const getStudentAnalytics = async (req, res) => {
   }
 };
 
-// ── Helpers ──────────────────────────────────────────────────────────────────
-
 function computeWeightedScore(progressPct, quizAvg, labAvg) {
-  // If we have all three dimensions
-  if (quizAvg != null && labAvg != null) {
-    return Math.round(progressPct * 0.5 + quizAvg * 0.3 + labAvg * 0.2);
+  let hasQuiz = quizAvg !== null && quizAvg !== undefined;
+  let hasLab = labAvg !== null && labAvg !== undefined;
+  
+  if (hasQuiz && hasLab) {
+    // Quiz: 50%, Lab: 50% (Progress excluded)
+    return Math.round((quizAvg * 0.5) + (labAvg * 0.5));
   }
-  // Only quiz
-  if (quizAvg != null) {
-    return Math.round(progressPct * 0.6 + quizAvg * 0.4);
+  
+  if (hasQuiz && !hasLab) {
+    return Math.round(quizAvg);
   }
-  // Only lab
-  if (labAvg != null) {
-    return Math.round(progressPct * 0.7 + labAvg * 0.3);
+  
+  if (!hasQuiz && hasLab) {
+    return Math.round(labAvg);
   }
-  // Only progress
+  
   return Math.round(progressPct);
 }
+
+function computeStreak(activityDateSet) {
+  if (!activityDateSet.size) return 0;
+  const today = new Date();
+  let streak = 0;
+  for (let i = 0; i < 365; i++) {
+    const d = new Date(today);
+    d.setDate(d.getDate() - i);
+    const key = d.toISOString().slice(0, 10);
+    if (activityDateSet.has(key)) {
+      streak++;
+    } else if (i > 0) {
+      break;
+    }
+  }
+  return streak;
+}
+
+function buildEmptyAnalytics() {
+  return {
+    overall: {
+      totalCourses: 0,
+      completedCourses: 0,
+      inProgressCourses: 0,
+      totalCredits: 0,
+      earnedCredits: 0,
+      avgProgress: 0,
+      overallQuizAvg: null,
+      overallLabAvg: null,
+      totalQuizAttempts: 0,
+      totalQuizPasses: 0,
+      totalLabSubmissions: 0,
+      totalLabsGraded: 0,
+      currentStreak: 0,
+      generatedAt: new Date().toISOString(),
+    },
+    courses: [],
+  };
+}
+
+module.exports = { getStudentAnalytics };
+
+
+function computeWeightedScore(progressPct, quizAvg, labAvg) {
+  // ✅ CORRECTED: Weight should reflect actual performance
+  // Progress should NOT heavily influence the score
+  
+  let hasQuiz = quizAvg !== null && quizAvg !== undefined;
+  let hasLab = labAvg !== null && labAvg !== undefined;
+  
+  // Case 1: Both quiz and lab exist
+  if (hasQuiz && hasLab) {
+    // Quiz: 50%, Lab: 50% (Progress excluded)
+    return Math.round((quizAvg * 0.5) + (labAvg * 0.5));
+  }
+  
+  // Case 2: Only quiz exists
+  if (hasQuiz && !hasLab) {
+    return Math.round(quizAvg);
+  }
+  
+  // Case 3: Only lab exists
+  if (!hasQuiz && hasLab) {
+    return Math.round(labAvg);
+  }
+  
+  // Case 4: No quizzes or labs - use progress
+  return Math.round(progressPct);
+}
+
 
 function computeStreak(activityDateSet) {
   if (!activityDateSet.size) return 0;

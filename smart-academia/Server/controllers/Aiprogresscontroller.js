@@ -155,17 +155,56 @@ const analyzeStudentProgress = async (req, res) => {
           };
         }
 
-        let labDetail = null;
-        if (lessonLab) {
-          const sub = submissionByLab[lessonLab._id.toString()];
-          labDetail = {
-            submitted: !!sub,
-            status: sub?.status ?? "not_submitted",
-            scorePercent: sub?.marks != null
-              ? Math.round((sub.marks / (lessonLab.totalMarks || 100)) * 100)
-              : null,
-          };
-        }
+        // ── Per-lab detail ─────────────────────────────────────────────────
+let labDetail = null;
+if (lessonLab) {
+  const labId = lessonLab._id.toString();
+  const allSubs = allLabSubmissions.filter(s => s.lab?._id?.toString() === labId);
+  
+  // Find best submission (highest score from teacher OR AI)
+  let bestSubmission = null;
+  let bestScore = -1;
+  
+  for (const sub of allSubs) {
+    let subScore = null;
+    if (sub.marks !== null && sub.marks !== undefined) {
+      subScore = sub.marks;
+    } else if (sub.aiSuggestedMarks !== null && sub.aiSuggestedMarks !== undefined) {
+      subScore = sub.aiSuggestedMarks;
+    }
+    
+    if (subScore !== null && subScore > bestScore) {
+      bestScore = subScore;
+      bestSubmission = sub;
+    }
+  }
+  
+  // Calculate score percent from best submission
+  let scorePercent = null;
+  let finalMarks = null;
+  
+  if (bestSubmission) {
+    if (bestSubmission.marks !== null && bestSubmission.marks !== undefined) {
+      finalMarks = bestSubmission.marks;
+      scorePercent = Math.round((bestSubmission.marks / (lessonLab.totalMarks || 100)) * 100);
+    } else if (bestSubmission.aiSuggestedMarks !== null && bestSubmission.aiSuggestedMarks !== undefined) {
+      finalMarks = bestSubmission.aiSuggestedMarks;
+      scorePercent = Math.round((bestSubmission.aiSuggestedMarks / (lessonLab.totalMarks || 100)) * 100);
+    }
+  }
+  
+  labDetail = {
+    submitted: allSubs.length > 0,
+    status: bestSubmission?.status ?? "not_submitted",
+    scorePercent: scorePercent,
+    finalMarks: finalMarks,
+    bestAttemptNumber: bestSubmission?.attemptNumber,
+    totalAttempts: allSubs.length,
+  };
+  
+  // Debug log
+  console.log(`Lab: ${lessonLab.title}, scorePercent: ${scorePercent}, bestScore: ${bestScore}, totalAttempts: ${allSubs.length}`);
+}
 
         return {
           lessonId: lesson._id,

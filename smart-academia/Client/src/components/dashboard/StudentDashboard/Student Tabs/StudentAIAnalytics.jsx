@@ -1,4 +1,3 @@
-// frontend/src/components/Student/StudentAIAnalytics.jsx
 import React, { useState, useEffect } from "react";
 
 const API = import.meta.env.VITE_API_URL || "http://localhost:5000";
@@ -64,7 +63,7 @@ const Spinner = ({ size = "md" }) => {
 };
 
 // ── Ring Progress ─────────────────────────────────────────────
-const RingProgress = ({ value = 0, size = 80, stroke = 7, color = C.accent }) => {
+const RingProgress = ({ value = 0, size = 80, stroke = 7, color = C.accent, label = "Score" }) => {
   const r = (size - stroke * 2) / 2;
   const circ = 2 * Math.PI * r;
   const dash = (Math.min(value, 100) / 100) * circ;
@@ -76,18 +75,30 @@ const RingProgress = ({ value = 0, size = 80, stroke = 7, color = C.accent }) =>
           strokeLinecap="round" strokeDasharray={`${dash} ${circ}`}
           style={{ transition: "stroke-dasharray 1s cubic-bezier(.4,0,.2,1)", filter: `drop-shadow(0 0 5px ${color}88)` }} />
       </svg>
-      <div className="absolute inset-0 flex items-center justify-center">
+      <div className="absolute inset-0 flex flex-col items-center justify-center">
         <span className="text-xs font-black text-white">{value}%</span>
+        <span className="text-[8px]" style={{ color: C.textFaint }}>{label}</span>
       </div>
     </div>
   );
 };
+
+// ── Tooltip Component ─────────────────────────────────────────
+const Tooltip = ({ children, text }) => (
+  <div className="group relative inline-block">
+    {children}
+    <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-gray-900 text-[10px] text-gray-300 rounded opacity-0 group-hover:opacity-100 transition pointer-events-none whitespace-nowrap z-20">
+      {text}
+    </div>
+  </div>
+);
 
 const StudentAIAnalytics = () => {
   const [analysis, setAnalysis] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [activeTab, setActiveTab] = useState("weak");
+  const [selectedCourse, setSelectedCourse] = useState(null);
 
   useEffect(() => {
     fetchAnalysis();
@@ -100,13 +111,79 @@ const StudentAIAnalytics = () => {
         headers: { Authorization: `Bearer ${token}` },
       });
       const data = await res.json();
-      if (res.ok) setAnalysis(data);
-      else setError(data.message || "Failed to load analysis");
+      if (res.ok) {
+        // Calculate course-specific metrics with better accuracy
+        const courseSnapshotsWithDetails = data.courseSnapshots?.map(course => {
+          // Calculate weighted performance score (only from completed items)
+          let performanceScore = 0;
+          let hasQuiz = course.avgQuizScore !== null && course.avgQuizScore !== undefined;
+          let hasLab = course.avgLabScore !== null && course.avgLabScore !== undefined;
+          
+          if (hasQuiz && hasLab) {
+            performanceScore = Math.round((course.avgQuizScore * 0.5) + (course.avgLabScore * 0.5));
+          } else if (hasQuiz) {
+            performanceScore = Math.round(course.avgQuizScore);
+          } else if (hasLab) {
+            performanceScore = Math.round(course.avgLabScore);
+          } else {
+            performanceScore = 0;
+          }
+          
+          // Calculate completion-weighted score (zeros for incomplete items)
+          let totalAssessments = (course.totalQuizzes || 0) + (course.totalLabs || 0);
+          let completedAssessments = (hasQuiz ? 1 : 0) + (hasLab ? 1 : 0);
+          let weightedCompletionScore = 0;
+          
+          if (totalAssessments > 0) {
+            let rawScore = 0;
+            if (hasQuiz) rawScore += (course.avgQuizScore || 0);
+            if (hasLab) rawScore += (course.avgLabScore || 0);
+            weightedCompletionScore = Math.round((rawScore / totalAssessments));
+          }
+          
+          // Determine if quiz and lab are passed
+          const quizPassed = course.avgQuizScore !== null && course.avgQuizScore >= 70;
+          const labPassed = course.avgLabScore !== null && course.avgLabScore >= 70;
+          
+          return {
+            ...course,
+            performanceScore, // Score based ONLY on completed work (can be high even with low progress)
+            weightedCompletionScore, // Score that includes zeros for incomplete items
+            quizPassed,
+            labPassed,
+            quizPassedCount: quizPassed ? 1 : 0,
+            labPassedCount: labPassed ? 1 : 0,
+          };
+        });
+        
+        data.courseSnapshots = courseSnapshotsWithDetails;
+        
+        // Set first course as selected if available
+        if (courseSnapshotsWithDetails?.length > 0 && !selectedCourse) {
+          setSelectedCourse(courseSnapshotsWithDetails[0]);
+        }
+        
+        setAnalysis(data);
+      } else {
+        setError(data.message || "Failed to load analysis");
+      }
     } catch {
       setError("Cannot connect to server");
     } finally {
       setLoading(false);
     }
+  };
+
+  // Filter weak areas for selected course
+  const getFilteredWeakAreas = () => {
+    if (!selectedCourse) return analysis?.weakAreas || [];
+    return analysis?.weakAreas?.filter(area => area.course === selectedCourse.course) || [];
+  };
+
+  // Filter strengths for selected course
+  const getFilteredStrengths = () => {
+    if (!selectedCourse) return analysis?.strengths || [];
+    return analysis?.strengths?.filter(strength => strength.course === selectedCourse.course) || [];
   };
 
   if (loading) {
@@ -132,6 +209,23 @@ const StudentAIAnalytics = () => {
 
   if (!analysis) return null;
 
+  // Get the current course data
+  const currentCourse = selectedCourse || analysis.courseSnapshots?.[0];
+  const filteredWeakAreas = getFilteredWeakAreas();
+  const filteredStrengths = getFilteredStrengths();
+
+  // Calculate totals for the selected course
+  const totalQuizzesInCourse = currentCourse?.totalQuizzes || 0;
+  const totalLabsInCourse = currentCourse?.totalLabs || 0;
+  const quizzesPassedCount = currentCourse?.quizPassedCount || 0;
+  const labsPassedCount = currentCourse?.labPassedCount || 0;
+  
+  // Calculate completed assessments count
+  const hasQuiz = currentCourse?.avgQuizScore !== null && currentCourse?.avgQuizScore !== undefined;
+  const hasLab = currentCourse?.avgLabScore !== null && currentCourse?.avgLabScore !== undefined;
+  const completedAssessments = (hasQuiz ? 1 : 0) + (hasLab ? 1 : 0);
+  const totalAssessments = totalQuizzesInCourse + totalLabsInCourse;
+
   return (
     <div className="space-y-5 pb-10" style={{ fontFamily: "'Lexend', sans-serif", background: C.bg, minHeight: "100vh" }}>
       
@@ -149,38 +243,137 @@ const StudentAIAnalytics = () => {
         </div>
       </div>
 
-      {/* Overall Score Card with Ring */}
-      <div className="rounded-2xl p-6 flex flex-col sm:flex-row items-center justify-between gap-6" style={{ background: C.surface, border: `1px solid ${C.accent}33` }}>
-        <div className="flex items-center gap-6">
-          <RingProgress value={analysis.overallScore || 0} size={100} stroke={8} color={analysis.overallScore >= 70 ? C.green : analysis.overallScore >= 50 ? C.amber : C.red} />
-          <div>
-            <p className="text-xs text-gray-400">Overall Performance Score</p>
-            <p className="text-3xl font-black text-white">{analysis.overallScore || 0}%</p>
-            <p className="text-xs text-gray-500 mt-1">{analysis.metrics?.totalCourses || 0} Courses · {analysis.metrics?.completedCourses || 0} Completed</p>
-          </div>
+      {/* Course Selector */}
+      {analysis.courseSnapshots?.length > 0 && (
+        <div className="rounded-2xl p-4" style={{ background: C.surface, border: `1px solid ${C.border}` }}>
+          <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Select Course</label>
+          <select
+            value={selectedCourse?.course || ""}
+            onChange={(e) => {
+              const course = analysis.courseSnapshots.find(c => c.course === e.target.value);
+              setSelectedCourse(course);
+            }}
+            className="w-full px-4 py-2.5 text-sm rounded-xl bg-gray-800/50 text-white border border-gray-700 focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition-all cursor-pointer"
+          >
+            {analysis.courseSnapshots.map((course, idx) => (
+              <option key={idx} value={course.course}>{course.course} ({course.code})</option>
+            ))}
+          </select>
         </div>
-        <div className="flex gap-4">
-          <div className="text-center px-4 py-2 rounded-xl" style={{ background: C.surface2 }}>
-            <p className="text-sm font-bold text-amber-400">{analysis.metrics?.overallQuizAvg || 0}%</p>
-            <p className="text-[10px] text-gray-500">Quiz Avg</p>
-          </div>
-          <div className="text-center px-4 py-2 rounded-xl" style={{ background: C.surface2 }}>
-            <p className="text-sm font-bold text-purple-400">{analysis.metrics?.overallLabAvg || 0}%</p>
-            <p className="text-[10px] text-gray-500">Lab Avg</p>
-          </div>
-          <div className="text-center px-4 py-2 rounded-xl" style={{ background: C.surface2 }}>
-            <p className="text-sm font-bold text-green-400">{analysis.metrics?.passedQuizzes || 0}</p>
-            <p className="text-[10px] text-gray-500">Passed</p>
-          </div>
-        </div>
-      </div>
+      )}
 
-      {/* Stats Grid with Glow Cards */}
+      {/* Course Performance Overview */}
+      {currentCourse && (
+        <div className="rounded-2xl p-6" style={{ background: `linear-gradient(135deg, ${C.surface} 0%, ${C.surface2} 100%)`, border: `1px solid ${C.accent}44` }}>
+          <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+            <div>
+              <h2 className="text-xl font-black text-white">{currentCourse.course}</h2>
+              <p className="text-xs text-gray-500">{currentCourse.code}</p>
+            </div>
+            {currentCourse.isCompleted && (
+              <span className="text-[10px] px-2 py-0.5 rounded-full font-bold" style={{ background: `${C.green}22`, color: C.greenLight, border: `1px solid ${C.green}44` }}>
+                ✓ Completed
+              </span>
+            )}
+          </div>
+          
+          {/* Two Score Rings Side by Side */}
+          <div className="flex flex-row justify-center items-center gap-8 mb-6">
+            <Tooltip text="Based only on completed quizzes/labs">
+              <RingProgress 
+                value={currentCourse.performanceScore || 0} 
+                size={100} 
+                stroke={8} 
+                color={currentCourse.performanceScore >= 70 ? C.green : currentCourse.performanceScore >= 50 ? C.amber : C.red}
+                label="Performance"
+              />
+            </Tooltip>
+            <Tooltip text="Includes zeros for incomplete assessments">
+              <RingProgress 
+                value={currentCourse.weightedCompletionScore || 0} 
+                size={100} 
+                stroke={8} 
+                color={currentCourse.weightedCompletionScore >= 70 ? C.green : currentCourse.weightedCompletionScore >= 50 ? C.amber : C.red}
+                label="Overall Score"
+              />
+            </Tooltip>
+          </div>
+          
+          {/* Stats Grid */}
+          <div className="grid grid-cols-2 gap-4 mb-4">
+            <Tooltip text="How much of the course you've completed">
+              <div className="text-center p-3 rounded-xl" style={{ background: C.surface2 }}>
+                <p className="text-2xl font-black text-white">{currentCourse.progress}%</p>
+                <p className="text-[10px] text-gray-500">Course Progress</p>
+              </div>
+            </Tooltip>
+            <Tooltip text="Your average quiz score on completed quizzes">
+              <div className="text-center p-3 rounded-xl" style={{ background: C.surface2 }}>
+                <p className="text-2xl font-black text-amber-400">{currentCourse.avgQuizScore || 0}%</p>
+                <p className="text-[10px] text-gray-500">Quiz Avg</p>
+              </div>
+            </Tooltip>
+            <Tooltip text="Your average lab score on completed labs">
+              <div className="text-center p-3 rounded-xl" style={{ background: C.surface2 }}>
+                <p className="text-2xl font-black text-purple-400">{currentCourse.avgLabScore || 0}%</p>
+                <p className="text-[10px] text-gray-500">Lab Avg</p>
+              </div>
+            </Tooltip>
+            <Tooltip text="Performance score: average of your quiz and lab scores (only completed items)">
+              <div className="text-center p-3 rounded-xl" style={{ background: C.surface2 }}>
+                <p className="text-2xl font-black text-indigo-400">{currentCourse.performanceScore || 0}%</p>
+                <p className="text-[10px] text-gray-500">Performance</p>
+              </div>
+            </Tooltip>
+          </div>
+          
+          <MiniBar value={currentCourse.progress} color={currentCourse.isCompleted ? C.green : C.accent} />
+          
+          {/* Assessment Completion Status */}
+          <div className="mt-4 p-3 rounded-lg" style={{ background: `${C.accent}11`, border: `1px solid ${C.accent}33` }}>
+            <p className="text-[10px] text-gray-400 mb-2 flex items-center gap-1">
+              <span className="material-symbols-outlined text-xs">info</span>
+              Assessment Completion:
+            </p>
+            <div className="flex items-center justify-between text-xs">
+              <span className="text-gray-400">Completed: {completedAssessments}/{totalAssessments} assessments</span>
+              <span className="text-gray-400">
+                {Math.round((completedAssessments / totalAssessments) * 100)}% done
+              </span>
+            </div>
+            <MiniBar value={(completedAssessments / totalAssessments) * 100} color={C.cyan} height={3} />
+          </div>
+          
+          {/* Quiz and Lab Pass Counts */}
+          <div className="grid grid-cols-2 gap-3 mt-4">
+            <div className="flex items-center justify-between p-3 rounded-lg" style={{ background: C.surface2 }}>
+              <span className="text-xs text-gray-400 flex items-center gap-2">
+                <span className="material-symbols-outlined text-sm text-amber-400">quiz</span>
+                Quizzes Passed
+              </span>
+              <span className="text-sm font-bold text-amber-400">
+                {quizzesPassedCount}/{totalQuizzesInCourse}
+              </span>
+            </div>
+            <div className="flex items-center justify-between p-3 rounded-lg" style={{ background: C.surface2 }}>
+              <span className="text-xs text-gray-400 flex items-center gap-2">
+                <span className="material-symbols-outlined text-sm text-purple-400">science</span>
+                Labs Passed
+              </span>
+              <span className="text-sm font-bold text-purple-400">
+                {labsPassedCount}/{totalLabsInCourse}
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Stats Grid with Glow Cards - Overall Stats (all courses combined) */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <GlowCard icon="quiz" label="Quiz Average" value={`${analysis.metrics?.overallQuizAvg || 0}%`} color={C.amber} />
-        <GlowCard icon="science" label="Lab Average" value={`${analysis.metrics?.overallLabAvg || 0}%`} color={C.accent2} />
-        <GlowCard icon="trending_up" label="Course Progress" value={`${analysis.metrics?.overallProgress || 0}%`} color={C.accent} />
-        <GlowCard icon="emoji_events" label="Quizzes Passed" value={`${analysis.metrics?.passedQuizzes || 0}/${analysis.metrics?.totalAttempts || 0}`} color={C.green} />
+        <GlowCard icon="school" label="Total Courses" value={analysis.metrics?.totalCourses || 0} color={C.accent} />
+        <GlowCard icon="emoji_events" label="Courses Completed" value={`${analysis.metrics?.completedCourses || 0}/${analysis.metrics?.totalCourses || 0}`} color={C.green} />
+        <GlowCard icon="quiz" label="Avg Quiz Score" value={`${analysis.metrics?.overallQuizAvg || 0}%`} color={C.amber} />
+        <GlowCard icon="science" label="Avg Lab Score" value={`${analysis.metrics?.overallLabAvg || 0}%`} color={C.accent2} />
       </div>
 
       {/* Tabs with Gradient */}
@@ -208,14 +401,14 @@ const StudentAIAnalytics = () => {
       {/* Tab Content with Enhanced Cards */}
       {activeTab === "weak" && (
         <div className="space-y-3">
-          {analysis.weakAreas?.length === 0 ? (
+          {filteredWeakAreas.length === 0 ? (
             <div className="text-center py-16 rounded-2xl" style={{ background: C.surface, border: `1px solid ${C.border}` }}>
               <span className="material-symbols-outlined text-6xl text-gray-700 mb-4 block">check_circle</span>
               <p className="font-bold text-white text-lg">No weak areas detected!</p>
-              <p className="text-sm text-gray-500">You're doing great in all your courses. Keep it up! 🎉</p>
+              <p className="text-sm text-gray-500">You're doing great in this course. Keep it up! 🎉</p>
             </div>
           ) : (
-            analysis.weakAreas.map((area, i) => (
+            filteredWeakAreas.map((area, i) => (
               <div key={i} className="rounded-2xl p-5 transition-all hover:scale-[1.02] duration-300" style={{ background: C.surface, border: `1px solid ${C.red}44` }}>
                 <div className="flex items-start justify-between mb-3">
                   <div>
@@ -241,14 +434,14 @@ const StudentAIAnalytics = () => {
 
       {activeTab === "strengths" && (
         <div className="space-y-3">
-          {analysis.strengths?.length === 0 ? (
+          {filteredStrengths.length === 0 ? (
             <div className="text-center py-16 rounded-2xl" style={{ background: C.surface, border: `1px solid ${C.border}` }}>
               <span className="material-symbols-outlined text-6xl text-gray-700 mb-4 block">trending_up</span>
               <p className="font-bold text-white text-lg">Keep building your strengths!</p>
               <p className="text-sm text-gray-500">Complete more quizzes and labs to see your strengths</p>
             </div>
           ) : (
-            analysis.strengths.map((strength, i) => (
+            filteredStrengths.map((strength, i) => (
               <div key={i} className="rounded-2xl p-5 transition-all hover:scale-[1.02] duration-300" style={{ background: C.surface, border: `1px solid ${C.green}44` }}>
                 <div className="mb-2">
                   <p className="font-bold text-white text-base">{strength.area}</p>
@@ -328,48 +521,6 @@ const StudentAIAnalytics = () => {
           )}
         </div>
       )}
-
-      {/* Course Snapshots */}
-      <div className="rounded-2xl overflow-hidden" style={{ background: C.surface, border: `1px solid ${C.border}` }}>
-        <div className="px-6 py-4 border-b" style={{ background: C.surface2, borderColor: C.border }}>
-          <SectionHeader icon="school" title="Course Performance" color={C.accent} />
-        </div>
-        <div className="divide-y" style={{ borderColor: C.border }}>
-          {analysis.courseSnapshots?.map((course, i) => {
-            const progressColor = course.isCompleted ? C.green : course.progress >= 60 ? C.accent : course.progress >= 30 ? C.amber : C.red;
-            return (
-              <div key={i} className="p-5 hover:bg-white/5 transition-colors">
-                <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
-                  <div>
-                    <p className="font-bold text-white">{course.course}</p>
-                    <p className="text-xs text-gray-500">{course.code}</p>
-                  </div>
-                  {course.isCompleted && (
-                    <span className="text-[10px] px-2 py-0.5 rounded-full font-bold" style={{ background: `${C.green}22`, color: C.greenLight, border: `1px solid ${C.green}44` }}>
-                      ✓ Completed
-                    </span>
-                  )}
-                </div>
-                <div className="grid grid-cols-3 gap-3 mb-3">
-                  <div className="text-center p-2 rounded-lg" style={{ background: C.surface2 }}>
-                    <p className="text-lg font-black text-white">{course.progress}%</p>
-                    <p className="text-[10px] text-gray-500">Progress</p>
-                  </div>
-                  <div className="text-center p-2 rounded-lg" style={{ background: C.surface2 }}>
-                    <p className="text-lg font-black text-amber-400">{course.avgQuizScore || 0}%</p>
-                    <p className="text-[10px] text-gray-500">Quiz Avg</p>
-                  </div>
-                  <div className="text-center p-2 rounded-lg" style={{ background: C.surface2 }}>
-                    <p className="text-lg font-black text-purple-400">{course.avgLabScore || 0}%</p>
-                    <p className="text-[10px] text-gray-500">Lab Avg</p>
-                  </div>
-                </div>
-                <MiniBar value={course.progress} color={progressColor} />
-              </div>
-            );
-          })}
-        </div>
-      </div>
     </div>
   );
 };

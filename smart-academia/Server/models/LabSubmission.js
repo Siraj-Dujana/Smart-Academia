@@ -8,6 +8,12 @@ const LabSubmissionSchema = new mongoose.Schema(
     course:  { type: mongoose.Schema.Types.ObjectId, ref: "Course", required: true },
     student: { type: mongoose.Schema.Types.ObjectId, ref: "User",   required: true },
 
+    // ✅ NEW: Track attempt number for analytics
+    attemptNumber: {
+      type: Number,
+      default: 1,
+    },
+
     // Text answer — optional when PDF is uploaded
     answer: { type: String, default: "" },
 
@@ -25,7 +31,7 @@ const LabSubmissionSchema = new mongoose.Schema(
     gradedAt: { type: Date,   default: null },
     gradedBy: { type: mongoose.Schema.Types.ObjectId, ref: "User", default: null },
 
-    // ✅ NEW: AI Auto-evaluation fields
+    // AI Auto-evaluation fields
     aiSuggestedMarks: {
       type: Number,
       default: null,
@@ -42,7 +48,14 @@ const LabSubmissionSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-// One submission per student per lab
-LabSubmissionSchema.index({ lab: 1, student: 1 }, { unique: true });
+// ✅ UPDATED: Allow multiple attempts per student-lab (remove unique constraint)
+// Now index includes attemptNumber to allow multiple submissions
+LabSubmissionSchema.index({ lab: 1, student: 1, attemptNumber: 1 }, { unique: true });
+
+// ✅ NEW: Index for fetching latest attempt quickly
+LabSubmissionSchema.index({ student: 1, lab: 1, attemptNumber: -1 });
+
+// ✅ NEW: Index for analytics - get all attempts for a lab
+LabSubmissionSchema.index({ lab: 1, student: 1, submittedAt: -1 });
 
 module.exports = mongoose.model("LabSubmission", LabSubmissionSchema);
