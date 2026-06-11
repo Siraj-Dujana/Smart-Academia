@@ -47,10 +47,10 @@ const TeacherDashboard = () => {
   { icon: "book",         label: "Course Management", key: "courses",          color: "#22c55e" },
   { icon: "menu_book",    label: "Lesson Management", key: "lessons",          color: "#f59e0b" },
   { icon: "grading",      label: "Grade Labs",        key: "lab-submissions",  color: "#a855f7" },
-  { icon: "note_stack",   label: "Share Notes",       key: "share-notes",      color: "#3b82f6" },  // ← ADD THIS
+  { icon: "note_stack",   label: "Share Notes",       key: "share-notes",      color: "#3b82f6" },  
   { icon: "bar_chart",    label: "Student Progress",  key: "progress",         color: "#3b82f6" },
-  { icon: "leaderboard",  label: "Course Rankings",   key: "course-rankings",  color: "#f59e0b" },
   { icon: "auto_awesome", label: "AI Insights",       key: "ai-analytics",     color: "#a855f7" },
+  { icon: "leaderboard",  label: "Course Rankings",   key: "course-rankings",  color: "#f59e0b" },
   { icon: "smart_toy",    label: "AI Tutor",          key: "ai-tutor",         color: "#14b8a6" },
   { icon: "send",         label: "Send Notifications",key: "send-notifications",color: "#f59e0b" },
   { icon: "person",       label: "My Profile",        key: "profile",          color: "#6366f1" }

@@ -329,28 +329,76 @@ const TeacherShareNotes = () => {
       )}
 
       {/* Course Selector & Upload Button */}
-      <div className="rounded-2xl p-5" style={{ background: "#0f1629", border: "1px solid #1e293b" }}>
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <div className="flex-1 min-w-[200px]">
-            <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Select Course</label>
-            <select
-              value={selectedCourse}
-              onChange={e => setSelectedCourse(e.target.value)}
-              className="w-full px-4 py-2.5 text-sm rounded-xl bg-gray-800/50 text-white border border-gray-700 focus:ring-2 focus:ring-indigo-500 outline-none"
-            >
-              {courses.map(c => <option key={c._id} value={c._id}>{c.title}</option>)}
-            </select>
-          </div>
-          <button
-            onClick={() => setShowUploadModal(true)}
-            className="px-4 py-2.5 rounded-xl text-sm font-bold text-white transition-all hover:scale-105 flex items-center gap-2"
-            style={{ background: "linear-gradient(135deg, #6366f1, #818cf8)" }}
-          >
-            <span className="material-symbols-outlined text-sm">upload_file</span>
-            Share Notes
-          </button>
-        </div>
+<div className="rounded-2xl p-5" style={{ background: "#0f1629", border: "1px solid #1e293b" }}>
+  <div className="flex flex-col gap-4">
+    
+    {/* Header row */}
+    <div className="flex items-center justify-between">
+      <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Select Course</p>
+      <button
+        onClick={() => setShowUploadModal(true)}
+        className="px-4 py-2.5 rounded-xl text-sm font-bold text-white transition-all hover:scale-105 flex items-center gap-2 flex-shrink-0"
+        style={{ background: "linear-gradient(135deg, #6366f1, #818cf8)" }}
+      >
+        <span className="material-symbols-outlined text-sm">upload_file</span>
+        Share Notes
+      </button>
+    </div>
+
+    {/* Course cards */}
+    {courses.length === 0 ? (
+      <div className="flex items-center gap-3 p-4 rounded-xl" style={{ background: "#1e293b", border: "1px solid #334155" }}>
+        <span className="material-symbols-outlined text-gray-500">info</span>
+        <p className="text-sm text-gray-500">No courses found.</p>
       </div>
+    ) : (
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+        {courses.map(c => (
+          <button
+            key={c._id}
+            onClick={() => setSelectedCourse(c._id)}
+            className="relative text-left p-4 rounded-xl transition-all duration-200 hover:scale-[1.02]"
+            style={{
+              background: selectedCourse === c._id ? "#6366f122" : "#0a0f1e",
+              border: `1px solid ${selectedCourse === c._id ? "#6366f1" : "#1e293b"}`,
+            }}
+          >
+            {selectedCourse === c._id && (
+              <div className="absolute inset-0 rounded-xl opacity-20" style={{ background: "radial-gradient(ellipse at 50% 0%, #6366f1 0%, transparent 70%)" }} />
+            )}
+            <div className="relative flex items-start gap-3">
+              <div
+                className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0"
+                style={{
+                  background: selectedCourse === c._id ? "#6366f133" : "#1e293b",
+                  border: `1px solid ${selectedCourse === c._id ? "#6366f144" : "#334155"}`,
+                }}
+              >
+                <span className="material-symbols-outlined text-base" style={{ color: selectedCourse === c._id ? "#818cf8" : "#4b5563" }}>
+                  menu_book
+                </span>
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold truncate" style={{ color: selectedCourse === c._id ? "#e0e7ff" : "#94a3b8" }}>
+                  {c.title}
+                </p>
+                <p className="text-[10px] mt-0.5 font-mono" style={{ color: selectedCourse === c._id ? "#818cf8" : "#475569" }}>
+                  {c.code}
+                </p>
+              </div>
+              {selectedCourse === c._id && (
+                <span className="material-symbols-outlined text-base flex-shrink-0" style={{ color: "#6366f1" }}>
+                  check_circle
+                </span>
+              )}
+            </div>
+          </button>
+        ))}
+      </div>
+    )}
+
+  </div>
+</div>
 
       {/* Notes List */}
       <div className="rounded-2xl overflow-hidden" style={{ background: "#0f1629", border: "1px solid #1e293b" }}>

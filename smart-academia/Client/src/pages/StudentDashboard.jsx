@@ -45,17 +45,17 @@ const StudentDashboard = () => {
 const menuItems = [
   { icon: "dashboard", label: "Dashboard", key: 'dashboard' },
   { icon: "import_contacts", label: "Courses", key: 'courses' },
-  { icon: "workspace_premium", label: "Certificates", key: 'certificates' },
   { icon: "quiz", label: "Quizzes", key: 'quizzes' },
   { icon: "science", label: "Labs", key: 'labs' },
-  { icon: "note_stack", label: "Notes", key: 'notes' },  // ← ADD THIS
+  { icon: "note_stack", label: "Notes", key: 'notes' },
   { icon: "bar_chart_4_bars", label: "Progress", key: 'progress' },
+  { icon: "auto_awesome", label: "AI Insights", key: 'ai-analytics' },
   { icon: "leaderboard", label: "Leaderboard", key: 'leaderboard' },
+  { icon: "workspace_premium", label: "Certificates", key: 'certificates' },
   { icon: "smart_toy", label: "AI Tutor", key: 'ai-tutor' },
   { icon: "assistant", label: "AI Assistant", key: 'ai-assistant' },
   { icon: 'person', label: 'My Profile', key: 'profile' },
   { icon: "notifications", label: "Notifications", key: "notifications" },
-  { icon: "auto_awesome", label: "AI Insights", key: 'ai-analytics' },
 ];
 
   const handleMenuClick = (menuKey) => {
@@ -74,17 +74,17 @@ const menuItems = [
     switch (activeMenu) {
       case 'dashboard': return <Dashboard />;
       case 'courses': return <Courses />;
-      case "certificates": return <Certificates />;
       case 'quizzes': return <Quizzes />;
       case 'labs': return <Labs />;
       case 'notes': return <StudentViewNotes />;
       case 'progress': return <StudentAnalytics />;
+      case "ai-analytics": return <StudentAIAnalytics/>;
+      case 'leaderboard': return <Leaderboard />;
+      case "certificates": return <Certificates />;
       case 'ai-tutor': return <AITutor />;
       case 'ai-assistant': return <AIAssistant />;
       case 'profile': return <ProfileManagement />;
       case "notifications": return <Notifications />;
-      case "ai-analytics": return <StudentAIAnalytics/>;
-      case 'leaderboard': return <Leaderboard />;
       default: return <Dashboard />;
     }
   };

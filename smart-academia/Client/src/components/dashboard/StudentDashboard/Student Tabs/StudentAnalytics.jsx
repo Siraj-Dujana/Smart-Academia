@@ -57,13 +57,13 @@ const RingProgress = ({ value = 0, size = 80, stroke = 7, color = C.accent, trac
   );
 };
 
-// ── Line Chart for Attempt Progression ─────────────────────────
 const ProgressLineChart = ({ attempts, title, passingScore = 70, color = C.accent }) => {
   if (!attempts || attempts.length === 0) return null;
-  
-  const maxH = 80;
-  const maxScore = 100;
-  
+  const maxH = 90;
+  const single = attempts.length === 1;
+
+  const xPos = (i) => single ? 50 : (i / (attempts.length - 1)) * 100;
+
   return (
     <div className="mt-3">
       <p className="text-[10px] font-semibold text-gray-500 mb-2 flex items-center gap-2">
@@ -71,41 +71,34 @@ const ProgressLineChart = ({ attempts, title, passingScore = 70, color = C.accen
         {title} - Score Progression
       </p>
       <div className="relative" style={{ height: maxH + 30 }}>
+        {/* Gridlines at 0/25/50/75/100 */}
+        {[0, 25, 50, 75, 100].map(v => (
+          <div key={v} className="absolute left-0 right-0 border-t" style={{ top: `${(1 - v / 100) * maxH}px`, borderColor: C.border, opacity: 0.5 }}>
+            <span className="absolute -left-0 -top-2.5 text-[8px]" style={{ color: C.textFaint }}>{v}</span>
+          </div>
+        ))}
         {/* Passing line */}
-        <div className="absolute left-0 right-0 border-t border-dashed" style={{ top: `${(1 - passingScore / 100) * maxH}px`, borderColor: C.green + '66', zIndex: 1 }}>
-          <span className="absolute -left-1 -top-2 text-[8px]" style={{ color: C.green }}>{passingScore}%</span>
+        <div className="absolute left-0 right-0 border-t border-dashed" style={{ top: `${(1 - passingScore / 100) * maxH}px`, borderColor: C.green, zIndex: 2 }}>
+          <span className="absolute right-0 -top-3 text-[8px] font-bold" style={{ color: C.green }}>Pass: {passingScore}%</span>
         </div>
-        
-        {/* Line chart */}
-        <svg width="100%" height={maxH} style={{ position: 'absolute', top: 0, left: 0 }}>
-          {/* Line */}
-          <polyline
-            points={attempts.map((a, i) => `${(i / (attempts.length - 1)) * 100}%, ${(1 - a.score / 100) * maxH}`).join(' ')}
-            fill="none"
-            stroke={color}
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            style={{ filter: `drop-shadow(0 0 4px ${color}66)` }}
-          />
-          {/* Points */}
-          {attempts.map((a, i) => (
-            <circle
-              key={i}
-              cx={`${(i / (attempts.length - 1)) * 100}%`}
-              cy={`${(1 - a.score / 100) * maxH}`}
-              r="4"
-              fill={a.passed ? C.green : color}
-              stroke={C.surface}
-              strokeWidth="2"
+
+        <svg width="100%" height={maxH} viewBox={`0 0 100 ${maxH}`} preserveAspectRatio="none" style={{ position: 'absolute', top: 0, left: 0 }}>
+          {!single && (
+            <polyline
+              points={attempts.map((a, i) => `${xPos(i)},${(1 - a.score / 100) * maxH}`).join(' ')}
+              fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" vectorEffect="non-scaling-stroke"
+              style={{ filter: `drop-shadow(0 0 3px ${color}66)` }}
             />
+          )}
+          {attempts.map((a, i) => (
+            <circle key={i} cx={`${xPos(i)}%`} cy={(1 - a.score / 100) * maxH} r="3" vectorEffect="non-scaling-stroke"
+              fill={a.passed ? C.green : color} stroke={C.surface} strokeWidth="1.5" />
           ))}
         </svg>
-        
-        {/* X-axis labels */}
+
         <div className="absolute bottom-0 left-0 right-0 flex justify-between text-[8px]" style={{ color: C.textFaint, top: maxH + 5 }}>
           {attempts.map((a, i) => (
-            <span key={i} className="text-center" style={{ width: `${100 / attempts.length}%` }}>
+            <span key={i} className="text-center" style={{ width: `${100 / attempts.length}%`, flexShrink: 0 }}>
               #{a.attemptNumber}
             </span>
           ))}
@@ -582,11 +575,12 @@ const StudentAnalytics = () => {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-2">
         <GlowCard icon="school" label="Courses Enrolled" value={overall.totalCourses} color={C.accent} />
         <GlowCard icon="emoji_events" label="Courses Completed" value={overall.completedCourses} color={C.green} sub={`of ${overall.totalCourses}`} />
         <GlowCard icon="workspace_premium" label="Credits Earned" value={overall.earnedCredits.toFixed(1)} color={C.amber} sub={`of ${overall.totalCredits}`} />
-        <GlowCard icon="verified" label="Quiz Pass Rate" value={passRate !== null ? `${passRate}%` : "—"} color={C.accent2} sub={passRate !== null ? `${overall.totalQuizPasses}/${overall.totalQuizAttempts}` : undefined} />
+       <GlowCard icon="quiz" label="Quizzes Passed" value={`${quizPassed}/${allQuizzes.length}`} color={C.amber} />
+<GlowCard icon="science" label="Labs Graded" value={`${labGraded}/${allLabs.length}`} color={C.accent2} />
       </div>
 
       {/* Charts Row */}
@@ -790,7 +784,7 @@ const StudentAnalytics = () => {
                         {l.scorePercent != null ? (
                           <>
                             <RingProgress value={l.scorePercent} size={52} stroke={5} color={C.accent2} trackColor={C.border} />
-                            <p className="text-[10px]" style={{ color: C.textFaint }}>{l.marks}/{l.totalMarks} pts</p>
+                            <p className="text-[10px]" style={{ color: C.textFaint }}>{l.finalScore ?? l.marks}/{l.totalMarks} pts</p>
                           </>
                         ) : (
                           <span className="text-xs font-medium px-3 py-1.5 rounded-lg" style={{ background: C.surface2, color: C.textFaint }}>

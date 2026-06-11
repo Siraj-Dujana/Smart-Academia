@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -477,21 +477,6 @@ const QuizSection = ({ quiz, courseId, lessonId, onCompleted, onPassed }) => {
             </p>
           </div>
         </div>
-
-        {/* Show best score if there are previous attempts */}
-        {bestScore !== null && (
-          <div
-            className="p-3 rounded-xl text-xs"
-            style={{
-              background: "#22c55e22",
-              border: "1px solid #22c55e44",
-              color: "#4ade80",
-            }}
-          >
-            🏆 Your best score: {bestScore}%{" "}
-            {bestScore >= quiz.passingScore && "✓ Passed"}
-          </div>
-        )}
 
         <div
           className="p-3 rounded-xl text-xs"
@@ -1966,16 +1951,49 @@ const LessonViewer = () => {
   const [lessonData, setLessonData] = useState(null);
   const [loadingList, setLoadingList] = useState(true);
   const [loadingLesson, setLoadingLesson] = useState(false);
+
+
   const [course, setCourse] = useState(null);
-  const [quizDone, setQuizDone] = useState(false);
-  const [labDone, setLabDone] = useState(false);
-  const [quizPassed, setQuizPassed] = useState(false);
-  const [labPassed, setLabPassed] = useState(false);
+  // const [quizDone, setQuizDone] = useState(false);
+  // const [labDone, setLabDone] = useState(false);
+  // const [quizPassed, setQuizPassed] = useState(false);
+  // const [labPassed, setLabPassed] = useState(false);
+
+
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [navigatingNext, setNavigatingNext] = useState(false);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
+
+
+const { quizDone, quizPassed, labDone, labPassed } = useMemo(() => {
+  if (!lessonData) return { quizDone: false, quizPassed: false, labDone: false, labPassed: false };
+
+  // ✅ derive from quizAttempts directly — if any attempt exists, quiz was submitted
+  let qDone = false;
+  let qPassed = false;
+  if (lessonData.quiz && lessonData.quizAttempts?.length > 0) {
+    qDone = true;
+    const sorted = [...lessonData.quizAttempts].sort((a, b) => new Date(b.submittedAt) - new Date(a.submittedAt));
+    qPassed = sorted[0].passed === true;
+  }
+
+  // ✅ derive from labSubmission directly — if submission exists, lab was submitted
+  let lDone = false;
+  let lPassed = false;
+  if (lessonData.lab && lessonData.labSubmission) {
+    lDone = true;
+    const total = lessonData.lab.totalMarks || 100;
+    const marks = lessonData.labSubmission.status === 'graded'
+      ? lessonData.labSubmission.marks
+      : lessonData.labSubmission.aiSuggestedMarks;
+    if (marks != null) lPassed = (marks / total) * 100 >= 70;
+  }
+
+  return { quizDone: qDone, quizPassed: qPassed, labDone: lDone, labPassed: lPassed };
+}, [lessonData]);
+
 
   useEffect(() => {
     fetchAll();
@@ -2038,227 +2056,80 @@ const LessonViewer = () => {
     }
   };
 
-  const openLesson = async (lessonId) => {
-    setLoadingLesson(true);
-    setError("");
+  
+const openLesson = async (lessonId) => {
+  setLoadingLesson(true);
+  setError("");
+  try {
+    const res = await apiFetch(`/api/courses/${courseId}/lessons/${lessonId}/content`);
+    const data = await res.json();
+    if (!res.ok) { setError(data.message); setLessonData(null); return; }
+    setLessonData(data); // ← that's it. derived values auto-update.
+  } catch {
+    setError("Cannot connect to server");
+  } finally {
+    setLoadingLesson(false);
+  }
+};
 
-    try {
-      const res = await apiFetch(
-        `/api/courses/${courseId}/lessons/${lessonId}/content`,
-      );
-      const data = await res.json();
 
-      if (!res.ok) {
-        setError(data.message);
-        setLessonData(null);
-        return;
-      }
+const refreshAfterStep = useCallback(async () => {
+  if (!activeLesson?._id) return;
+  await new Promise((resolve) => setTimeout(resolve, 100));
+  try {
+    const lRes = await apiFetch(`/api/courses/${courseId}/lessons`);
+    const lData = await lRes.json();
+    if (lRes.ok) setLessons(lData.lessons);
 
-      console.log(`📖 Opening lesson ${lessonId}:`, data);
+    const ldRes = await apiFetch(`/api/courses/${courseId}/lessons/${activeLesson._id}/content`);
+    const ldData = await ldRes.json();
 
-      // Set completion status from API response
-      const newQuizDone = data.progress?.quizCompleted || false;
-      const newLabDone = data.progress?.labCompleted || false;
-
-      // Handle Quiz Passed Status
-      let newQuizPassed = false;
-      if (data.quiz && data.quizAttempts && data.quizAttempts.length > 0) {
-        const sortedAttempts = [...data.quizAttempts].sort(
-          (a, b) => new Date(b.submittedAt) - new Date(a.submittedAt),
-        );
-        const mostRecent = sortedAttempts[0];
-        newQuizPassed = mostRecent.passed === true;
-        console.log(`📝 Lesson ${lessonId} - Quiz passed:`, newQuizPassed);
-      }
-
-      // Handle Lab Passed Status
-      let newLabPassed = false;
-      if (data.lab && data.labSubmission) {
-        const totalMarks = data.lab.totalMarks || 100;
-        let scorePercent = 0;
-
-        if (
-          data.labSubmission.status === "graded" &&
-          data.labSubmission.marks !== null
-        ) {
-          scorePercent = (data.labSubmission.marks / totalMarks) * 100;
-          newLabPassed = scorePercent >= 70;
-          console.log(
-            `🔬 Lesson ${lessonId} - Lab graded: ${scorePercent}%, Passed:`,
-            newLabPassed,
-          );
-        } else if (
-          data.labSubmission.aiSuggestedMarks !== null &&
-          data.labSubmission.aiSuggestedMarks !== undefined
-        ) {
-          scorePercent =
-            (data.labSubmission.aiSuggestedMarks / totalMarks) * 100;
-          newLabPassed = scorePercent >= 70;
-          console.log(
-            `🔬 Lesson ${lessonId} - Lab AI: ${scorePercent}%, Passed:`,
-            newLabPassed,
-          );
-        }
-      }
-
-      // Batch all state updates
-      setLessonData(data);
-      setQuizDone(newQuizDone);
-      setLabDone(newLabDone);
-      setQuizPassed(newQuizPassed);
-      setLabPassed(newLabPassed);
-
-      console.log(`✅ Lesson ${lessonId} loaded with states:`, {
-        quizDone: newQuizDone,
-        quizPassed: newQuizPassed,
-        labDone: newLabDone,
-        labPassed: newLabPassed,
-      });
-    } catch (err) {
-      console.error("Open lesson error:", err);
-      setError("Cannot connect to server");
-    } finally {
-      setLoadingLesson(false);
+    if (ldRes.ok) {
+      setLessonData(ldData); // ✅ just this one line — useMemo handles the rest
     }
-  };
+  } catch (err) {
+    console.error("Refresh failed:", err);
+  }
+}, [courseId, activeLesson?._id]);
 
-  const refreshAfterStep = useCallback(async () => {
-    if (!activeLesson?._id) return;
-
-    console.log(`🔄 Refreshing lesson ${activeLesson._id}...`);
-
-    // Add a small delay to prevent multiple rapid refreshes
-    await new Promise((resolve) => setTimeout(resolve, 100));
-
-    try {
-      // Refresh lessons list
-      const lRes = await apiFetch(`/api/courses/${courseId}/lessons`);
-      const lData = await lRes.json();
-      if (lRes.ok) {
-        setLessons(lData.lessons);
-      }
-
-      // Refresh current lesson content
-      const ldRes = await apiFetch(
-        `/api/courses/${courseId}/lessons/${activeLesson._id}/content`,
-      );
-      const ldData = await ldRes.json();
-
-      if (ldRes.ok) {
-        console.log("📦 Refreshed lesson data:", ldData);
-
-        // Update completion status from fresh data
-        const newQuizDone = ldData.progress?.quizCompleted || false;
-        const newLabDone = ldData.progress?.labCompleted || false;
-
-        // Update quiz pass status
-        let newQuizPassed = false;
-        if (
-          ldData.quiz &&
-          ldData.quizAttempts &&
-          ldData.quizAttempts.length > 0
-        ) {
-          const sortedAttempts = [...ldData.quizAttempts].sort(
-            (a, b) => new Date(b.submittedAt) - new Date(a.submittedAt),
-          );
-          const mostRecent = sortedAttempts[0];
-          newQuizPassed = mostRecent.passed === true;
-        }
-
-        // Update lab pass status
-        let newLabPassed = false;
-        if (ldData.lab && ldData.labSubmission) {
-          const totalMarks = ldData.lab.totalMarks || 100;
-          let scorePercent = 0;
-
-          if (
-            ldData.labSubmission.status === "graded" &&
-            ldData.labSubmission.marks !== null
-          ) {
-            scorePercent = (ldData.labSubmission.marks / totalMarks) * 100;
-            newLabPassed = scorePercent >= 70;
-          } else if (
-            ldData.labSubmission.aiSuggestedMarks !== null &&
-            ldData.labSubmission.aiSuggestedMarks !== undefined
-          ) {
-            scorePercent =
-              (ldData.labSubmission.aiSuggestedMarks / totalMarks) * 100;
-            newLabPassed = scorePercent >= 70;
-          }
-        }
-
-        // Batch all state updates together
-        setLessonData(ldData);
-        setQuizDone(newQuizDone);
-        setLabDone(newLabDone);
-        setQuizPassed(newQuizPassed);
-        setLabPassed(newLabPassed);
-
-        console.log(
-          `✅ Refresh complete - Quiz passed: ${newQuizPassed}, Lab passed: ${newLabPassed}`,
-        );
-      }
-    } catch (err) {
-      console.error("Refresh failed:", err);
-    }
-  }, [courseId, activeLesson?._id]);
 
   const resetLesson = async () => {
-    setLoadingLesson(true);
-    setError("");
-    setSuccess("");
+  setLoadingLesson(true);
+  setError("");
+  setSuccess("");
 
-    try {
-      const res = await apiFetch(
-        `/api/courses/${courseId}/lessons/${activeLesson._id}/reset`,
-        {
-          method: "POST",
-        },
-      );
+  try {
+    const res = await apiFetch(
+      `/api/courses/${courseId}/lessons/${activeLesson._id}/reset`,
+      { method: "POST" }
+    );
 
-      if (res.ok) {
-        setQuizDone(false);
-        setLabDone(false);
-        setQuizPassed(false);
-        setLabPassed(false);
-
-        // Clear any cached lab passed status
-        localStorage.removeItem(`lab_passed_${activeLesson._id}`);
-        localStorage.removeItem(`quiz_passed_${activeLesson._id}`);
-
-        await openLesson(activeLesson._id);
-        await refreshAfterStep();
-        setSuccess(
-          "Lesson reset successfully! You can now re-attempt the quiz and lab.",
-        );
-        setTimeout(() => setSuccess(""), 3000);
-      } else {
-        const data = await res.json();
-        setError(data.message || "Failed to reset lesson");
-      }
-    } catch {
-      setError("Cannot connect to server");
-    } finally {
-      setLoadingLesson(false);
-      setShowResetConfirm(false);
+    if (res.ok) {
+      setLessonData(null); // ✅ clears all derived values instantly
+      await openLesson(activeLesson._id); // ✅ fetches fresh data, useMemo updates everything
+      setSuccess("Lesson reset successfully! You can now re-attempt the quiz and lab.");
+      setTimeout(() => setSuccess(""), 3000);
+    } else {
+      const data = await res.json();
+      setError(data.message || "Failed to reset lesson");
     }
-  };
+  } catch {
+    setError("Cannot connect to server");
+  } finally {
+    setLoadingLesson(false);
+    setShowResetConfirm(false);
+  }
+};
 
   const handleLessonClick = (lesson) => {
-    setSidebarOpen(false);
-    if (lesson._id === activeLesson?._id) {
-      // Same lesson - just refresh
-      setLoadTrigger((t) => t + 1);
-    } else {
-      // Different lesson - clear all states first
-      setQuizDone(false);
-      setLabDone(false);
-      setQuizPassed(false);
-      setLabPassed(false);
-      setLessonData(null);
-      setActiveLesson(lesson);
-    }
-  };
+  setSidebarOpen(false);
+  if (lesson._id === activeLesson?._id) {
+    setLoadTrigger((t) => t + 1);
+  } else {
+    setLessonData(null); // derived values auto-reset
+    setActiveLesson(lesson);
+  }
+};
 
   const handleNextLesson = async () => {
     if (!lessonData?.lesson || navigatingNext) return;
@@ -2932,45 +2803,24 @@ const LessonViewer = () => {
 
               {lessonData.lesson.requiresQuiz && lessonData.quiz ? (
                 <QuizSection
-                  // Remove the dynamic key - use stable key instead
-                  key={`quiz-${lessonData.lesson._id}`}
-                  quiz={lessonData.quiz}
-                  courseId={courseId}
-                  lessonId={lessonData.lesson._id}
-                  onCompleted={() => {
-                    console.log("📝 Quiz completed, refreshing...");
-                    setQuizDone(true);
-                    refreshAfterStep();
-                  }}
-                  onPassed={(passed) => {
-                    console.log("📝 Quiz passed:", passed);
-                    setQuizPassed(passed);
-                    setQuizDone(true);
-                    // Don't force multiple refreshes - just do one
-                    refreshAfterStep();
-                  }}
-                />
+  key={`quiz-${lessonData.lesson._id}`}
+  quiz={lessonData.quiz}
+  courseId={courseId}
+  lessonId={lessonData.lesson._id}
+  onCompleted={() => refreshAfterStep()}
+  onPassed={() => refreshAfterStep()}
+/>
               ) : null}
 
               {lessonData.lesson.requiresLab && lessonData.lab ? (
                 <LabSection
-                  // Remove the dynamic key - use stable key instead
-                  key={`lab-${lessonData.lesson._id}`}
-                  lab={lessonData.lab}
-                  lessonId={lessonData.lesson._id}
-                  courseId={courseId}
-                  onCompleted={() => {
-                    console.log("🔬 Lab completed, refreshing...");
-                    setLabDone(true);
-                    refreshAfterStep();
-                  }}
-                  onPassed={(passed) => {
-                    console.log("🔬 Lab passed:", passed);
-                    setLabPassed(passed);
-                    setLabDone(true);
-                    refreshAfterStep();
-                  }}
-                />
+  key={`lab-${lessonData.lesson._id}`}
+  lab={lessonData.lab}
+  lessonId={lessonData.lesson._id}
+  courseId={courseId}
+  onCompleted={() => refreshAfterStep()}
+  onPassed={() => refreshAfterStep()}
+/>
               ) : null}
               {/* Next Lesson / Completion Section - Enhanced with better messaging */}
               {(() => {
@@ -2992,224 +2842,136 @@ const LessonViewer = () => {
                 const labFailed = labRequired && (!labDone || !labPassed);
                 const notViewed = !viewed;
 
-                if (allRequirementsMet && hasNextLesson) {
-                  // Show next lesson button
-                  return (
-                    <div
-                      className="mt-4 p-5 rounded-2xl"
-                      style={{
-                        background:
-                          "linear-gradient(135deg, #22c55e22, #16a34a22)",
-                        border: "1px solid #22c55e44",
-                      }}
-                    >
-                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                        <div>
-                          <p className="font-bold text-emerald-400 text-sm flex items-center gap-2">
-                            <span className="material-symbols-outlined text-emerald-400 text-lg">
-                              check_circle
-                            </span>
-                            Lesson complete! Ready for next lesson.
-                          </p>
-                        </div>
-                        <button
-                          onClick={handleNextLesson}
-                          disabled={navigatingNext}
-                          className="flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold text-white transition-all hover:scale-105 disabled:opacity-60"
-                          style={{
-                            background:
-                              "linear-gradient(135deg, #22c55e, #16a34a)",
-                          }}
-                        >
-                          {navigatingNext ? (
-                            <LoadingSpinner size="sm" />
-                          ) : (
-                            <span className="material-symbols-outlined text-base">
-                              arrow_forward
-                            </span>
-                          )}
-                          Next Lesson
-                        </button>
-                      </div>
-                    </div>
-                  );
-                } else if (!allRequirementsMet && hasNextLesson) {
-                  // Show requirements not met message with specific instructions
-                  return (
-                    <div
-                      className="mt-4 p-5 rounded-2xl"
-                      style={{
-                        background: "#ef444422",
-                        border: "1px solid #ef444444",
-                      }}
-                    >
-                      <div className="flex flex-col gap-3">
-                        <div>
-                          <p className="font-bold text-red-400 text-sm flex items-center gap-2 mb-3">
-                            <span className="material-symbols-outlined text-red-400 text-lg">
-                              priority_high
-                            </span>
-                            Complete requirements to unlock next lesson:
-                          </p>
+              if (allRequirementsMet && hasNextLesson) {
+  // Show next lesson button
+  return (
+    <div className="mt-4 p-5 rounded-2xl"
+      style={{ background: "linear-gradient(135deg, #22c55e22, #16a34a22)", border: "1px solid #22c55e44" }}
+    >
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div>
+          <p className="font-bold text-emerald-400 text-sm flex items-center gap-2">
+            <span className="material-symbols-outlined text-emerald-400 text-lg">check_circle</span>
+            Lesson complete! Ready for next lesson.
+          </p>
+        </div>
+        <button
+          onClick={handleNextLesson}
+          disabled={navigatingNext}
+          className="flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold text-white transition-all hover:scale-105 disabled:opacity-60"
+          style={{ background: "linear-gradient(135deg, #22c55e, #16a34a)" }}
+        >
+          {navigatingNext ? <LoadingSpinner size="sm" /> : <span className="material-symbols-outlined text-base">arrow_forward</span>}
+          Next Lesson
+        </button>
+      </div>
+    </div>
+  );
 
-                          <div className="space-y-2">
-                            {notViewed && (
-                              <div
-                                className="flex items-center gap-2 text-xs text-red-300/80 p-2 rounded-lg"
-                                style={{ background: "#ef444410" }}
-                              >
-                                <span className="material-symbols-outlined text-sm">
-                                  menu_book
-                                </span>
-                                <span>Read the lesson content first</span>
-                              </div>
-                            )}
-
-                            {quizRequired && (
-                              <div
-                                className={`flex items-center gap-2 text-xs p-2 rounded-lg ${quizFailed ? "text-red-300/80 bg-red-500/10" : "text-green-400 bg-green-500/10"}`}
-                              >
-                                <span className="material-symbols-outlined text-sm">
-                                  quiz
-                                </span>
-                                <span>
-                                  {!quizDone
-                                    ? "Submit the quiz"
-                                    : !quizPassed
-                                      ? `Pass the quiz (need ${lessonData.quiz?.passingScore || 70}%)`
-                                      : "✓ Quiz completed and passed"}
-                                </span>
-                                {!quizFailed && quizDone && quizPassed && (
-                                  <span className="material-symbols-outlined text-sm text-green-400 ml-auto">
-                                    check_circle
-                                  </span>
-                                )}
-                                {quizFailed && (
-                                  <span className="material-symbols-outlined text-sm text-red-400 ml-auto">
-                                    cancel
-                                  </span>
-                                )}
-                              </div>
-                            )}
-
-                            {labRequired && (
-                              <div
-                                className={`flex items-center gap-2 text-xs p-2 rounded-lg ${labFailed ? "text-red-300/80 bg-red-500/10" : "text-green-400 bg-green-500/10"}`}
-                              >
-                                <span className="material-symbols-outlined text-sm">
-                                  science
-                                </span>
-                                <span>
-                                  {!labDone
-                                    ? "Submit the lab"
-                                    : !labPassed
-                                      ? "Pass the lab (need 70%)"
-                                      : "✓ Lab completed and passed"}
-                                </span>
-                                {!labFailed && labDone && labPassed && (
-                                  <span className="material-symbols-outlined text-sm text-green-400 ml-auto">
-                                    check_circle
-                                  </span>
-                                )}
-                                {labFailed && (
-                                  <span className="material-symbols-outlined text-sm text-red-400 ml-auto">
-                                    cancel
-                                  </span>
-                                )}
-                              </div>
-                            )}
-                          </div>
-
-                          {/* Specific failure message */}
-                          {quizRequired &&
-                            labRequired &&
-                            quizFailed &&
-                            labFailed && (
-                              <p
-                                className="text-xs text-red-300/80 mt-3 p-2 rounded-lg"
-                                style={{ background: "#ef444410" }}
-                              >
-                                ⚠️ You need to pass BOTH the quiz and the lab to
-                                proceed to the next lesson.
-                              </p>
-                            )}
-                          {quizRequired && !labRequired && quizFailed && (
-                            <p
-                              className="text-xs text-red-300/80 mt-3 p-2 rounded-lg"
-                              style={{ background: "#ef444410" }}
-                            >
-                              ⚠️ You need to pass the quiz to proceed to the
-                              next lesson.
-                            </p>
-                          )}
-                          {!quizRequired && labRequired && labFailed && (
-                            <p
-                              className="text-xs text-red-300/80 mt-3 p-2 rounded-lg"
-                              style={{ background: "#ef444410" }}
-                            >
-                              ⚠️ You need to pass the lab to proceed to the next
-                              lesson.
-                            </p>
-                          )}
-                          {quizRequired &&
-                            labRequired &&
-                            quizFailed &&
-                            !labFailed && (
-                              <p
-                                className="text-xs text-amber-300/80 mt-3 p-2 rounded-lg"
-                                style={{ background: "#f59e0b10" }}
-                              >
-                                ℹ️ You passed the lab, but you still need to
-                                pass the quiz to proceed.
-                              </p>
-                            )}
-                          {quizRequired &&
-                            labRequired &&
-                            !quizFailed &&
-                            labFailed && (
-                              <p
-                                className="text-xs text-amber-300/80 mt-3 p-2 rounded-lg"
-                                style={{ background: "#f59e0b10" }}
-                              >
-                                ℹ️ You passed the quiz, but you still need to
-                                pass the lab to proceed.
-                              </p>
-                            )}
-                        </div>
-                      </div>
-                    </div>
-                  );
-                } else if (allRequirementsMet && !hasNextLesson) {
-                  // Course complete
-                  return (
-                    <div
-                      className="mt-4 p-5 rounded-2xl text-center"
-                      style={{
-                        background:
-                          "linear-gradient(135deg, #22c55e22, #16a34a22)",
-                        border: "1px solid #22c55e44",
-                      }}
-                    >
-                      <p className="font-bold text-emerald-400 text-base">
-                        🎉 Course Complete!
-                      </p>
-                      <p className="text-sm text-emerald-400/80 mt-1">
-                        You have finished all lessons in this course. Well done!
-                      </p>
-                      <button
-                        onClick={() => navigate("/student/dashboard")}
-                        className="mt-4 px-5 py-2 rounded-xl text-sm font-bold text-white transition-all hover:scale-105"
-                        style={{
-                          background:
-                            "linear-gradient(135deg, #22c55e, #16a34a)",
-                        }}
-                      >
-                        Back to Dashboard
-                      </button>
-                    </div>
-                  );
+} else if (!allRequirementsMet && hasNextLesson) {
+  // ✅ requirements not met, HAS next lesson (lesson 1 case)
+  return (
+    <div className="mt-4 p-5 rounded-2xl"
+      style={{ background: "#ef444422", border: "1px solid #ef444444" }}
+    >
+      <div className="flex flex-col gap-3">
+        <div>
+          <p className="font-bold text-red-400 text-sm flex items-center gap-2 mb-3">
+            <span className="material-symbols-outlined text-red-400 text-lg">priority_high</span>
+            Complete requirements to unlock next lesson:
+          </p>
+          <div className="space-y-2">
+            {notViewed && (
+              <div className="flex items-center gap-2 text-xs text-red-300/80 p-2 rounded-lg" style={{ background: "#ef444410" }}>
+                <span className="material-symbols-outlined text-sm">menu_book</span>
+                <span>Read the lesson content first</span>
+              </div>
+            )}
+            {quizRequired && (
+              <div className={`flex items-center gap-2 text-xs p-2 rounded-lg ${quizFailed ? "text-red-300/80 bg-red-500/10" : "text-green-400 bg-green-500/10"}`}>
+                <span className="material-symbols-outlined text-sm">quiz</span>
+                <span>{!quizDone ? "Submit the quiz" : !quizPassed ? `Pass the quiz (need ${lessonData.quiz?.passingScore || 70}%)` : "✓ Quiz completed and passed"}</span>
+                {quizFailed
+                  ? <span className="material-symbols-outlined text-sm text-red-400 ml-auto">cancel</span>
+                  : <span className="material-symbols-outlined text-sm text-green-400 ml-auto">check_circle</span>
                 }
-                return null;
+              </div>
+            )}
+            {labRequired && (
+              <div className={`flex items-center gap-2 text-xs p-2 rounded-lg ${labFailed ? "text-red-300/80 bg-red-500/10" : "text-green-400 bg-green-500/10"}`}>
+                <span className="material-symbols-outlined text-sm">science</span>
+                <span>{!labDone ? "Submit the lab" : !labPassed ? "Pass the lab (need 70%)" : "✓ Lab completed and passed"}</span>
+                {labFailed
+                  ? <span className="material-symbols-outlined text-sm text-red-400 ml-auto">cancel</span>
+                  : <span className="material-symbols-outlined text-sm text-green-400 ml-auto">check_circle</span>
+                }
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
+} else if (!hasNextLesson) {
+  // ✅ last lesson
+  if (!allRequirementsMet) {
+    return (
+      <div className="mt-4 p-5 rounded-2xl"
+        style={{ background: "#ef444422", border: "1px solid #ef444444" }}
+      >
+        <div className="flex flex-col gap-3">
+          <div>
+            <p className="font-bold text-red-400 text-sm flex items-center gap-2 mb-3">
+              <span className="material-symbols-outlined text-red-400 text-lg">priority_high</span>
+              Complete requirements to finish this lesson:
+            </p>
+            <div className="space-y-2">
+              {quizRequired && (
+                <div className={`flex items-center gap-2 text-xs p-2 rounded-lg ${quizFailed ? "text-red-300/80 bg-red-500/10" : "text-green-400 bg-green-500/10"}`}>
+                  <span className="material-symbols-outlined text-sm">quiz</span>
+                  <span>{!quizDone ? "Submit the quiz" : !quizPassed ? `Pass the quiz (need ${lessonData.quiz?.passingScore || 70}%)` : "✓ Quiz completed and passed"}</span>
+                  {quizFailed
+                    ? <span className="material-symbols-outlined text-sm text-red-400 ml-auto">cancel</span>
+                    : <span className="material-symbols-outlined text-sm text-green-400 ml-auto">check_circle</span>
+                  }
+                </div>
+              )}
+              {labRequired && (
+                <div className={`flex items-center gap-2 text-xs p-2 rounded-lg ${labFailed ? "text-red-300/80 bg-red-500/10" : "text-green-400 bg-green-500/10"}`}>
+                  <span className="material-symbols-outlined text-sm">science</span>
+                  <span>{!labDone ? "Submit the lab" : !labPassed ? "Pass the lab (need 70%)" : "✓ Lab completed and passed"}</span>
+                  {labFailed
+                    ? <span className="material-symbols-outlined text-sm text-red-400 ml-auto">cancel</span>
+                    : <span className="material-symbols-outlined text-sm text-green-400 ml-auto">check_circle</span>
+                  }
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+  // All requirements met + last lesson = course complete
+  return (
+    <div className="mt-4 p-5 rounded-2xl text-center"
+      style={{ background: "linear-gradient(135deg, #22c55e22, #16a34a22)", border: "1px solid #22c55e44" }}
+    >
+      <p className="font-bold text-emerald-400 text-base">🎉 Course Complete!</p>
+      <p className="text-sm text-emerald-400/80 mt-1">You have finished all lessons in this course. Well done!</p>
+      <button
+        onClick={() => navigate("/student/dashboard")}
+        className="mt-4 px-5 py-2 rounded-xl text-sm font-bold text-white transition-all hover:scale-105"
+        style={{ background: "linear-gradient(135deg, #22c55e, #16a34a)" }}
+      >
+        Back to Dashboard
+      </button>
+    </div>
+  );
+}
+
+return null;
               })()}
             </div>
           ) : (

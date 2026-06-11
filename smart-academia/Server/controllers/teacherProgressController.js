@@ -8,6 +8,7 @@ const LabSubmission  = require("../models/LabSubmission");
 const Quiz           = require("../models/Quiz");
 const Lab            = require("../models/Lab");
 const User           = require("../models/User");
+const { computeWeightedScore } = require("../utils/scoring");
 
 const getCourseStudentProgress = async (req, res) => {
   try {
@@ -16,8 +17,7 @@ const getCourseStudentProgress = async (req, res) => {
     // Verify the course belongs to this teacher
     const course = await Course.findById(courseId);
     if (!course) return res.status(404).json({ message: "Course not found" });
-    
-    // FIX: Safely check if teacher exists and matches
+
     if (!course.teacher || course.teacher.toString() !== req.user._id.toString()) {
       return res.status(403).json({ message: "Not your course" });
     }
@@ -129,6 +129,16 @@ const getCourseStudentProgress = async (req, res) => {
         let labDetail = null;
         if (lab) {
           const sub = subByStudentLab[`${sid}_${lab._id}`];
+
+          // Use teacher marks if graded, otherwise fall back to AI-suggested
+          // marks (matches analyticsController / aiProgressController logic).
+          let finalMarks = null;
+          if (sub?.marks != null) {
+            finalMarks = sub.marks;
+          } else if (sub?.aiSuggestedMarks != null) {
+            finalMarks = sub.aiSuggestedMarks;
+          }
+
           labDetail = {
             _id:         lab._id,
             title:       lab.title,
@@ -136,8 +146,10 @@ const getCourseStudentProgress = async (req, res) => {
             submitted:   !!sub,
             status:      sub?.status ?? "not_submitted",
             marks:       sub?.marks ?? null,
-            scorePercent: sub?.marks != null
-              ? Math.round((sub.marks / (lab.totalMarks || 100)) * 100)
+            aiSuggestedMarks: sub?.aiSuggestedMarks ?? null,
+            finalScore:  finalMarks,
+            scorePercent: finalMarks != null
+              ? Math.round((finalMarks / (lab.totalMarks || 100)) * 100)
               : null,
           };
         }
@@ -180,19 +192,13 @@ const getCourseStudentProgress = async (req, res) => {
         ? Math.round(labScores.reduce((a, b) => a + b, 0) / labScores.length)
         : null;
 
-      // Weighted score: 50% progress + 30% quiz + 20% lab
+      // Weighted score via shared helper (50% progress / 30% quiz / 20% lab,
+      // with graceful fallbacks) - identical formula used everywhere else.
       const progressPct = lessons.length > 0
         ? Math.round((completedLessons / lessons.length) * 100)
         : 0;
 
-      let weightedScore = progressPct;
-      if (avgQuizScore != null && avgLabScore != null) {
-        weightedScore = Math.round(progressPct * 0.5 + avgQuizScore * 0.3 + avgLabScore * 0.2);
-      } else if (avgQuizScore != null) {
-        weightedScore = Math.round(progressPct * 0.6 + avgQuizScore * 0.4);
-      } else if (avgLabScore != null) {
-        weightedScore = Math.round(progressPct * 0.7 + avgLabScore * 0.3);
-      }
+      const weightedScore = computeWeightedScore(progressPct, avgQuizScore, avgLabScore);
 
       // Calculate credits earned
       const creditsEarned = (weightedScore / 100) * courseCredits;
@@ -303,7 +309,6 @@ const getCourseStudentProgress = async (req, res) => {
     });
   } catch (err) {
     console.error("getCourseStudentProgress error:", err.message);
-    console.error("Full error:", err);
     res.status(500).json({ message: "Failed to load progress data", error: err.message });
   }
 };
@@ -341,14 +346,12 @@ const generateCourseReport = async (req, res) => {
   try {
     const { courseId } = req.params;
     const { PDFDocument, rgb, StandardFonts } = require("pdf-lib");
-    
+
     // Verify the course belongs to this teacher
     const course = await Course.findById(courseId);
     if (!course) return res.status(404).json({ message: "Course not found" });
     if (!course.teacher || course.teacher.toString() !== req.user._id.toString()) {
       return res.status(403).json({ message: "Not your course" });
-
-      const teacher = await User.findById(course.teacher).select("fullName");
     }
 
     // Get all students with their progress
@@ -362,11 +365,17 @@ const generateCourseReport = async (req, res) => {
 
     const studentIds = enrollments.map(e => e.student._id);
 
-    // Get all progress data
+    // Get all progress data.
+    // FIX: populate "lab" on LabSubmission so lab.totalMarks is available
+    // below - previously this was an unpopulated ObjectId, so
+    // `ls.lab?.totalMarks` was always undefined and every lab score was
+    // computed against a hardcoded 100.
     const [allLessonProgress, allQuizAttempts, allLabSubmissions, lessons, quizzes, labs] = await Promise.all([
       LessonProgress.find({ course: courseId, student: { $in: studentIds } }).lean(),
       QuizAttempt.find({ course: courseId, student: { $in: studentIds } }).lean(),
-      LabSubmission.find({ course: courseId, student: { $in: studentIds } }).lean(),
+      LabSubmission.find({ course: courseId, student: { $in: studentIds } })
+        .populate("lab", "totalMarks")
+        .lean(),
       Lesson.find({ course: courseId, isPublished: true }).lean(),
       Quiz.find({ course: courseId, isPublished: true }).lean(),
       Lab.find({ course: courseId, isPublished: true }).lean(),
@@ -387,7 +396,7 @@ const generateCourseReport = async (req, res) => {
 
       // Check if the student has actually completed the course
       const isCourseCompleted = enrollment.isCompleted === true;
-      
+
       // For quiz scores (only if quizzes exist in the course)
       const studentQuizzes = allQuizAttempts.filter(qa => qa.student.toString() === sid);
       const bestScoresByQuiz = new Map();
@@ -399,33 +408,38 @@ const generateCourseReport = async (req, res) => {
         }
       });
       const bestQuizScores = Array.from(bestScoresByQuiz.values());
-      const avgQuizScore = bestQuizScores.length 
-        ? Math.round(bestQuizScores.reduce((a, b) => a + b, 0) / bestQuizScores.length) 
+      const avgQuizScore = bestQuizScores.length
+        ? Math.round(bestQuizScores.reduce((a, b) => a + b, 0) / bestQuizScores.length)
         : null;
       const uniquePassedQuizzes = new Set(studentQuizzes.filter(qa => qa.passed).map(qa => qa.quiz.toString())).size;
 
-      // For lab scores (only if labs exist in the course)
+      // For lab scores (only if labs exist in the course).
+      // FIX: fall back to aiSuggestedMarks when not yet teacher-graded, and
+      // use the now-populated lab.totalMarks instead of a hardcoded 100.
       const studentLabs = allLabSubmissions.filter(ls => ls.student.toString() === sid);
-      const gradedLabs = studentLabs.filter(ls => ls.status === "graded" && ls.marks != null);
-      const labScores = gradedLabs.map(ls => Math.round((ls.marks / (ls.lab?.totalMarks || 100)) * 100));
-      const avgLabScore = labScores.length 
-        ? Math.round(labScores.reduce((a, b) => a + b, 0) / labScores.length) 
+      const scoredLabs = studentLabs.filter(ls =>
+        (ls.status === "graded" && ls.marks != null) || ls.aiSuggestedMarks != null
+      );
+      const labScores = scoredLabs.map(ls => {
+        const score = ls.marks != null ? ls.marks : ls.aiSuggestedMarks;
+        const total = ls.lab?.totalMarks || 100;
+        return Math.round((score / total) * 100);
+      });
+      const avgLabScore = labScores.length
+        ? Math.round(labScores.reduce((a, b) => a + b, 0) / labScores.length)
         : null;
 
-      // Weighted score calculation (only if quizzes/labs exist)
-      let weightedScore = progressPct;
-      if (totalQuizzes > 0 && avgQuizScore !== null) {
-        weightedScore = Math.round((progressPct * 0.5) + (avgQuizScore * 0.3) + (avgLabScore !== null ? avgLabScore * 0.2 : 0));
-      }
-      
-      // ✅ FIX: If course is completed, give FULL credits (not weighted)
+      // Weighted score calculation - shared formula (50% progress / 30% quiz / 20% lab)
+      const weightedScore = computeWeightedScore(progressPct, avgQuizScore, avgLabScore);
+
+      // If course is completed, give FULL credits (not weighted)
       let creditsEarned;
       if (isCourseCompleted) {
         creditsEarned = course.credits || 3;  // Full credits for completed course
       } else {
         creditsEarned = (weightedScore / 100) * (course.credits || 3);
       }
-      
+
       // Determine student status
       let status = "Not Started";
       if (isCourseCompleted) {
@@ -479,31 +493,31 @@ const generateCourseReport = async (req, res) => {
 
     // Background
     page.drawRectangle({ x: 0, y: 0, width: pageWidth, height: pageHeight, color: darkBg });
-    
+
     // Top bar
     page.drawRectangle({ x: 0, y: pageHeight - 12, width: pageWidth, height: 12, color: primary });
     page.drawRectangle({ x: 0, y: pageHeight - 8, width: pageWidth, height: 4, color: primary, opacity: 0.7 });
 
-    // Header
-    // Center SMART ACADEMIA
-const titleWidth = boldFont.widthOfTextAtSize("SMART ACADEMIA", 35);
-const titleX = (pageWidth - titleWidth) / 2;
-page.drawText("SMART ACADEMIA", { x: titleX, y: pageHeight - 50, size: 35, font: boldFont, color: primary });
+    // Header - centered title
+    const titleWidth = boldFont.widthOfTextAtSize("SMART ACADEMIA", 35);
+    const titleX = (pageWidth - titleWidth) / 2;
+    page.drawText("SMART ACADEMIA", { x: titleX, y: pageHeight - 50, size: 35, font: boldFont, color: primary });
 
-// Center Course Performance Report
-const subtitleWidth = boldFont.widthOfTextAtSize("Course Performance Report", 18);
-const subtitleX = (pageWidth - subtitleWidth) / 2;
-page.drawText("Course Performance Report", { x: subtitleX, y: pageHeight - 70, size: 18, font: boldFont, color: lightText });
-    // Header
+    // Centered subtitle
+    const subtitleWidth = boldFont.widthOfTextAtSize("Course Performance Report", 18);
+    const subtitleX = (pageWidth - subtitleWidth) / 2;
+    page.drawText("Course Performance Report", { x: subtitleX, y: pageHeight - 70, size: 18, font: boldFont, color: lightText });
+
+    // Header info
     page.drawText(`Course: ${course.title} (${course.code})`, { x: 30, y: pageHeight - 90, size: 12, font: normalFont, color: lightText });
-    
-    // Teacher info - centered
-const teacher = await User.findById(course.teacher).select("fullName");
-const teacherText = `Teacher Name: ${teacher?.fullName || "N/A"}`;
-const teacherWidth = normalFont.widthOfTextAtSize(teacherText, 12);
-const teacherX = (pageWidth - teacherWidth) -690;
-page.drawText(teacherText, { x: teacherX, y: pageHeight - 107, size: 12, font: normalFont, color: lightText });
-page.drawText(`Credits: ${course.credits} Credits`, { x: 30, y: pageHeight - 125, size: 12, font: normalFont, color: lightText });
+
+    // Teacher info
+    const teacher = await User.findById(course.teacher).select("fullName");
+    const teacherText = `Teacher Name: ${teacher?.fullName || "N/A"}`;
+    const teacherWidth = normalFont.widthOfTextAtSize(teacherText, 12);
+    const teacherX = (pageWidth - teacherWidth) - 690;
+    page.drawText(teacherText, { x: teacherX, y: pageHeight - 107, size: 12, font: normalFont, color: lightText });
+    page.drawText(`Credits: ${course.credits} Credits`, { x: 30, y: pageHeight - 125, size: 12, font: normalFont, color: lightText });
 
     page.drawText(`Generated on: ${new Date().toLocaleString()}`, { x: 30, y: pageHeight - 143, size: 12, font: italicFont, color: lightText });
 
@@ -511,7 +525,7 @@ page.drawText(`Credits: ${course.credits} Credits`, { x: 30, y: pageHeight - 125
     const cardY = pageHeight - 220;
     const cardHeight = 55;
     const cardWidth = 180;
-    
+
     const cards = [
       { label: "Total Students", value: studentsData.length, color: primary, x: 30 },
       { label: "Avg Progress", value: `${classAvgProgress}%`, color: primary, x: 220 },
@@ -525,53 +539,52 @@ page.drawText(`Credits: ${course.credits} Credits`, { x: 30, y: pageHeight - 125
       page.drawText(String(card.value), { x: card.x + 10, y: cardY + cardHeight - 38, size: 22, font: boldFont, color: card.color });
     }
 
-    // Table Header (removed Score column)
+    // Table Header
     let tableY = cardY - 50;
     const headerHeight = 18;
-    
+
     page.drawRectangle({ x: 30, y: tableY - headerHeight, width: 782, height: headerHeight, color: primary, opacity: 0.8 });
-    
-    // ✅ Removed "Score" column - now 8 columns instead of 9
+
     const headers = ["#", "Student Name", "ID", "Progress", "Quiz", "Lab", "Credits", "Status"];
     const colWidths = [30, 150, 90, 70, 80, 80, 80, 100];
     let headerX = 35;
-    
+
     for (let i = 0; i < headers.length; i++) {
-      page.drawText(headers[i], { x: headerX, y: tableY - 13, size:12, font: boldFont, color: lightText });
+      page.drawText(headers[i], { x: headerX, y: tableY - 13, size: 12, font: boldFont, color: lightText });
       headerX += colWidths[i];
     }
 
     // Table Rows
     let rowY = tableY - 30;
     const rowHeight = 20;
-    
+
     for (let i = 0; i < Math.min(studentsData.length, 25); i++) {
       const s = studentsData[i];
       if (rowY < 40) break;
-      
+
       if (i % 2 === 0) {
         page.drawRectangle({ x: 30, y: rowY - rowHeight + 4, width: 782, height: rowHeight, color: rgb(0.06, 0.09, 0.16), opacity: 0.5 });
       }
-      
+
       let cellX = 35;
       page.drawText(`${i + 1}`, { x: cellX, y: rowY - 5, size: 12, font: normalFont, color: dimText }); cellX += colWidths[0];
-      
+
       let name = s.name.length > 20 ? s.name.substring(0, 17) + "..." : s.name;
       page.drawText(name, { x: cellX, y: rowY - 5, size: 12, font: normalFont, color: lightText }); cellX += colWidths[1];
-      
+
       page.drawText(s.studentId.toString(), { x: cellX, y: rowY - 5, size: 12, font: monoFont, color: dimText }); cellX += colWidths[2];
-      
+
       page.drawText(`${s.progress}%`, { x: cellX, y: rowY - 5, size: 12, font: normalFont, color: green }); cellX += colWidths[3];
-      
-      page.drawText(`${s.avgQuizScore}`, { x: cellX, y: rowY - 5, size: 12, font: normalFont, color: dimText }); cellX += colWidths[4];
-      
-      page.drawText(`${s.avgLabScore}`, { x: cellX, y: rowY - 5, size: 12, font: normalFont, color: dimText }); cellX += colWidths[5];
-      
+
+      page.drawText(s.avgQuizScore, { x: cellX, y: rowY - 5, size: 12, font: normalFont, color: dimText }); cellX += colWidths[4];
+
+      page.drawText(s.avgLabScore, { x: cellX, y: rowY - 5, size: 12, font: normalFont, color: dimText }); cellX += colWidths[5];
+
       page.drawText(`${s.creditsEarned}`, { x: cellX, y: rowY - 5, size: 12, font: normalFont, color: lightText }); cellX += colWidths[6];
-      
+
       const statusColor = s.status === "Completed" ? green : s.status === "In Progress" ? primary : mutedText;
       page.drawText(s.status, { x: cellX, y: rowY - 5, size: 12, font: normalFont, color: statusColor });
-      
+
       rowY -= rowHeight;
     }
 
@@ -581,14 +594,13 @@ page.drawText(`Credits: ${course.credits} Credits`, { x: 30, y: pageHeight - 125
 
     // Save PDF
     const pdfBytes = await pdfDoc.save();
-    
+
     res.setHeader("Content-Type", "application/pdf");
     res.setHeader("Content-Disposition", `attachment; filename="Course_Report_${course.code}_${new Date().toISOString().slice(0, 10)}.pdf"`);
     res.send(Buffer.from(pdfBytes));
-    
+
   } catch (err) {
     console.error("generateCourseReport error:", err.message);
-    console.error("Full error:", err);
     res.status(500).json({ message: "Failed to generate report: " + err.message });
   }
 };

@@ -189,19 +189,54 @@ const TeacherAIAnalytics = () => {
       </div>
 
       {/* Course Selector */}
-      <div className="rounded-2xl p-5" style={{ background: C.surface, border: `1px solid ${C.border}` }}>
-        <SectionHeader icon="school" title="Select Course" color={C.accent} />
-        <select
-          value={selectedCourseId}
-          onChange={(e) => setSelectedCourseId(e.target.value)}
-          className="w-full sm:w-96 px-4 py-2.5 text-sm rounded-xl outline-none transition-all"
-          style={{ background: C.surface2, color: C.text, border: `1px solid ${C.border}` }}
+<div className="rounded-2xl p-5" style={{ background: C.surface, border: `1px solid ${C.border}` }}>
+  <p className="text-xs font-semibold uppercase tracking-wider mb-3" style={{ color: C.textFaint }}>Select Course</p>
+  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+    {courses.map(c => {
+      const isSelected = selectedCourseId === c._id;
+      return (
+        <button
+          key={c._id}
+          onClick={() => setSelectedCourseId(c._id)}
+          className="relative text-left p-4 rounded-xl transition-all duration-200 hover:scale-[1.02]"
+          style={{
+            background: isSelected ? "#6366f122" : C.surface2,
+            border: `1px solid ${isSelected ? "#6366f1" : C.border}`,
+          }}
         >
-          {courses.map(c => (
-            <option key={c._id} value={c._id}>{c.title} ({c.enrolledCount || 0} students)</option>
-          ))}
-        </select>
-      </div>
+          {isSelected && (
+            <div className="absolute inset-0 rounded-xl opacity-20"
+              style={{ background: "radial-gradient(ellipse at 50% 0%, #6366f1 0%, transparent 70%)" }} />
+          )}
+          <div className="relative flex items-start gap-3">
+            <div className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0"
+              style={{
+                background: isSelected ? "#6366f133" : C.border,
+                border: `1px solid ${isSelected ? "#6366f144" : C.border2}`,
+              }}>
+              <span className="material-symbols-outlined text-base"
+                style={{ color: isSelected ? "#818cf8" : C.textFaint }}>menu_book</span>
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold truncate"
+                style={{ color: isSelected ? "#e0e7ff" : C.textDim }}>{c.title}</p>
+              <p className="text-[10px] mt-0.5 font-mono"
+                style={{ color: isSelected ? "#818cf8" : C.textFaint }}>{c.code || ""}</p>
+              <p className="text-[10px] mt-1" style={{ color: C.textFaint }}>
+                {c.enrolledCount || 0} students
+              </p>
+            </div>
+            {isSelected && (
+              <span className="material-symbols-outlined text-base flex-shrink-0" style={{ color: "#6366f1" }}>
+                check_circle
+              </span>
+            )}
+          </div>
+        </button>
+      );
+    })}
+  </div>
+</div>
 
       {/* Main Tabs */}
       <div className="flex gap-1 rounded-xl p-1.5" style={{ background: C.surface, border: `1px solid ${C.border}` }}>

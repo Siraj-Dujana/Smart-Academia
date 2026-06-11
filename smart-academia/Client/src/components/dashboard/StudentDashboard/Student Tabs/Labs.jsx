@@ -18,7 +18,7 @@ const MiniBar = ({ value = 0, color = "#6366f1", height = 3 }) => (
   </div>
 );
 
-const GlowCard = ({ icon, label, value, color, sub, percentage }) => (
+const GlowCard = ({ icon, label, value, color, sub }) => (
   <div className="relative rounded-2xl overflow-hidden p-4 flex flex-col gap-2 group" style={{ background: "#0f1629", border: `1px solid ${color}33` }}>
     <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500" style={{ background: `radial-gradient(ellipse at 50% 0%, ${color}15 0%, transparent 70%)` }} />
     <div className="flex items-start justify-between">
@@ -31,7 +31,6 @@ const GlowCard = ({ icon, label, value, color, sub, percentage }) => (
       <p className="text-2xl font-black text-white tracking-tight" style={{ textShadow: `0 0 20px ${color}66` }}>{value}</p>
       <p className="text-[10px] text-gray-400 font-medium mt-0.5">{label}</p>
     </div>
-    <MiniBar value={percentage !== undefined ? percentage : 0} color={color} />
   </div>
 );
 
@@ -72,6 +71,7 @@ const colors = {
     text: "#e2e8f0",
     textDim: "#94a3b8",
   };
+
 const Labs = () => {
   const navigate = useNavigate();
   const token = localStorage.getItem("token");
@@ -198,13 +198,11 @@ const Labs = () => {
     theory: "description",
   };
 
+  // Updated stats - removed completion rate
   const stats = {
     total: labs.length,
-    completed: labs.filter(l => l.status === "submitted" || l.status === "graded").length,
-    graded: labs.filter(l => l.status === "graded").length,
-    rate: labs.length > 0
-      ? Math.round((labs.filter(l => l.status === "submitted" || l.status === "graded").length / labs.length) * 100)
-      : 0,
+    submitted: labs.filter(l => l.status === "submitted" || l.status === "graded").length,
+    notGraded: labs.filter(l => l.status === "submitted").length, // Labs submitted but not graded by teacher
   };
 
   if (isLoading) return <LoadingState />;
@@ -212,7 +210,7 @@ const Labs = () => {
   return (
     <div className="space-y-5 pb-10" style={{ fontFamily: "'Lexend', sans-serif" }}>
 
-<div>
+      <div>
         <div className="flex items-center gap-2 mb-1">
           <span className="w-2 h-2 rounded-full animate-pulse" style={{ background: colors.accent }} />
           <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: "#818cf8" }}>Labs</p>
@@ -236,38 +234,31 @@ const Labs = () => {
         </div>
       )}
 
-     {/* Stats Cards */}
-<div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-  <GlowCard 
-    icon="science" 
-    label="Total Labs" 
-    value={stats.total} 
-    color="#6366f1" 
-    percentage={100} 
-  />
-  <GlowCard 
-    icon="check_circle" 
-    label="Submitted" 
-    value={stats.completed} 
-    color="#f59e0b" 
-    sub={`${stats.completed}/${stats.total}`}
-    percentage={stats.total > 0 ? (stats.completed / stats.total) * 100 : 0}
-  />
-  <GlowCard 
-    icon="verified" 
-    label="Graded" 
-    value={stats.graded} 
-    color="#22c55e"
-    percentage={stats.total > 0 ? (stats.graded / stats.total) * 100 : 0}
-  />
-  <GlowCard 
-    icon="trending_up" 
-    label="Completion Rate" 
-    value={`${stats.rate}%`} 
-    color="#a855f7"
-    percentage={stats.rate}
-  />
-</div>
+      {/* Stats Cards - Updated without percentages */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <GlowCard 
+          icon="science" 
+          label="Total Labs" 
+          value={stats.total} 
+          color="#6366f1" 
+        />
+        
+        <GlowCard 
+          icon="check_circle" 
+          label="Submitted" 
+          value={stats.submitted} 
+          color="#f59e0b" 
+          sub={`${stats.submitted}/${stats.total}`}
+        />
+        
+        <GlowCard 
+          icon="pending" 
+          label="Pending Review" 
+          value={stats.notGraded} 
+          color="#a855f7"
+          sub={`Waiting for teacher`}
+        />
+      </div>
 
       {/* Error Banner */}
       {error && (
@@ -283,132 +274,132 @@ const Labs = () => {
       {/* Lab Cards */}
       {labs.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-  {labs.map((lab, idx) => {
-    const sc = getStatusConfig(lab.status, lab.dueDate);
-    const difficulty = getDifficultyColor(lab.difficulty);
-    const icon = labTypeIcon[lab.labType] || "science";
-    const scorePercent = lab.marks && lab.totalMarks ? (lab.marks / lab.totalMarks) * 100 : 0;
+          {labs.map((lab, idx) => {
+            const sc = getStatusConfig(lab.status, lab.dueDate);
+            const difficulty = getDifficultyColor(lab.difficulty);
+            const icon = labTypeIcon[lab.labType] || "science";
+            const scorePercent = lab.marks && lab.totalMarks ? (lab.marks / lab.totalMarks) * 100 : 0;
 
-    return (
-      <div
-        key={lab._id || idx}
-        onClick={() => navigate(`/lessons/${lab.courseId}?lessonId=${lab.lessonId}`)}
-        className="group rounded-xl overflow-hidden transition-all duration-300 cursor-pointer hover:-translate-y-1 flex flex-col"
-        style={{ background: "#0f1629", border: `1px solid ${sc.border}33` }}
-      >
-        <div className="p-4 flex flex-col h-full">
-          {/* Header */}
-          <div className="flex items-start justify-between gap-2 mb-3">
-            <div className="flex items-center gap-2 flex-1 min-w-0">
-              <div className="flex-shrink-0 w-9 h-9 rounded-lg flex items-center justify-center" style={{ background: "linear-gradient(135deg, #6366f1, #818cf8)" }}>
-                <span className="material-symbols-outlined text-white text-base">{icon}</span>
+            return (
+              <div
+                key={lab._id || idx}
+                onClick={() => navigate(`/lessons/${lab.courseId}?lessonId=${lab.lessonId}`)}
+                className="group rounded-xl overflow-hidden transition-all duration-300 cursor-pointer hover:-translate-y-1 flex flex-col"
+                style={{ background: "#0f1629", border: `1px solid ${sc.border}33` }}
+              >
+                <div className="p-4 flex flex-col h-full">
+                  {/* Header */}
+                  <div className="flex items-start justify-between gap-2 mb-3">
+                    <div className="flex items-center gap-2 flex-1 min-w-0">
+                      <div className="flex-shrink-0 w-9 h-9 rounded-lg flex items-center justify-center" style={{ background: "linear-gradient(135deg, #6366f1, #818cf8)" }}>
+                        <span className="material-symbols-outlined text-white text-base">{icon}</span>
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <h3 className="font-bold text-white text-sm truncate group-hover:text-indigo-400 transition-colors">
+                          {lab.title}
+                        </h3>
+                        <p className="text-[10px] text-gray-500 truncate">
+                          {lab.lessonTitle}
+                        </p>
+                      </div>
+                    </div>
+                    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10px] font-bold border flex-shrink-0`} style={{ background: sc.bg, borderColor: sc.border, color: sc.color }}>
+                      <span className="material-symbols-outlined text-xs">{sc.icon}</span>
+                      {sc.text}
+                    </span>
+                  </div>
+
+                  {/* Description */}
+                  {lab.description && (
+                    <p className="text-xs text-gray-400 line-clamp-2 mb-3 leading-relaxed flex-shrink-0">
+                      {lab.description}
+                    </p>
+                  )}
+
+                  {/* Tags */}
+                  <div className="flex flex-wrap gap-2 mb-3 flex-shrink-0">
+                    {lab.difficulty && (
+                      <span className="text-[10px] font-medium px-2 py-0.5 rounded-full" style={{ background: difficulty.bg, color: difficulty.color }}>
+                        {lab.difficulty}
+                      </span>
+                    )}
+                    <span className="text-[10px] font-medium px-2 py-0.5 rounded-full flex items-center gap-1" style={{ background: "#1e293b", color: "#94a3b8" }}>
+                      <span className="material-symbols-outlined text-xs">grade</span>
+                      {lab.totalMarks || 100} pts
+                    </span>
+                    {lab.language && lab.labType === "programming" && (
+                      <span className="text-[10px] font-medium px-2 py-0.5 rounded-full flex items-center gap-1" style={{ background: "#1e293b", color: "#94a3b8" }}>
+                        <span className="material-symbols-outlined text-xs">code</span>
+                        {lab.language}
+                      </span>
+                    )}
+                    {lab.dueDate && (
+                      <span className="text-[10px] font-medium px-2 py-0.5 rounded-full flex items-center gap-1" style={{ background: "#1e293b", color: "#94a3b8" }}>
+                        <span className="material-symbols-outlined text-xs">schedule</span>
+                        Due: {new Date(lab.dueDate).toLocaleDateString()}
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Score Section for Graded Labs */}
+                  {lab.status === "graded" && lab.marks !== null && (
+                    <div className="mb-3 p-2 rounded-lg flex-shrink-0" style={{ background: "#1e293b", border: "1px solid #22c55e33" }}>
+                      <div className="flex justify-between items-center mb-1">
+                        <span className="text-[10px] font-semibold text-green-400">Score</span>
+                        <span className="text-xs font-bold text-green-400">
+                          {lab.marks}/{lab.totalMarks || 100}
+                          <span className="text-[9px] ml-1 text-gray-400">
+                            ({Math.round(scorePercent)}%)
+                          </span>
+                        </span>
+                      </div>
+                      <MiniBar value={scorePercent} color="#22c55e" height={2} />
+                      {lab.feedback && (
+                        <p className="text-[9px] text-gray-400 mt-1 italic line-clamp-2">
+                          "{lab.feedback}"
+                        </p>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Submitted but not graded yet */}
+                  {lab.status === "submitted" && !lab.marks && (
+                    <div className="mb-3 p-2 rounded-lg flex-shrink-0" style={{ background: "#1e293b", border: "1px solid #f59e0b33" }}>
+                      <div className="flex items-center gap-2">
+                        <span className="material-symbols-outlined text-amber-400 text-sm">pending</span>
+                        <p className="text-[10px] text-amber-400">Waiting for instructor review</p>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Spacer to push button to bottom */}
+                  <div className="flex-1"></div>
+
+                  {/* Action Button - Always at bottom */}
+                  <button 
+                    className="w-full flex items-center justify-center gap-1.5 text-xs font-bold py-2 rounded-lg transition-all hover:opacity-90 mt-3 flex-shrink-0" 
+                    style={{
+                      background: lab.status === "graded" ? "#64748b" : (lab.status === "submitted" ? "#f59e0b" : "linear-gradient(135deg, #6366f1, #818cf8)"),
+                      color: "white",
+                      cursor: lab.status === "graded" ? "not-allowed" : "pointer"
+                    }}
+                    disabled={lab.status === "graded"}
+                    onClick={() => {
+                      if (lab.status !== "graded") {
+                        navigate(`/lessons/${lab.courseId}?lessonId=${lab.lessonId}`);
+                      }
+                    }}
+                  >
+                    <span className="material-symbols-outlined text-sm">
+                      {lab.status === "graded" ? "lock" : (lab.status === "submitted" ? "edit" : "play_arrow")}
+                    </span>
+                    {lab.status === "graded" ? "Graded - Read Only" : (lab.status === "submitted" ? "Update Submission" : "Start Lab")}
+                  </button>
+                </div>
               </div>
-              <div className="min-w-0 flex-1">
-                <h3 className="font-bold text-white text-sm truncate group-hover:text-indigo-400 transition-colors">
-                  {lab.title}
-                </h3>
-                <p className="text-[10px] text-gray-500 truncate">
-                  {lab.lessonTitle}
-                </p>
-              </div>
-            </div>
-            <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10px] font-bold border flex-shrink-0`} style={{ background: sc.bg, borderColor: sc.border, color: sc.color }}>
-              <span className="material-symbols-outlined text-xs">{sc.icon}</span>
-              {sc.text}
-            </span>
-          </div>
-
-          {/* Description */}
-          {lab.description && (
-            <p className="text-xs text-gray-400 line-clamp-2 mb-3 leading-relaxed flex-shrink-0">
-              {lab.description}
-            </p>
-          )}
-
-          {/* Tags */}
-          <div className="flex flex-wrap gap-2 mb-3 flex-shrink-0">
-            {lab.difficulty && (
-              <span className="text-[10px] font-medium px-2 py-0.5 rounded-full" style={{ background: difficulty.bg, color: difficulty.color }}>
-                {lab.difficulty}
-              </span>
-            )}
-            <span className="text-[10px] font-medium px-2 py-0.5 rounded-full flex items-center gap-1" style={{ background: "#1e293b", color: "#94a3b8" }}>
-              <span className="material-symbols-outlined text-xs">grade</span>
-              {lab.totalMarks || 100} pts
-            </span>
-            {lab.language && lab.labType === "programming" && (
-              <span className="text-[10px] font-medium px-2 py-0.5 rounded-full flex items-center gap-1" style={{ background: "#1e293b", color: "#94a3b8" }}>
-                <span className="material-symbols-outlined text-xs">code</span>
-                {lab.language}
-              </span>
-            )}
-            {lab.dueDate && (
-              <span className="text-[10px] font-medium px-2 py-0.5 rounded-full flex items-center gap-1" style={{ background: "#1e293b", color: "#94a3b8" }}>
-                <span className="material-symbols-outlined text-xs">schedule</span>
-                Due: {new Date(lab.dueDate).toLocaleDateString()}
-              </span>
-            )}
-          </div>
-
-          {/* Score Section for Graded Labs */}
-          {lab.status === "graded" && lab.marks !== null && (
-            <div className="mb-3 p-2 rounded-lg flex-shrink-0" style={{ background: "#1e293b", border: "1px solid #22c55e33" }}>
-              <div className="flex justify-between items-center mb-1">
-                <span className="text-[10px] font-semibold text-green-400">Score</span>
-                <span className="text-xs font-bold text-green-400">
-                  {lab.marks}/{lab.totalMarks || 100}
-                  <span className="text-[9px] ml-1 text-gray-400">
-                    ({Math.round(scorePercent)}%)
-                  </span>
-                </span>
-              </div>
-              <MiniBar value={scorePercent} color="#22c55e" height={2} />
-              {lab.feedback && (
-                <p className="text-[9px] text-gray-400 mt-1 italic line-clamp-2">
-                  "{lab.feedback}"
-                </p>
-              )}
-            </div>
-          )}
-
-          {/* Submitted but not graded yet */}
-          {lab.status === "submitted" && !lab.marks && (
-            <div className="mb-3 p-2 rounded-lg flex-shrink-0" style={{ background: "#1e293b", border: "1px solid #f59e0b33" }}>
-              <div className="flex items-center gap-2">
-                <span className="material-symbols-outlined text-amber-400 text-sm">pending</span>
-                <p className="text-[10px] text-amber-400">Waiting for instructor review</p>
-              </div>
-            </div>
-          )}
-
-          {/* Spacer to push button to bottom */}
-          <div className="flex-1"></div>
-
-        {/* Action Button - Always at bottom */}
-<button 
-  className="w-full flex items-center justify-center gap-1.5 text-xs font-bold py-2 rounded-lg transition-all hover:opacity-90 mt-3 flex-shrink-0" 
-  style={{
-    background: lab.status === "graded" ? "#64748b" : (lab.status === "submitted" ? "#f59e0b" : "linear-gradient(135deg, #6366f1, #818cf8)"),
-    color: "white",
-    cursor: lab.status === "graded" ? "not-allowed" : "pointer"
-  }}
-  disabled={lab.status === "graded"}
-  onClick={() => {
-    if (lab.status !== "graded") {
-      navigate(`/lessons/${lab.courseId}?lessonId=${lab.lessonId}`);
-    }
-  }}
->
-  <span className="material-symbols-outlined text-sm">
-    {lab.status === "graded" ? "lock" : (lab.status === "submitted" ? "edit" : "play_arrow")}
-  </span>
-  {lab.status === "graded" ? "Graded - Read Only" : (lab.status === "submitted" ? "Update Submission" : "Start Lab")}
-</button>
+            );
+          })}
         </div>
-      </div>
-    );
-  })}
-</div>
       ) : (
         <div className="rounded-2xl p-12 text-center" style={{ background: "#0f1629", border: "1px solid #1e293b" }}>
           <span className="material-symbols-outlined text-6xl text-gray-700 mb-4 block">science</span>

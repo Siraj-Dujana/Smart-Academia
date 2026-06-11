@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
-
+// After:
+import { useNavigate, useSearchParams } from "react-router-dom";
 const API = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
 // ── Section Header ────────────────────────────────────────────
@@ -91,13 +91,16 @@ const LessonManagement = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
   const [successMsg, setSuccessMsg] = useState("");
+   const [searchParams] = useSearchParams();
+const courseId = searchParams.get("courseId");  
 
   // Target values for progress bars
   const MAX_LESSONS_TARGET = 20;      // Max lessons per course
   const MAX_PUBLISHED_TARGET = 20;    // Max published lessons
   const MAX_DRAFT_TARGET = 20;        // Max draft lessons
+// After:
+useEffect(() => { fetchCourses(); }, [courseId]);
 
-  useEffect(() => { fetchCourses(); }, []);
   useEffect(() => { if (selectedCourse) fetchLessons(); }, [selectedCourse]);
 
   const fetchCourses = async () => {
@@ -106,10 +109,24 @@ const LessonManagement = () => {
       const data = await res.json();
       if (res.ok && data.courses?.length > 0) {
         setCourses(data.courses);
-        setSelectedCourse(data.courses[0]._id);
+        // If courseId from URL exists, use it; otherwise select first course
+        if (courseId) {
+  setSelectedCourse(courseId);
+} else if (data.courses[0]?._id) {
+  setSelectedCourse(data.courses[0]._id);
+}
       }
-    } catch { setError("Cannot connect to server"); }
+    } catch { 
+      setError("Cannot connect to server"); 
+    }
   };
+ const handleCourseChange = (e) => {
+    const newCourseId = e.target.value;
+    setSelectedCourse(newCourseId);
+    // Update URL without refreshing the page
+    navigate(`/teacher/lessons/${newCourseId}`);
+  };
+
 
   const fetchLessons = async () => {
     if (!selectedCourse) return;
@@ -224,24 +241,73 @@ const LessonManagement = () => {
         </div>
       )}
 
-      {/* Course selector */}
-      <div className="rounded-2xl p-5" style={{ background: "#0f1629", border: "1px solid #1e293b" }}>
-        <SectionHeader icon="school" title="Select Course" color="#6366f1" />
-        {courses.length === 0 ? (
-          <p className="text-sm text-gray-500">No courses found. Create a course in Course Management first.</p>
-        ) : (
-          <select 
-            value={selectedCourse} 
-            onChange={e => setSelectedCourse(e.target.value)}
-            className="w-full sm:w-96 px-4 py-2.5 text-sm rounded-xl bg-gray-800/50 text-white border border-gray-700 focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition-all cursor-pointer"
-          >
-            {courses.map(c => (
-              <option key={c._id} value={c._id}>{c.title} ({c.code})</option>
-            ))}
-          </select>
-        )}
-      </div>
+{/* Course selector */}
+<div className="rounded-2xl p-5" style={{ background: "#0f1629", border: "1px solid #1e293b" }}>
+  <SectionHeader icon="school" title="Select Course" color="#6366f1" />
+  {courses.length === 0 ? (
+    <div className="flex items-center gap-3 p-4 rounded-xl" style={{ background: "#1e293b", border: "1px solid #334155" }}>
+      <span className="material-symbols-outlined text-gray-500">info</span>
+      <p className="text-sm text-gray-500">No courses found. Create a course in Course Management first.</p>
+    </div>
+  ) : (
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+      {courses.map(c => (
+        <button
+          key={c._id}
+          onClick={() => setSelectedCourse(c._id)}
+          className="relative text-left p-4 rounded-xl transition-all duration-200 hover:scale-[1.02] group"
+          style={{
+            background: selectedCourse === c._id ? "#6366f122" : "#0a0f1e",
+            border: `1px solid ${selectedCourse === c._id ? "#6366f1" : "#1e293b"}`,
+          }}
+        >
+          {/* Active glow */}
+          {selectedCourse === c._id && (
+            <div className="absolute inset-0 rounded-xl opacity-20" style={{ background: "radial-gradient(ellipse at 50% 0%, #6366f1 0%, transparent 70%)" }} />
+          )}
 
+          <div className="relative flex items-start gap-3">
+            {/* Icon */}
+            <div
+              className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0"
+              style={{
+                background: selectedCourse === c._id ? "#6366f133" : "#1e293b",
+                border: `1px solid ${selectedCourse === c._id ? "#6366f144" : "#334155"}`,
+              }}
+            >
+              <span
+                className="material-symbols-outlined text-base"
+                style={{ color: selectedCourse === c._id ? "#818cf8" : "#4b5563" }}
+              >
+                menu_book
+              </span>
+            </div>
+
+            {/* Text */}
+            <div className="flex-1 min-w-0">
+              <p
+                className="text-sm font-semibold truncate"
+                style={{ color: selectedCourse === c._id ? "#e0e7ff" : "#94a3b8" }}
+              >
+                {c.title}
+              </p>
+              <p className="text-[10px] mt-0.5 font-mono" style={{ color: selectedCourse === c._id ? "#818cf8" : "#475569" }}>
+                {c.code}
+              </p>
+            </div>
+
+            {/* Selected checkmark */}
+            {selectedCourse === c._id && (
+              <span className="material-symbols-outlined text-base flex-shrink-0" style={{ color: "#6366f1" }}>
+                check_circle
+              </span>
+            )}
+          </div>
+        </button>
+      ))}
+    </div>
+  )}
+</div>
       {/* Stats Grid using ProgressStatCards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         <ProgressStatCard 

@@ -1,2 +1,3 @@
-features need to be added:
-teacher can share document notes with students like ppt pdf or docx
+
+OTP is not working online dude
+scroll bar in lesson viewer

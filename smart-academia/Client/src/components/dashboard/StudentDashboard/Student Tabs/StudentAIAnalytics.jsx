@@ -244,23 +244,57 @@ const StudentAIAnalytics = () => {
       </div>
 
       {/* Course Selector */}
-      {analysis.courseSnapshots?.length > 0 && (
-        <div className="rounded-2xl p-4" style={{ background: C.surface, border: `1px solid ${C.border}` }}>
-          <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Select Course</label>
-          <select
-            value={selectedCourse?.course || ""}
-            onChange={(e) => {
-              const course = analysis.courseSnapshots.find(c => c.course === e.target.value);
-              setSelectedCourse(course);
+{analysis.courseSnapshots?.length > 0 && (
+  <div className="rounded-2xl p-5" style={{ background: C.surface, border: `1px solid ${C.border}` }}>
+    <p className="text-xs font-semibold uppercase tracking-wider mb-3" style={{ color: C.textFaint }}>Select Course</p>
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+      {analysis.courseSnapshots.map((course, idx) => {
+        const isSelected = selectedCourse?.course === course.course;
+        const scoreColor = course.performanceScore >= 70 ? C.green : course.performanceScore >= 50 ? C.amber : C.red;
+        return (
+          <button
+            key={idx}
+            onClick={() => setSelectedCourse(course)}
+            className="relative text-left p-4 rounded-xl transition-all duration-200 hover:scale-[1.02]"
+            style={{
+              background: isSelected ? "#6366f122" : C.surface2,
+              border: `1px solid ${isSelected ? "#6366f1" : C.border}`,
             }}
-            className="w-full px-4 py-2.5 text-sm rounded-xl bg-gray-800/50 text-white border border-gray-700 focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition-all cursor-pointer"
           >
-            {analysis.courseSnapshots.map((course, idx) => (
-              <option key={idx} value={course.course}>{course.course} ({course.code})</option>
-            ))}
-          </select>
-        </div>
-      )}
+            {isSelected && (
+              <div className="absolute inset-0 rounded-xl opacity-20"
+                style={{ background: "radial-gradient(ellipse at 50% 0%, #6366f1 0%, transparent 70%)" }} />
+            )}
+            <div className="relative flex items-start gap-3">
+              <div className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0"
+                style={{
+                  background: isSelected ? "#6366f133" : C.border,
+                  border: `1px solid ${isSelected ? "#6366f144" : C.border2}`,
+                }}>
+                <span className="material-symbols-outlined text-base"
+                  style={{ color: isSelected ? "#818cf8" : C.textFaint }}>menu_book</span>
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold truncate"
+                  style={{ color: isSelected ? "#e0e7ff" : C.textDim }}>{course.course}</p>
+                <p className="text-[10px] mt-0.5 font-mono"
+                  style={{ color: isSelected ? "#818cf8" : C.textFaint }}>{course.code}</p>
+                <p className="text-[10px] mt-1 font-bold" style={{ color: scoreColor }}>
+                  Score: {course.performanceScore}%
+                </p>
+              </div>
+              {isSelected && (
+                <span className="material-symbols-outlined text-base flex-shrink-0" style={{ color: "#6366f1" }}>
+                  check_circle
+                </span>
+              )}
+            </div>
+          </button>
+        );
+      })}
+    </div>
+  </div>
+)}
 
       {/* Course Performance Overview */}
       {currentCourse && (

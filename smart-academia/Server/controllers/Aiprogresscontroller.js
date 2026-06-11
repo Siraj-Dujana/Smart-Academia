@@ -13,24 +13,7 @@ const Lab            = require("../models/Lab");
 const Lesson         = require("../models/Lesson");
 const Course         = require("../models/Course");
 const User           = require("../models/User");
-
-// Helper function - MUST match the one in analyticsController.js
-function computeWeightedScore(progressPct, quizAvg, labAvg) {
-  // If we have all three dimensions (course has both quizzes AND labs)
-  if (quizAvg != null && labAvg != null) {
-    return Math.round(progressPct * 0.5 + quizAvg * 0.3 + labAvg * 0.2);
-  }
-  // Only quizzes exist in this course
-  if (quizAvg != null) {
-    return Math.round(progressPct * 0.6 + quizAvg * 0.4);
-  }
-  // Only labs exist in this course
-  if (labAvg != null) {
-    return Math.round(progressPct * 0.7 + labAvg * 0.3);
-  }
-  // Only lessons (no quizzes, no labs)
-  return Math.round(progressPct);
-}
+const { computeWeightedScore } = require("../utils/scoring");
 
 const getAI = () => new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
@@ -96,13 +79,6 @@ const analyzeStudentProgress = async (req, res) => {
       attemptsByQuiz[qId].push(a);
     });
 
-    const submissionByLab = {};
-    allLabSubmissions.forEach(s => {
-      const lId = s.lab?._id?.toString();
-      if (!lId) return;
-      submissionByLab[lId] = s;
-    });
-
     // Group lessons/quizzes/labs by course
     const lessonsByCourse = {};
     allLessons.forEach(l => {
@@ -156,55 +132,52 @@ const analyzeStudentProgress = async (req, res) => {
         }
 
         // ── Per-lab detail ─────────────────────────────────────────────────
-let labDetail = null;
-if (lessonLab) {
-  const labId = lessonLab._id.toString();
-  const allSubs = allLabSubmissions.filter(s => s.lab?._id?.toString() === labId);
-  
-  // Find best submission (highest score from teacher OR AI)
-  let bestSubmission = null;
-  let bestScore = -1;
-  
-  for (const sub of allSubs) {
-    let subScore = null;
-    if (sub.marks !== null && sub.marks !== undefined) {
-      subScore = sub.marks;
-    } else if (sub.aiSuggestedMarks !== null && sub.aiSuggestedMarks !== undefined) {
-      subScore = sub.aiSuggestedMarks;
-    }
-    
-    if (subScore !== null && subScore > bestScore) {
-      bestScore = subScore;
-      bestSubmission = sub;
-    }
-  }
-  
-  // Calculate score percent from best submission
-  let scorePercent = null;
-  let finalMarks = null;
-  
-  if (bestSubmission) {
-    if (bestSubmission.marks !== null && bestSubmission.marks !== undefined) {
-      finalMarks = bestSubmission.marks;
-      scorePercent = Math.round((bestSubmission.marks / (lessonLab.totalMarks || 100)) * 100);
-    } else if (bestSubmission.aiSuggestedMarks !== null && bestSubmission.aiSuggestedMarks !== undefined) {
-      finalMarks = bestSubmission.aiSuggestedMarks;
-      scorePercent = Math.round((bestSubmission.aiSuggestedMarks / (lessonLab.totalMarks || 100)) * 100);
-    }
-  }
-  
-  labDetail = {
-    submitted: allSubs.length > 0,
-    status: bestSubmission?.status ?? "not_submitted",
-    scorePercent: scorePercent,
-    finalMarks: finalMarks,
-    bestAttemptNumber: bestSubmission?.attemptNumber,
-    totalAttempts: allSubs.length,
-  };
-  
-  // Debug log
-  console.log(`Lab: ${lessonLab.title}, scorePercent: ${scorePercent}, bestScore: ${bestScore}, totalAttempts: ${allSubs.length}`);
-}
+        let labDetail = null;
+        if (lessonLab) {
+          const labId = lessonLab._id.toString();
+          const allSubs = allLabSubmissions.filter(s => s.lab?._id?.toString() === labId);
+
+          // Find best submission (highest score from teacher OR AI)
+          let bestSubmission = null;
+          let bestScore = -1;
+
+          for (const sub of allSubs) {
+            let subScore = null;
+            if (sub.marks !== null && sub.marks !== undefined) {
+              subScore = sub.marks;
+            } else if (sub.aiSuggestedMarks !== null && sub.aiSuggestedMarks !== undefined) {
+              subScore = sub.aiSuggestedMarks;
+            }
+
+            if (subScore !== null && subScore > bestScore) {
+              bestScore = subScore;
+              bestSubmission = sub;
+            }
+          }
+
+          // Calculate score percent from best submission
+          let scorePercent = null;
+          let finalMarks = null;
+
+          if (bestSubmission) {
+            if (bestSubmission.marks !== null && bestSubmission.marks !== undefined) {
+              finalMarks = bestSubmission.marks;
+              scorePercent = Math.round((bestSubmission.marks / (lessonLab.totalMarks || 100)) * 100);
+            } else if (bestSubmission.aiSuggestedMarks !== null && bestSubmission.aiSuggestedMarks !== undefined) {
+              finalMarks = bestSubmission.aiSuggestedMarks;
+              scorePercent = Math.round((bestSubmission.aiSuggestedMarks / (lessonLab.totalMarks || 100)) * 100);
+            }
+          }
+
+          labDetail = {
+            submitted: allSubs.length > 0,
+            status: bestSubmission?.status ?? "not_submitted",
+            scorePercent: scorePercent,
+            finalMarks: finalMarks,
+            bestAttemptNumber: bestSubmission?.attemptNumber,
+            totalAttempts: allSubs.length,
+          };
+        }
 
         return {
           lessonId: lesson._id,
@@ -237,7 +210,7 @@ if (lessonLab) {
         ? Math.round(labScores.reduce((a, b) => a + b, 0) / labScores.length)
         : null;
 
-      // Weighted score (using the helper function)
+      // Weighted score (using the SHARED helper - matches analyticsController & teacher views)
       const weightedScore = computeWeightedScore(progressScore, avgQuizScore, avgLabScore);
       const creditsEarned = ((weightedScore || 0) / 100) * (course.credits || 0);
 
@@ -266,7 +239,7 @@ if (lessonLab) {
       ? Math.round(courseSnapshots.reduce((s, c) => s + c.progress, 0) / courseSnapshots.length)
       : 0;
 
-    const allQuizScores = courseSnapshots.flatMap(c => 
+    const allQuizScores = courseSnapshots.flatMap(c =>
       c.avgQuizScore !== null ? [c.avgQuizScore] : []
     );
     const overallQuizAvg = allQuizScores.length
@@ -280,17 +253,12 @@ if (lessonLab) {
       ? Math.round(allLabScores.reduce((a, b) => a + b, 0) / allLabScores.length)
       : null;
 
-    // Overall weighted score (matches analyticsController logic)
-    let overallScore;
-    if (overallQuizAvg !== null && overallLabAvg !== null) {
-      overallScore = Math.round(overallProgress * 0.4 + overallQuizAvg * 0.35 + overallLabAvg * 0.25);
-    } else if (overallQuizAvg !== null) {
-      overallScore = Math.round(overallProgress * 0.6 + overallQuizAvg * 0.4);
-    } else if (overallLabAvg !== null) {
-      overallScore = Math.round(overallProgress * 0.7 + overallLabAvg * 0.3);
-    } else {
-      overallScore = Math.round(overallProgress);
-    }
+    // Overall score = average of each course's weightedScore.
+    // This guarantees it matches the per-course "weightedScore" shown in
+    // StudentAnalytics.jsx (no more divergent 40/35/25-style formula).
+    const overallScore = courseSnapshots.length
+      ? Math.round(courseSnapshots.reduce((s, c) => s + c.weightedScore, 0) / courseSnapshots.length)
+      : 0;
 
     // Build AI prompt with the SAME data structure
     const dataForAI = JSON.stringify(courseSnapshots, null, 2);
@@ -418,7 +386,7 @@ const analyzeClassProgress = async (req, res) => {
     // Get IDs of required quizzes and labs
     const requiredQuizIds = new Set();
     const requiredLabIds = new Set();
-    
+
     lessons.forEach(lesson => {
       if (lesson.requiresQuiz) {
         const quiz = quizzes.find(q => q.lesson?.toString() === lesson._id.toString());
@@ -430,12 +398,12 @@ const analyzeClassProgress = async (req, res) => {
       }
     });
 
-    // ✅ FIXED: Per-quiz analysis - using BEST score per student
+    // Per-quiz analysis - using BEST score per student
     const quizAnalysis = quizzes
       .filter(quiz => requiredQuizIds.has(quiz._id.toString()))
       .map(quiz => {
         const attempts = allAttempts.filter(a => a.quiz.toString() === quiz._id.toString());
-        
+
         // Get best score per student
         const bestScoresPerStudent = new Map();
         attempts.forEach(attempt => {
@@ -445,18 +413,18 @@ const analyzeClassProgress = async (req, res) => {
             bestScoresPerStudent.set(studentIdKey, attempt.score);
           }
         });
-        
+
         const bestScores = Array.from(bestScoresPerStudent.values());
         const avgScore = bestScores.length ? Math.round(bestScores.reduce((s, v) => s + v, 0) / bestScores.length) : 0;
-        
+
         // Count students who passed (using best score)
         let passedCount = 0;
-        bestScoresPerStudent.forEach((bestScore, studentIdKey) => {
+        bestScoresPerStudent.forEach((bestScore) => {
           if (bestScore >= quiz.passingScore) {
             passedCount++;
           }
         });
-        
+
         const uniqueStudents = bestScoresPerStudent.size;
         const passRate = uniqueStudents > 0 ? Math.round((passedCount / uniqueStudents) * 100) : 0;
 
@@ -473,25 +441,33 @@ const analyzeClassProgress = async (req, res) => {
         };
       });
 
-    // ✅ FIXED: Per-lab analysis - using BEST score per student
+    // Per-lab analysis - using BEST score per student (with AI-marks fallback)
     const labAnalysis = labs
       .filter(lab => requiredLabIds.has(lab._id.toString()))
       .map(lab => {
         const submissions = allSubmissions.filter(s => s.lab.toString() === lab._id.toString());
-        
-        // Get best score per student (only graded submissions)
+
+        // Get best score per student.
+        // Use teacher marks if graded, otherwise fall back to AI-suggested marks
+        // (this matches analyticsController/aiProgressController student-side logic).
         const bestScoresPerStudent = new Map();
         submissions.forEach(sub => {
+          let rawScore = null;
           if (sub.status === "graded" && sub.marks != null) {
-            const studentIdKey = sub.student.toString();
-            const scorePercent = Math.round((sub.marks / (lab.totalMarks || 100)) * 100);
-            const currentBest = bestScoresPerStudent.get(studentIdKey);
-            if (!currentBest || scorePercent > currentBest) {
-              bestScoresPerStudent.set(studentIdKey, scorePercent);
-            }
+            rawScore = sub.marks;
+          } else if (sub.aiSuggestedMarks != null) {
+            rawScore = sub.aiSuggestedMarks;
+          }
+          if (rawScore == null) return;
+
+          const studentIdKey = sub.student.toString();
+          const scorePercent = Math.round((rawScore / (lab.totalMarks || 100)) * 100);
+          const currentBest = bestScoresPerStudent.get(studentIdKey);
+          if (currentBest == null || scorePercent > currentBest) {
+            bestScoresPerStudent.set(studentIdKey, scorePercent);
           }
         });
-        
+
         const bestScores = Array.from(bestScoresPerStudent.values());
         const avgScore = bestScores.length ? Math.round(bestScores.reduce((s, v) => s + v, 0) / bestScores.length) : 0;
 
@@ -523,11 +499,11 @@ const analyzeClassProgress = async (req, res) => {
       };
     });
 
-    // ✅ FIXED: At-risk students (using best quiz scores)
+    // At-risk students (using best quiz scores)
     const studentScores = studentIds.map(sid => {
       const sidStr = sid.toString();
       const enrollment = enrollments.find(e => e.student.toString() === sidStr);
-      
+
       // Get best score per quiz for this student
       const studentAttempts = allAttempts.filter(a => a.student.toString() === sidStr && requiredQuizIds.has(a.quiz.toString()));
       const bestPerQuiz = new Map();
@@ -540,7 +516,7 @@ const analyzeClassProgress = async (req, res) => {
       });
       const bestScores = Array.from(bestPerQuiz.values());
       const avgQuizScore = bestScores.length ? Math.round(bestScores.reduce((s, v) => s + v, 0) / bestScores.length) : 0;
-      
+
       const studentSubs = allSubmissions.filter(s => s.student.toString() === sidStr && requiredLabIds.has(s.lab.toString()));
 
       return {
@@ -564,8 +540,8 @@ const analyzeClassProgress = async (req, res) => {
     const avgClassProgress = classProgressValues.length
       ? Math.round(classProgressValues.reduce((s, v) => s + v, 0) / classProgressValues.length)
       : 0;
-    
-    // ✅ FIXED: Class average quiz score (using best scores per student per quiz)
+
+    // Class average quiz score (using best scores per student per quiz)
     let totalQuizBestScores = 0;
     let quizCount = 0;
     quizAnalysis.forEach(quiz => {
@@ -575,8 +551,8 @@ const analyzeClassProgress = async (req, res) => {
       }
     });
     const classAvgQuiz = quizCount > 0 ? Math.round(totalQuizBestScores / quizCount) : 0;
-    
-    // ✅ FIXED: Class average lab score (using best scores per student per lab)
+
+    // Class average lab score (using best scores per student per lab)
     let totalLabBestScores = 0;
     let labCount = 0;
     labAnalysis.forEach(lab => {
@@ -605,6 +581,7 @@ const analyzeClassProgress = async (req, res) => {
 
 IMPORTANT:
 - Quiz scores represent the BEST score per student (highest attempt), NOT the average of all attempts.
+- Lab scores represent the BEST score per student, using teacher marks if graded, otherwise AI-suggested marks.
 - ONLY consider quizzes and labs that were REQUIRED in the course.
 - Do NOT flag optional assessments as weaknesses.
 
@@ -724,7 +701,7 @@ const getStudentsWeakAreas = async (req, res) => {
     // Get IDs of required quizzes and labs
     const requiredQuizIds = new Set();
     const requiredLabIds = new Set();
-    
+
     lessons.forEach(lesson => {
       if (lesson.requiresQuiz) {
         const quiz = quizzes.find(q => q.lesson?.toString() === lesson._id.toString());
@@ -755,12 +732,12 @@ const getStudentsWeakAreas = async (req, res) => {
       // Quiz analysis
       for (const quiz of quizzes) {
         if (!requiredQuizIds.has(quiz._id.toString())) continue;
-        
+
         const attempts = studentAttempts.filter(a => a.quiz.toString() === quiz._id.toString());
-        const bestAttempt = attempts.length 
+        const bestAttempt = attempts.length
           ? attempts.reduce((a, b) => a.score > b.score ? a : b, attempts[0])
           : null;
-        
+
         const score = bestAttempt?.score || 0;
         const passed = bestAttempt?.passed || false;
 
@@ -801,13 +778,22 @@ const getStudentsWeakAreas = async (req, res) => {
         }
       }
 
-      // Lab analysis
+      // Lab analysis (with AI-marks fallback, and "pending review" status for
+      // submitted-but-ungraded labs so it has parity with the quiz "not
+      // attempted" case instead of silently producing nothing)
       for (const lab of labs) {
         if (!requiredLabIds.has(lab._id.toString())) continue;
-        
+
         const submission = studentSubmissions.find(s => s.lab.toString() === lab._id.toString());
-        const scorePercent = submission?.marks != null 
-          ? Math.round((submission.marks / (lab.totalMarks || 100)) * 100)
+
+        let rawScore = null;
+        if (submission?.marks != null) {
+          rawScore = submission.marks;
+        } else if (submission?.aiSuggestedMarks != null) {
+          rawScore = submission.aiSuggestedMarks;
+        }
+        const scorePercent = rawScore != null
+          ? Math.round((rawScore / (lab.totalMarks || 100)) * 100)
           : null;
 
         labPerformance.push({
@@ -842,34 +828,52 @@ const getStudentsWeakAreas = async (req, res) => {
             message: `Not submitted: "${lab.title}"`,
             suggestion: `Complete and submit "${lab.title}"`
           });
+        } else if (submission.status !== "graded") {
+          // Submitted but not yet graded by a teacher (may have AI marks).
+          // Marked as "pending" so the frontend can render it neutrally
+          // instead of as a red weak-area warning.
+          weakAreas.push({
+            type: "lab",
+            status: "pending",
+            title: lab.title,
+            score: scorePercent,
+            message: scorePercent != null
+              ? `Submitted, awaiting final grading: "${lab.title}" (AI estimate: ${scorePercent}%)`
+              : `Submitted, awaiting grading: "${lab.title}"`,
+            suggestion: `No action needed — wait for instructor feedback`
+          });
         }
       }
 
       // Calculate overall progress
       const completedLessons = studentProgress.filter(p => p.isCompleted).length;
-      const progressPct = lessons.length > 0 
+      const progressPct = lessons.length > 0
         ? Math.round((completedLessons / lessons.length) * 100)
         : 0;
 
       // Calculate average scores
       const quizScores = quizPerformance.filter(q => q.score > 0).map(q => q.score);
-      const avgQuizScore = quizScores.length 
+      const avgQuizScore = quizScores.length
         ? Math.round(quizScores.reduce((a, b) => a + b, 0) / quizScores.length)
         : null;
 
       const labScores = labPerformance.filter(l => l.score !== null && l.score > 0).map(l => l.score);
-      const avgLabScore = labScores.length 
+      const avgLabScore = labScores.length
         ? Math.round(labScores.reduce((a, b) => a + b, 0) / labScores.length)
         : null;
 
       // Generate AI recommendation for this student
+      // Only count "true" weak areas (not pending-review labs) when deciding
+      // whether to call the AI for recommendations.
+      const actionableWeakAreas = weakAreas.filter(w => w.status !== "pending");
+
       let aiRecommendation = null;
-      if (weakAreas.length > 0) {
+      if (actionableWeakAreas.length > 0) {
         try {
           const ai = getAI();
-          const weakAreasText = weakAreas.map(w => `- ${w.message}`).join("\n");
+          const weakAreasText = actionableWeakAreas.map(w => `- ${w.message}`).join("\n");
           const strengthsText = strengths.length > 0 ? strengths.map(s => `- ${s.message}`).join("\n") : "None yet";
-          
+
           const prompt = `Based on this student's performance, provide 2-3 specific recommendations.
 
 Student: ${student.fullName}
@@ -892,11 +896,11 @@ Return ONLY JSON: { "recommendations": ["action 1", "action 2", "action 3"] }`;
 
           let text = response.text.trim()
             .replace(/^```json\s*/i, "").replace(/^```\s*/i, "").replace(/```\s*$/i, "").trim();
-          
+
           const parsed = JSON.parse(text);
           aiRecommendation = parsed.recommendations;
         } catch (err) {
-          aiRecommendation = [`Review ${weakAreas[0]?.title || "course materials"}`];
+          aiRecommendation = [`Review ${actionableWeakAreas[0]?.title || "course materials"}`];
         }
       }
 
@@ -946,5 +950,5 @@ module.exports = {
   analyzeStudentProgress,
   analyzeClassProgress,
   getTeacherCoursesForAnalysis,
-   getStudentsWeakAreas,  // ← ADD THIS
+  getStudentsWeakAreas,
 };

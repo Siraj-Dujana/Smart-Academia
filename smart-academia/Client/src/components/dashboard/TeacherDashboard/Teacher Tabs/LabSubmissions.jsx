@@ -309,40 +309,136 @@ const LabSubmissions = () => {
         </div>
       )}
 
-      {/* Selectors Card */}
-      <div className="rounded-2xl p-5" style={{ background: "#0f1629", border: "1px solid #1e293b" }}>
-        <SectionHeader icon="filter_alt" title="Select Course & Lesson" color="#6366f1" />
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Course</label>
-            <select
-              value={selectedCourse}
-              onChange={e => setSelectedCourse(e.target.value)}
-              className="w-full px-4 py-2.5 text-sm rounded-xl bg-gray-800/50 text-white border border-gray-700 focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition-all cursor-pointer"
-            >
-              {courses.length === 0
-                ? <option value="">No courses found</option>
-                : courses.map(c => <option key={c._id} value={c._id}>{c.title}</option>)
-              }
-            </select>
-          </div>
+    {/* Selectors Card */}
+<div className="rounded-2xl p-5" style={{ background: "#0f1629", border: "1px solid #1e293b" }}>
+  <SectionHeader icon="filter_alt" title="Select Course & Lesson" color="#6366f1" />
+  <div className="flex flex-col gap-6">
 
-          <div>
-            <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Lesson</label>
-            <select
-              value={selectedLesson}
-              onChange={e => setSelectedLesson(e.target.value)}
-              disabled={lessons.length === 0}
-              className="w-full px-4 py-2.5 text-sm rounded-xl bg-gray-800/50 text-white border border-gray-700 focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
-            >
-              {lessons.length === 0
-                ? <option value="">No lessons available</option>
-                : lessons.map(l => <option key={l._id} value={l._id}>{l.order}. {l.title}</option>)
-              }
-            </select>
-          </div>
+    {/* Course selector */}
+    <div>
+      <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Course</p>
+      {courses.length === 0 ? (
+        <div className="flex items-center gap-3 p-4 rounded-xl" style={{ background: "#1e293b", border: "1px solid #334155" }}>
+          <span className="material-symbols-outlined text-gray-500">info</span>
+          <p className="text-sm text-gray-500">No courses found.</p>
         </div>
-      </div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          {courses.map(c => (
+            <button
+              key={c._id}
+              onClick={() => setSelectedCourse(c._id)}
+              className="relative text-left p-4 rounded-xl transition-all duration-200 hover:scale-[1.02]"
+              style={{
+                background: selectedCourse === c._id ? "#6366f122" : "#0a0f1e",
+                border: `1px solid ${selectedCourse === c._id ? "#6366f1" : "#1e293b"}`,
+              }}
+            >
+              {selectedCourse === c._id && (
+                <div className="absolute inset-0 rounded-xl opacity-20" style={{ background: "radial-gradient(ellipse at 50% 0%, #6366f1 0%, transparent 70%)" }} />
+              )}
+              <div className="relative flex items-start gap-3">
+                <div
+                  className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0"
+                  style={{
+                    background: selectedCourse === c._id ? "#6366f133" : "#1e293b",
+                    border: `1px solid ${selectedCourse === c._id ? "#6366f144" : "#334155"}`,
+                  }}
+                >
+                  <span className="material-symbols-outlined text-base" style={{ color: selectedCourse === c._id ? "#818cf8" : "#4b5563" }}>
+                    menu_book
+                  </span>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold truncate" style={{ color: selectedCourse === c._id ? "#e0e7ff" : "#94a3b8" }}>
+                    {c.title}
+                  </p>
+                  <p className="text-[10px] mt-0.5 font-mono" style={{ color: selectedCourse === c._id ? "#818cf8" : "#475569" }}>
+                    {c.code}
+                  </p>
+                </div>
+                {selectedCourse === c._id && (
+                  <span className="material-symbols-outlined text-base flex-shrink-0" style={{ color: "#6366f1" }}>check_circle</span>
+                )}
+              </div>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+
+    {/* Divider */}
+    <div className="h-px" style={{ background: "linear-gradient(90deg, transparent, #1e293b, transparent)" }} />
+
+    {/* Lesson selector */}
+    <div>
+      <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Lesson</p>
+      {lessons.length === 0 ? (
+        <div className="flex items-center gap-3 p-4 rounded-xl" style={{ background: "#1e293b", border: "1px solid #334155" }}>
+          <span className="material-symbols-outlined text-gray-500">info</span>
+          <p className="text-sm text-gray-500">No lessons available. Select a course first.</p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          {lessons.map(l => (
+            <button
+              key={l._id}
+              onClick={() => setSelectedLesson(l._id)}
+              className="relative text-left p-4 rounded-xl transition-all duration-200 hover:scale-[1.02]"
+              style={{
+                background: selectedLesson === l._id ? "#a855f722" : "#0a0f1e",
+                border: `1px solid ${selectedLesson === l._id ? "#a855f7" : "#1e293b"}`,
+              }}
+            >
+              {selectedLesson === l._id && (
+                <div className="absolute inset-0 rounded-xl opacity-20" style={{ background: "radial-gradient(ellipse at 50% 0%, #a855f7 0%, transparent 70%)" }} />
+              )}
+              <div className="relative flex items-start gap-3">
+                {/* Order badge */}
+                <div
+                  className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 text-sm font-black"
+                  style={{
+                    background: selectedLesson === l._id ? "#a855f733" : "#1e293b",
+                    border: `1px solid ${selectedLesson === l._id ? "#a855f744" : "#334155"}`,
+                    color: selectedLesson === l._id ? "#c084fc" : "#4b5563",
+                  }}
+                >
+                  {l.order}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold truncate" style={{ color: selectedLesson === l._id ? "#f3e8ff" : "#94a3b8" }}>
+                    {l.title}
+                  </p>
+                  <div className="flex items-center gap-2 mt-1">
+                    <p className="text-[10px]" style={{ color: selectedLesson === l._id ? "#c084fc" : "#475569" }}>
+                      {l.duration}
+                    </p>
+                    {l.requiresQuiz && (
+                      <span className="text-[10px] flex items-center gap-0.5" style={{ color: selectedLesson === l._id ? "#fbbf24" : "#475569" }}>
+                        <span className="material-symbols-outlined text-xs">quiz</span>
+                        Quiz
+                      </span>
+                    )}
+                    {l.requiresLab && (
+                      <span className="text-[10px] flex items-center gap-0.5" style={{ color: selectedLesson === l._id ? "#c084fc" : "#475569" }}>
+                        <span className="material-symbols-outlined text-xs">science</span>
+                        Lab
+                      </span>
+                    )}
+                  </div>
+                </div>
+                {selectedLesson === l._id && (
+                  <span className="material-symbols-outlined text-base flex-shrink-0" style={{ color: "#a855f7" }}>check_circle</span>
+                )}
+              </div>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+
+  </div>
+</div>
 
       {/* Stats Cards */}
       {selectedLab && submissions.length > 0 && (
