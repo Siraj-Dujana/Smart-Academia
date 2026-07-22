@@ -1,3 +1,8 @@
 
 OTP is not working online dude
 scroll bar in lesson viewer
+
+
+dude there is a problem
+
+when I try to evaluate the lab at student side the score was 92 but at teacher was 90

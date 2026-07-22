@@ -14,7 +14,7 @@ const AIDashboard = ({
         </svg>
       ),
       label: "AI Brain",
-      color: "#6366f1",
+      color: "#ffffff",
       animation: "animate-float-1"
     },
     {
@@ -25,7 +25,7 @@ const AIDashboard = ({
         </svg>
       ),
       label: "Code Assistant",
-      color: "#a855f7",
+      color: "#ffffff",
       animation: "animate-float-2"
     },
     {
@@ -43,19 +43,19 @@ const AIDashboard = ({
   ];
 
   const floatingElements = [
-    { size: "w-2 h-2 xs:w-2.5 xs:h-2.5 sm:w-3 sm:h-3 md:w-4 md:h-4", position: { left: '10%', top: '10%' }, color: "#6366f1", animation: "animate-float-1" },
-    { size: "w-1.5 h-1.5 xs:w-2 xs:h-2 sm:w-2.5 sm:h-2.5 md:w-3 md:h-3", position: { right: '10%', top: '10%' }, color: "#a855f7", animation: "animate-float-2" },
+    { size: "w-2 h-2 xs:w-2.5 xs:h-2.5 sm:w-3 sm:h-3 md:w-4 md:h-4", position: { left: '10%', top: '10%' }, color: "#ffffff", animation: "animate-float-1" },
+    { size: "w-1.5 h-1.5 xs:w-2 xs:h-2 sm:w-2.5 sm:h-2.5 md:w-3 md:h-3", position: { right: '10%', top: '10%' }, color: "#ffffff", animation: "animate-float-2" },
     { size: "w-2 h-2 xs:w-2.5 xs:h-2.5 sm:w-3 sm:h-3 md:w-4 md:h-4", position: { left: '5%', top: '45%' }, color: "#ffffff", animation: "animate-float-3" },
     { size: "w-1.5 h-1.5 xs:w-2 xs:h-2 sm:w-2.5 sm:h-2.5 md:w-3 md:h-3", position: { right: '5%', top: '45%' }, color: "#ffffff", animation: "animate-float-1" },
-    { size: "w-2 h-2 xs:w-2.5 xs:h-2.5 sm:w-3 sm:h-3 md:w-4 md:h-4", position: { left: '18%', bottom: '10%' }, color: "#6366f1", animation: "animate-float-2" },
-    { size: "w-1.5 h-1.5 xs:w-2 xs:h-2 sm:w-2.5 sm:h-2.5 md:w-3 md:h-3", position: { right: '18%', bottom: '10%' }, color: "#a855f7", animation: "animate-float-3" }
+    { size: "w-2 h-2 xs:w-2.5 xs:h-2.5 sm:w-3 sm:h-3 md:w-4 md:h-4", position: { left: '18%', bottom: '10%' }, color: "#ffffff", animation: "animate-float-2" },
+    { size: "w-1.5 h-1.5 xs:w-2 xs:h-2 sm:w-2.5 sm:h-2.5 md:w-3 md:h-3", position: { right: '18%', bottom: '10%' }, color: "#ffffff", animation: "animate-float-3" }
   ];
 
   return (
     <div className={`w-full ${aspectRatio} ${borderRadius} flex items-center justify-center relative overflow-hidden ${className}`} style={{ background: "transparent" }}>
       {/* Background glow effects - subtle */}
-      <div className="absolute top-0 left-0 w-32 h-32 rounded-full blur-2xl opacity-10" style={{ background: "#6366f1" }} />
-      <div className="absolute bottom-0 right-0 w-32 h-32 rounded-full blur-2xl opacity-10" style={{ background: "#a855f7" }} />
+      <div className="absolute top-0 left-0 w-32 h-32 rounded-full blur-2xl opacity-10" style={{ background: "#020202" }} />
+      <div className="absolute bottom-0 right-0 w-32 h-32 rounded-full blur-2xl opacity-10" style={{ background: "#000000" }} />
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-48 h-48 rounded-full blur-3xl opacity-5" style={{ background: "#6366f1" }} />
       
       <div className="relative w-full h-full flex items-center justify-center p-2 xs:p-3 sm:p-4">

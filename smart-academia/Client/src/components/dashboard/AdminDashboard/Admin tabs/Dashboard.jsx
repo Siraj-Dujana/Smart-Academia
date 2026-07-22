@@ -120,10 +120,10 @@ const Dashboard = () => {
   };
 
   const statCards = [
-    { icon: "school", title: "Total Teachers", value: stats.totalTeachers, total: MAX_TEACHERS_TARGET, color: "#6366f1" },
-    { icon: "groups", title: "Total Students", value: stats.totalStudents, total: MAX_STUDENTS_TARGET, color: "#22c55e" },
-    { icon: "menu_book", title: "Total Courses", value: stats.totalCourses, total: MAX_COURSES_TARGET, color: "#f59e0b" },
-    { icon: "trending_up", title: "Total Enrollments", value: stats.totalEnrollments, total: MAX_ENROLLMENTS_TARGET, color: "#ef4444" },
+    { icon:"trending_up",title: "Total Teachers", value: stats.totalTeachers, total: MAX_TEACHERS_TARGET, color: "#6366f1" },
+    { icon:"trending_up",title: "Total Students", value: stats.totalStudents, total: MAX_STUDENTS_TARGET, color: "#6366f1" },
+    { icon:"trending_up",title: "Total Courses", value: stats.totalCourses, total: MAX_COURSES_TARGET, color: "#6366f1" },
+    { icon:"trending_up",title: "Total Enrollments", value: stats.totalEnrollments, total: MAX_ENROLLMENTS_TARGET, color: "#6366f1" },
   ];
 
   // Initialize charts once stats are loaded
@@ -145,9 +145,9 @@ const Dashboard = () => {
               stats.totalCourses,
               stats.totalEnrollments,
             ],
-            backgroundColor: ['#6366f1', '#22c55e', '#f59e0b', '#ef4444'],
+            backgroundColor: ['#ffffff', '#ffffff', '#ffffff', '#ffffff'],
             borderRadius: 8,
-            hoverBackgroundColor: ['#818cf8', '#4ade80', '#fbbf24', '#f87171'],
+            hoverBackgroundColor: ['#818cf8', '#818cf8', '#818cf8', '#818cf8'],
           }]
         },
         options: {
@@ -191,7 +191,8 @@ const Dashboard = () => {
           labels: ['Enrolled Students', 'Not Yet Enrolled', 'Teachers'],
           datasets: [{
             data: [enrolled, notEnrolled, stats.totalTeachers],
-            backgroundColor: ['#22c55e', '#ef4444', '#6366f1'],
+            backgroundColor: ['#ffffff', '#ffffff', '#ffffff'],
+            hoverBackgroundColor: ['#818cf8', '#818cf8', '#818cf8'],
             borderWidth: 2,
             borderColor: '#0f1629',
             hoverOffset: 8,
@@ -226,35 +227,19 @@ const Dashboard = () => {
     <div className="space-y-6" style={{ fontFamily: "'Lexend', sans-serif" }}>
       
       {/* Hero Section */}
-      <div className="relative rounded-2xl overflow-hidden p-6" style={{ background: "linear-gradient(135deg, #0c0e1e 0%, #131b35 50%, #0d1527 100%)", border: "1px solid #1e293b" }}>
-        <div className="absolute top-0 left-1/4 w-48 h-48 rounded-full blur-3xl opacity-20" style={{ background: "#6366f1" }} />
-        <div className="absolute bottom-0 right-1/4 w-48 h-48 rounded-full blur-3xl opacity-15" style={{ background: "#a855f7" }} />
-        
-        <div className="relative flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div>
-            <div className="flex items-center gap-2 mb-1">
-              <span className="w-2 h-2 rounded-full animate-pulse" style={{ background: "#6366f1" }} />
-              <p className="text-xs font-semibold text-indigo-400 uppercase tracking-widest">Admin Portal · Overview</p>
-            </div>
-            <h1 className="text-2xl sm:text-3xl font-black text-white leading-tight tracking-tight">
-              Admin Dashboard
-            </h1>
-            <p className="text-sm text-gray-400 mt-1">
-              Welcome back, <span className="text-indigo-400 font-semibold">{displayName}</span>! Here's the system overview.
-            </p>
-          </div>
           
-          <button
-            onClick={fetchStats}
-            className="flex items-center justify-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition-all hover:scale-105"
-            style={{ background: "#6366f122", color: "#818cf8", border: "1px solid #6366f144" }}
-          >
-            <span className="material-symbols-outlined text-base">refresh</span>
-            Refresh
-          </button>
-        </div>
-      </div>
+         
 
+          <div>
+        <div className="flex items-center gap-2 mb-1">
+          <span className="w-2 h-2 rounded-full animate-pulse" style={{ background: "#6366f1" }} />
+          <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: "#818cf8" }}>Admin Portal · Overview</p>
+        </div>
+        <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
+          Welcome back, <span style={{ background: "linear-gradient(90deg, #818cf8, #c084fc)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>{user.fullName || "Student"} </span>
+        Here's the system overview.
+        </h1>
+          </div>
       {/* Error Banner */}
       {error && (
         <div className="rounded-xl p-3 flex items-center gap-2" style={{ background: "#ef444422", border: "1px solid #ef444444" }}>

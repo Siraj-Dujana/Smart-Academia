@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import { motion } from 'framer-motion';
 
 const FeaturesSection = ({ 
   title = "One Platform, Two Powerful Experiences",
@@ -32,102 +33,322 @@ const FeaturesSection = ({
   },
   className = ""
 }) => {
+  const [isVisible, setIsVisible] = useState(false);
+  const sectionRef = useRef(null);
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setIsVisible(true);
+          observer.unobserve(entry.target);
+        }
+      },
+      { threshold: 0.1 }
+    );
+
+    if (sectionRef.current) {
+      observer.observe(sectionRef.current);
+    }
+
+    return () => {
+      if (sectionRef.current) {
+        observer.unobserve(sectionRef.current);
+      }
+    };
+  }, []);
+
+  // Animation variants - matching ProblemSection
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: {
+        staggerChildren: 0.15,
+        delayChildren: 0.1,
+      }
+    }
+  };
+
+  const itemVariants = {
+    hidden: { 
+      opacity: 0, 
+      y: 30,
+      scale: 0.95
+    },
+    visible: {
+      opacity: 1,
+      y: 0,
+      scale: 1,
+      transition: {
+        type: "spring",
+        damping: 20,
+        stiffness: 100,
+        duration: 0.6
+      }
+    }
+  };
+
+  const headerVariants = {
+    hidden: { 
+      opacity: 0, 
+      y: -20 
+    },
+    visible: {
+      opacity: 1,
+      y: 0,
+      transition: {
+        type: "spring",
+        damping: 25,
+        stiffness: 120,
+        duration: 0.7
+      }
+    }
+  };
+
   return (
-    <section id="features" className={`py-16 sm:py-20 lg:py-24 px-4 sm:px-6 lg:px-8 ${className}`} style={{ background: "#0c0e1e" }}>
-      <div className="max-w-7xl mx-auto">
-        {/* Section Header */}
-        <div className="flex flex-col items-center text-center max-w-3xl mx-auto mb-12 sm:mb-16">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full mb-4" style={{ background: "#6366f122", border: "1px solid #6366f144" }}>
-            <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: "#6366f1" }} />
-            <span className="text-[10px] font-bold text-indigo-400 uppercase tracking-wider">Platform Features</span>
-          </div>
-          <h2 className="text-3xl sm:text-4xl font-black text-white leading-tight">
+    <section 
+      id="features" 
+      ref={sectionRef}
+      className={`py-16 sm:py-20 lg:py-24 px-4 sm:px-6 lg:px-8 relative overflow-hidden ${className}`} 
+      style={{ background: "#0c0e1e" }}
+    >
+      {/* Background gradients - matching ProblemSection */}
+      <motion.div 
+        className="absolute top-0 left-1/4 w-96 h-96 rounded-full blur-3xl opacity-20"
+        style={{ background: "#000000" }}
+        initial={{ opacity: 0, scale: 0.8 }}
+        animate={isVisible ? { opacity: 0.2, scale: 1 } : { opacity: 0, scale: 0.8 }}
+        transition={{ duration: 1.5, ease: "easeOut" }}
+      />
+      <motion.div 
+        className="absolute bottom-0 right-1/4 w-96 h-96 rounded-full blur-3xl opacity-15"
+        style={{ background: "#000000" }}
+        initial={{ opacity: 0, scale: 0.8 }}
+        animate={isVisible ? { opacity: 0.15, scale: 1 } : { opacity: 0, scale: 0.8 }}
+        transition={{ duration: 1.5, delay: 0.2, ease: "easeOut" }}
+      />
+      <motion.div 
+        className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-full max-w-4xl rounded-full blur-3xl opacity-10"
+        style={{ background: "#000000" }}
+        initial={{ opacity: 0, scale: 0.8 }}
+        animate={isVisible ? { opacity: 0.1, scale: 1 } : { opacity: 0, scale: 0.8 }}
+        transition={{ duration: 1.5, delay: 0.4, ease: "easeOut" }}
+      />
+      
+      <div className="max-w-7xl mx-auto relative z-10">
+        {/* Section Header - Matching ProblemSection style */}
+        <motion.div 
+          className="flex flex-col items-center text-center max-w-3xl mx-auto"
+          initial="hidden"
+          animate={isVisible ? "visible" : "hidden"}
+          variants={headerVariants}
+        >
+          <h2 className="text-2xl sm:text-3xl lg:text-4xl font-black text-white leading-tight">
             {title}
           </h2>
-          <p className="text-gray-500 mt-3">
+          <p className="text-base md:text-lg text-gray-400 mt-3 max-w-2xl leading-relaxed">
             Empowering both students and teachers with cutting-edge tools
           </p>
-        </div>
+        </motion.div>
 
         {/* Student Features */}
-        <div className="mb-12 sm:mb-16">
-          <div className="flex items-center justify-center gap-3 mb-8">
-            <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: "#6366f122", border: "1px solid #6366f144" }}>
-              <span className="material-symbols-outlined text-xl" style={{ color: "#6366f1" }}>{features.student.icon}</span>
-            </div>
-            <h3 className="text-xl sm:text-2xl font-bold text-white">{features.student.title}</h3>
-          </div>
+        <motion.div 
+          className="mt-12 sm:mt-16"
+          initial="hidden"
+          animate={isVisible ? "visible" : "hidden"}
+          variants={containerVariants}
+        >
+          <motion.div 
+            className="flex items-center justify-center gap-3 mb-8"
+            variants={headerVariants}
+          >
+            <motion.div 
+              className="w-12 h-12 rounded-xl flex items-center justify-center"
+              style={{ 
+                background: `${features.student.color}22`, 
+                border: `1px solid ${features.student.color}44`
+              }}
+              whileHover={{ 
+                scale: 1.1,
+                rotate: [0, -5, 5, 0],
+                transition: { duration: 0.3 }
+              }}
+            >
+              <span className="material-symbols-outlined text-2xl" style={{ color: features.student.color }}>{features.student.icon}</span>
+            </motion.div>
+            <motion.h3 
+              className="text-xl font-bold text-white"
+              whileHover={{ x: 3 }}
+              transition={{ duration: 0.2 }}
+            >
+              {features.student.title}
+            </motion.h3>
+          </motion.div>
+          
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {features.student.features.map((feature, index) => (
-              <div
+              <motion.div
                 key={index}
-                className="relative rounded-2xl overflow-hidden p-5 flex flex-col gap-3 group transition-all duration-300 hover:scale-105"
-                style={{ background: "#0f1629", border: `1px solid ${features.student.color}33` }}
+                variants={itemVariants}
+                className="relative rounded-2xl overflow-hidden p-6 transition-all duration-300 hover:scale-[1.02] group"
+                style={{ 
+                  background: "#0c0e1e", 
+                  border: `1px solid ${features.student.color}33`,
+                  boxShadow: '0 4px 24px rgba(0,0,0,0.3)'
+                }}
+                whileHover={{
+                  boxShadow: `0 8px 40px ${features.student.color}25`,
+                  transition: { duration: 0.3 }
+                }}
               >
-                {/* Breathing inner glow */}
-                <div 
-                  className="absolute inset-0 transition-all duration-[4000ms] ease-in-out"
-                  style={{ 
-                    background: `radial-gradient(circle at center, ${features.student.color} 0%, transparent 70%)`,
-                    opacity: 0,
-                    animation: 'breatheGlow 4s ease-in-out infinite',
-                  }}
+                {/* Hover overlay */}
+                <motion.div 
+                  className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-700"
+                  style={{ background: `radial-gradient(ellipse at 50% 0%, ${features.student.color}15 0%, transparent 80%)` }}
+                  initial={{ opacity: 0 }}
+                  whileHover={{ opacity: 1 }}
+                  transition={{ duration: 0.5 }}
                 />
                 
-                {/* Hover overlay */}
-                <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-700" style={{ background: `radial-gradient(ellipse at 50% 0%, ${features.student.color}15 0%, transparent 80%)` }} />
-                
-                <div className="w-12 h-12 rounded-xl flex items-center justify-center relative z-10 transition-all duration-300 group-hover:scale-110" style={{ background: `${features.student.color}22`, border: `1px solid ${features.student.color}44` }}>
-                  <span className="material-symbols-outlined text-xl" style={{ color: features.student.color }}>{feature.icon}</span>
-                </div>
+                <motion.div 
+                  className="w-12 h-12 rounded-xl flex items-center justify-center transition-all duration-300 group-hover:scale-110" 
+                  style={{ 
+                    background: `${features.student.color}22`, 
+                    border: `1px solid ${features.student.color}44`
+                  }}
+                  whileHover={{ 
+                    scale: 1.1,
+                    rotate: [0, -5, 5, 0],
+                    transition: { duration: 0.3 }
+                  }}
+                >
+                  <span className="material-symbols-outlined text-2xl" style={{ color: features.student.color }}>{feature.icon}</span>
+                </motion.div>
                 <div className="relative z-10">
-                  <h4 className="text-base font-bold text-white mb-1">{feature.title}</h4>
-                  <p className="text-sm text-gray-400 leading-relaxed">{feature.description}</p>
+                  <motion.h4 
+                    className="text-base font-bold text-white mb-1"
+                    whileHover={{ x: 3 }}
+                    transition={{ duration: 0.2 }}
+                  >
+                    {feature.title}
+                  </motion.h4>
+                  <p className="text-sm text-gray-400 leading-relaxed group-hover:text-gray-300 transition-colors duration-300">{feature.description}</p>
                 </div>
-              </div>
+
+                {/* Subtle glow on hover */}
+                <motion.div 
+                  className="absolute -inset-0.5 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-700"
+                  style={{ 
+                    background: `linear-gradient(135deg, ${features.student.color}10, transparent 60%)`,
+                  }}
+                  initial={{ opacity: 0 }}
+                  whileHover={{ opacity: 1 }}
+                  transition={{ duration: 0.5 }}
+                />
+              </motion.div>
             ))}
           </div>
-        </div>
+        </motion.div>
 
         {/* Teacher Features */}
-        <div>
-          <div className="flex items-center justify-center gap-3 mb-8">
-            <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: "#a855f722", border: "1px solid #a855f744" }}>
-              <span className="material-symbols-outlined text-xl" style={{ color: "#a855f7" }}>{features.teacher.icon}</span>
-            </div>
-            <h3 className="text-xl sm:text-2xl font-bold text-white">{features.teacher.title}</h3>
-          </div>
+        <motion.div 
+          className="mt-12 sm:mt-16"
+          initial="hidden"
+          animate={isVisible ? "visible" : "hidden"}
+          variants={containerVariants}
+        >
+          <motion.div 
+            className="flex items-center justify-center gap-3 mb-8"
+            variants={headerVariants}
+          >
+            <motion.div 
+              className="w-12 h-12 rounded-xl flex items-center justify-center"
+              style={{ 
+                background: `${features.teacher.color}22`, 
+                border: `1px solid ${features.teacher.color}44`
+              }}
+              whileHover={{ 
+                scale: 1.1,
+                rotate: [0, -5, 5, 0],
+                transition: { duration: 0.3 }
+              }}
+            >
+              <span className="material-symbols-outlined text-2xl" style={{ color: features.teacher.color }}>{features.teacher.icon}</span>
+            </motion.div>
+            <motion.h3 
+              className="text-xl font-bold text-white"
+              whileHover={{ x: 3 }}
+              transition={{ duration: 0.2 }}
+            >
+              {features.teacher.title}
+            </motion.h3>
+          </motion.div>
+          
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {features.teacher.features.map((feature, index) => (
-              <div
+              <motion.div
                 key={index}
-                className="relative rounded-2xl overflow-hidden p-5 flex flex-col gap-3 group transition-all duration-300 hover:scale-105"
-                style={{ background: "#0f1629", border: `1px solid ${features.teacher.color}33` }}
+                variants={itemVariants}
+                className="relative rounded-2xl overflow-hidden p-6 transition-all duration-300 hover:scale-[1.02] group"
+                style={{ 
+                  background: "#0c0e1e", 
+                  border: `1px solid ${features.teacher.color}33`,
+                  boxShadow: '0 4px 24px rgba(0,0,0,0.3)'
+                }}
+                whileHover={{
+                  boxShadow: `0 8px 40px ${features.teacher.color}25`,
+                  transition: { duration: 0.3 }
+                }}
               >
-                {/* Breathing inner glow */}
-                <div 
-                  className="absolute inset-0 transition-all duration-[4000ms] ease-in-out"
-                  style={{ 
-                    background: `radial-gradient(circle at center, ${features.teacher.color} 0%, transparent 70%)`,
-                    opacity: 0,
-                    animation: 'breatheGlow 4s ease-in-out infinite',
-                  }}
+                {/* Hover overlay */}
+                <motion.div 
+                  className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-700"
+                  style={{ background: `radial-gradient(ellipse at 50% 0%, ${features.teacher.color}15 0%, transparent 80%)` }}
+                  initial={{ opacity: 0 }}
+                  whileHover={{ opacity: 1 }}
+                  transition={{ duration: 0.5 }}
                 />
                 
-                {/* Hover overlay */}
-                <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-700" style={{ background: `radial-gradient(ellipse at 50% 0%, ${features.teacher.color}15 0%, transparent 80%)` }} />
-                
-                <div className="w-12 h-12 rounded-xl flex items-center justify-center relative z-10 transition-all duration-300 group-hover:scale-110" style={{ background: `${features.teacher.color}22`, border: `1px solid ${features.teacher.color}44` }}>
-                  <span className="material-symbols-outlined text-xl" style={{ color: features.teacher.color }}>{feature.icon}</span>
-                </div>
+                <motion.div 
+                  className="w-12 h-12 rounded-xl flex items-center justify-center transition-all duration-300 group-hover:scale-110" 
+                  style={{ 
+                    background: `${features.teacher.color}22`, 
+                    border: `1px solid ${features.teacher.color}44`
+                  }}
+                  whileHover={{ 
+                    scale: 1.1,
+                    rotate: [0, -5, 5, 0],
+                    transition: { duration: 0.3 }
+                  }}
+                >
+                  <span className="material-symbols-outlined text-2xl" style={{ color: features.teacher.color }}>{feature.icon}</span>
+                </motion.div>
                 <div className="relative z-10">
-                  <h4 className="text-base font-bold text-white mb-1">{feature.title}</h4>
-                  <p className="text-sm text-gray-400 leading-relaxed">{feature.description}</p>
+                  <motion.h4 
+                    className="text-base font-bold text-white mb-1"
+                    whileHover={{ x: 3 }}
+                    transition={{ duration: 0.2 }}
+                  >
+                    {feature.title}
+                  </motion.h4>
+                  <p className="text-sm text-gray-400 leading-relaxed group-hover:text-gray-300 transition-colors duration-300">{feature.description}</p>
                 </div>
-              </div>
+
+                {/* Subtle glow on hover */}
+                <motion.div 
+                  className="absolute -inset-0.5 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-700"
+                  style={{ 
+                    background: `linear-gradient(135deg, ${features.teacher.color}10, transparent 60%)`,
+                  }}
+                  initial={{ opacity: 0 }}
+                  whileHover={{ opacity: 1 }}
+                  transition={{ duration: 0.5 }}
+                />
+              </motion.div>
             ))}
           </div>
-        </div>
+        </motion.div>
       </div>
 
       <style>

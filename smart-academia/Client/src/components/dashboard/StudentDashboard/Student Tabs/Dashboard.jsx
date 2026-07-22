@@ -142,6 +142,7 @@ const Dashboard = () => {
   return (
     <div className="space-y-5 pb-10" style={{ fontFamily: "'Lexend', sans-serif" }}>
       {/* Header */}
+      
       <div>
         <div className="flex items-center gap-2 mb-1">
           <span className="w-2 h-2 rounded-full animate-pulse" style={{ background: colors.accent }} />

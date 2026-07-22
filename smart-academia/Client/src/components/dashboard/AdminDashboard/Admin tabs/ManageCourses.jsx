@@ -5,24 +5,37 @@ const API = import.meta.env.VITE_API_URL || "http://localhost:5000";
 // ── Section Header ────────────────────────────────────────────
 const SectionHeader = ({ icon, title, color = "#6366f1" }) => (
   <div className="flex items-center gap-3 mb-4">
-    <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: `${color}22`, border: `1px solid ${color}44` }}>
-      <span className="material-symbols-outlined text-sm" style={{ color }}>{icon}</span>
+    <div
+      className="w-7 h-7 rounded-lg flex items-center justify-center"
+      style={{ background: `${color}22`, border: `1px solid ${color}44` }}
+    >
+      <span className="material-symbols-outlined text-sm" style={{ color }}>
+        {icon}
+      </span>
     </div>
-    <h3 className="text-xs font-bold text-white tracking-wide uppercase">{title}</h3>
-    <div className="flex-1 h-px" style={{ background: `linear-gradient(90deg, ${color}44, transparent)` }} />
+    <h3 className="text-xs font-bold text-white tracking-wide uppercase">
+      {title}
+    </h3>
+    <div
+      className="flex-1 h-px"
+      style={{ background: `linear-gradient(90deg, ${color}44, transparent)` }}
+    />
   </div>
 );
 
 // ── Mini Bar ──────────────────────────────────────────────────
 const MiniBar = ({ value = 0, color = "#6366f1", height = 6 }) => (
-  <div className="w-full rounded-full overflow-hidden" style={{ height, background: "#1e293b" }}>
+  <div
+    className="w-full rounded-full overflow-hidden"
+    style={{ height, background: "#1e293b" }}
+  >
     <div
       className="h-full rounded-full"
       style={{
         width: `${Math.min(Math.max(value, 0), 100)}%`,
         background: `linear-gradient(90deg, ${color}cc, ${color})`,
         boxShadow: `0 0 8px ${color}66`,
-        transition: "width 1s cubic-bezier(.4,0,.2,1)"
+        transition: "width 1s cubic-bezier(.4,0,.2,1)",
       }}
     />
   </div>
@@ -31,22 +44,40 @@ const MiniBar = ({ value = 0, color = "#6366f1", height = 6 }) => (
 // ── Progress Stat Card (with progress bar and ratio) ──────────
 const ProgressStatCard = ({ icon, label, value, total, color, isLoading }) => {
   const percentage = total > 0 ? Math.round((value / total) * 100) : 0;
-  
+
   return (
-    <div className="relative rounded-2xl overflow-hidden p-5 flex flex-col gap-3 group" style={{ background: "#0f1629", border: `1px solid ${color}33` }}>
-      <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500" style={{ background: `radial-gradient(ellipse at 50% 0%, ${color}15 0%, transparent 70%)` }} />
+    <div
+      className="relative rounded-2xl overflow-hidden p-5 flex flex-col gap-3 group"
+      style={{ background: "#0f1629", border: `1px solid ${color}33` }}
+    >
+      <div
+        className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500"
+        style={{
+          background: `radial-gradient(ellipse at 50% 0%, ${color}15 0%, transparent 70%)`,
+        }}
+      />
       <div className="flex items-start justify-between">
-        <div className="w-11 h-11 rounded-xl flex items-center justify-center" style={{ background: `${color}22`, border: `1px solid ${color}44` }}>
-          <span className="material-symbols-outlined text-xl" style={{ color }}>{icon}</span>
+        <div
+          className="w-11 h-11 rounded-xl flex items-center justify-center"
+          style={{ background: `${color}22`, border: `1px solid ${color}44` }}
+        >
+          <span className="material-symbols-outlined text-xl" style={{ color }}>
+            {icon}
+          </span>
         </div>
-        <span className="text-xs font-bold" style={{ color }}>{percentage}%</span>
+        <span className="text-xs font-bold" style={{ color }}>
+          {percentage}%
+        </span>
       </div>
       <div>
         {isLoading ? (
           <div className="h-9 w-16 bg-gray-800 rounded-lg animate-pulse" />
         ) : (
           <>
-            <p className="text-3xl font-black text-white tracking-tight" style={{ textShadow: `0 0 20px ${color}66` }}>
+            <p
+              className="text-3xl font-black text-white tracking-tight"
+              style={{ textShadow: `0 0 20px ${color}66` }}
+            >
               {value}
             </p>
             <p className="text-xs text-gray-500 mt-0.5">
@@ -66,7 +97,10 @@ const LoadingSpinner = () => (
   <div className="relative w-12 h-12 mx-auto">
     <div className="absolute inset-0 rounded-full border-4 border-indigo-900" />
     <div className="absolute inset-0 rounded-full border-4 border-transparent border-t-indigo-500 animate-spin" />
-    <div className="absolute inset-2 rounded-full border-4 border-transparent border-t-purple-500 animate-spin" style={{ animationDirection: "reverse", animationDuration: "0.8s" }} />
+    <div
+      className="absolute inset-2 rounded-full border-4 border-transparent border-t-purple-500 animate-spin"
+      style={{ animationDirection: "reverse", animationDuration: "0.8s" }}
+    />
   </div>
 );
 
@@ -79,10 +113,19 @@ const ManageCourses = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedDepartment, setSelectedDepartment] = useState("all");
   const [error, setError] = useState("");
+  const [reassigningCourse, setReassigningCourse] = useState(null);
+  const [selectedNewTeacher, setSelectedNewTeacher] = useState("");
+  const [reassignLoading, setReassignLoading] = useState(false);
 
   const departments = [
-    "Computer Science", "Mathematics", "Physics", "Biology",
-    "Business Administration", "History", "Arts", "Engineering"
+    "Computer Science",
+    "Mathematics",
+    "Physics",
+    "Biology",
+    "Business Administration",
+    "History",
+    "Arts",
+    "Engineering",
   ];
 
   // Target values for progress bars
@@ -111,6 +154,38 @@ const ManageCourses = () => {
     }
   };
 
+  const handleReassign = async () => {
+    if (!selectedNewTeacher) return;
+    setReassignLoading(true);
+    try {
+      const res = await fetch(
+        `${API}/api/admin/courses/${reassigningCourse._id}/reassign`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ newTeacherId: selectedNewTeacher }),
+        },
+      );
+      const data = await res.json();
+      if (!res.ok) {
+        alert(data.message);
+        return;
+      }
+      setCourses((prev) =>
+        prev.map((c) => (c._id === reassigningCourse._id ? data.course : c)),
+      );
+      setReassigningCourse(null);
+      setSelectedNewTeacher("");
+    } catch {
+      alert("Cannot connect to server");
+    } finally {
+      setReassignLoading(false);
+    }
+  };
+
   const fetchTeachers = async () => {
     try {
       const res = await fetch(`${API}/api/admin/teachers`, {
@@ -118,10 +193,12 @@ const ManageCourses = () => {
       });
       const data = await res.json();
       if (res.ok) setTeachers(data.teachers || []);
-    } catch { /* silent */ }
+    } catch {
+      /* silent */
+    }
   };
 
-  const filteredCourses = courses.filter(course => {
+  const filteredCourses = courses.filter((course) => {
     const matchesSearch =
       course.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       course.code?.toLowerCase().includes(searchTerm.toLowerCase());
@@ -131,21 +208,42 @@ const ManageCourses = () => {
   });
 
   const totalCourses = courses.length;
-  const totalTeachers = [...new Set(courses.map(c => c.teacher?._id).filter(Boolean))].length;
-  const totalDepartments = [...new Set(courses.map(c => c.department).filter(Boolean))].length;
+  const totalTeachers = [
+    ...new Set(courses.map((c) => c.teacher?._id).filter(Boolean)),
+  ].length;
+  const totalDepartments = [
+    ...new Set(courses.map((c) => c.department).filter(Boolean)),
+  ].length;
 
   return (
     <div className="space-y-6" style={{ fontFamily: "'Lexend', sans-serif" }}>
-      
       {/* Hero Section */}
-      <div className="relative rounded-2xl overflow-hidden p-6" style={{ background: "linear-gradient(135deg, #0c0e1e 0%, #131b35 50%, #0d1527 100%)", border: "1px solid #1e293b" }}>
-        <div className="absolute top-0 left-1/4 w-48 h-48 rounded-full blur-3xl opacity-20" style={{ background: "#6366f1" }} />
-        <div className="absolute bottom-0 right-1/4 w-48 h-48 rounded-full blur-3xl opacity-15" style={{ background: "#a855f7" }} />
-        
+      <div
+        className="relative rounded-2xl overflow-hidden p-6"
+        style={{
+          background:
+            "linear-gradient(135deg, #0c0e1e 0%, #131b35 50%, #0d1527 100%)",
+          border: "1px solid #1e293b",
+        }}
+      >
+        <div
+          className="absolute top-0 left-1/4 w-48 h-48 rounded-full blur-3xl opacity-20"
+          style={{ background: "#6366f1" }}
+        />
+        <div
+          className="absolute bottom-0 right-1/4 w-48 h-48 rounded-full blur-3xl opacity-15"
+          style={{ background: "#a855f7" }}
+        />
+
         <div className="relative">
           <div className="flex items-center gap-2 mb-1">
-            <span className="w-2 h-2 rounded-full animate-pulse" style={{ background: "#6366f1" }} />
-            <p className="text-xs font-semibold text-indigo-400 uppercase tracking-widest">Admin · Course Management</p>
+            <span
+              className="w-2 h-2 rounded-full animate-pulse"
+              style={{ background: "#6366f1" }}
+            />
+            <p className="text-xs font-semibold text-indigo-400 uppercase tracking-widest">
+              Admin · Course Management
+            </p>
           </div>
           <h1 className="text-2xl sm:text-3xl font-black text-white leading-tight tracking-tight">
             Manage Courses
@@ -158,10 +256,18 @@ const ManageCourses = () => {
 
       {/* Error Message */}
       {error && (
-        <div className="rounded-xl p-3 flex items-center gap-2" style={{ background: "#ef444422", border: "1px solid #ef444444" }}>
-          <span className="material-symbols-outlined text-sm text-red-400">error</span>
+        <div
+          className="rounded-xl p-3 flex items-center gap-2"
+          style={{ background: "#ef444422", border: "1px solid #ef444444" }}
+        >
+          <span className="material-symbols-outlined text-sm text-red-400">
+            error
+          </span>
           <p className="text-sm text-red-400 flex-1">{error}</p>
-          <button onClick={() => setError("")} className="text-red-400 hover:text-red-300">
+          <button
+            onClick={() => setError("")}
+            className="text-red-400 hover:text-red-300"
+          >
             <span className="material-symbols-outlined text-sm">close</span>
           </button>
         </div>
@@ -169,26 +275,26 @@ const ManageCourses = () => {
 
       {/* Stats Grid using ProgressStatCards with ratio display */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        <ProgressStatCard 
-          icon="menu_book" 
-          label="Total Courses" 
-          value={totalCourses} 
+        <ProgressStatCard
+          icon="menu_book"
+          label="Total Courses"
+          value={totalCourses}
           total={MAX_COURSES_TARGET}
           color="#6366f1"
           isLoading={isLoading}
         />
-        <ProgressStatCard 
-          icon="person" 
-          label="Active Teachers" 
-          value={totalTeachers} 
+        <ProgressStatCard
+          icon="person"
+          label="Active Teachers"
+          value={totalTeachers}
           total={MAX_TEACHERS_TARGET}
           color="#22c55e"
           isLoading={isLoading}
         />
-        <ProgressStatCard 
-          icon="corporate_fare" 
-          label="Departments" 
-          value={totalDepartments} 
+        <ProgressStatCard
+          icon="corporate_fare"
+          label="Departments"
+          value={totalDepartments}
           total={MAX_DEPARTMENTS_TARGET}
           color="#a855f7"
           isLoading={isLoading}
@@ -196,12 +302,17 @@ const ManageCourses = () => {
       </div>
 
       {/* Filters Card */}
-      <div className="rounded-2xl p-5" style={{ background: "#0f1629", border: "1px solid #1e293b" }}>
+      <div
+        className="rounded-2xl p-5"
+        style={{ background: "#0f1629", border: "1px solid #1e293b" }}
+      >
         <SectionHeader icon="filter_alt" title="Filters" color="#6366f1" />
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {/* Search */}
           <div className="relative">
-            <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-lg">search</span>
+            <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-lg">
+              search
+            </span>
             <input
               type="text"
               placeholder="Search courses by title or code..."
@@ -216,8 +327,10 @@ const ManageCourses = () => {
             className="w-full px-4 py-2.5 text-sm rounded-xl bg-gray-800/50 text-white border border-gray-700 focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition-all cursor-pointer"
           >
             <option value="all">All Departments</option>
-            {departments.map(dept => (
-              <option key={dept} value={dept}>{dept}</option>
+            {departments.map((dept) => (
+              <option key={dept} value={dept}>
+                {dept}
+              </option>
             ))}
           </select>
         </div>
@@ -225,30 +338,61 @@ const ManageCourses = () => {
 
       {/* Courses Table - READ ONLY (No Actions) */}
       {isLoading ? (
-        <div className="text-center py-16 rounded-2xl" style={{ background: "#0f1629", border: "1px solid #1e293b" }}>
+        <div
+          className="text-center py-16 rounded-2xl"
+          style={{ background: "#0f1629", border: "1px solid #1e293b" }}
+        >
           <LoadingSpinner />
           <p className="text-gray-500 mt-3 text-sm">Loading courses...</p>
         </div>
       ) : (
-        <div className="rounded-2xl overflow-hidden" style={{ background: "#0f1629", border: "1px solid #1e293b" }}>
+        <div
+          className="rounded-2xl overflow-hidden"
+          style={{ background: "#0f1629", border: "1px solid #1e293b" }}
+        >
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
-              <thead style={{ background: "#0a0f1e", borderBottom: "1px solid #1e293b" }}>
+              <thead
+                style={{
+                  background: "#0a0f1e",
+                  borderBottom: "1px solid #1e293b",
+                }}
+              >
                 <tr>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Course</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider hidden sm:table-cell">Department</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider hidden md:table-cell">Instructor</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider hidden lg:table-cell">Students</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Status</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                    Course
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider hidden sm:table-cell">
+                    Department
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider hidden md:table-cell">
+                    Instructor
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider hidden lg:table-cell">
+                    Students
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                    Status
+                  </th>
+                  <th className="px-4 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                    Actions
+                  </th>
                 </tr>
               </thead>
               <tbody className="divide-y" style={{ borderColor: "#1e293b" }}>
                 {filteredCourses.map((course) => (
-                  <tr key={course._id} className="hover:bg-white/5 transition-colors duration-150">
+                  <tr
+                    key={course._id}
+                    className="hover:bg-white/5 transition-colors duration-150"
+                  >
                     <td className="px-4 py-3">
                       <div>
-                        <p className="font-semibold text-white text-sm">{course.title}</p>
-                        <p className="text-gray-500 text-xs font-mono mt-0.5">{course.code}</p>
+                        <p className="font-semibold text-white text-sm">
+                          {course.title}
+                        </p>
+                        <p className="text-gray-500 text-xs font-mono mt-0.5">
+                          {course.code}
+                        </p>
                       </div>
                     </td>
                     <td className="px-4 py-3 text-gray-400 text-sm hidden sm:table-cell">
@@ -261,16 +405,37 @@ const ManageCourses = () => {
                       {course.enrolledCount || 0}
                     </td>
                     <td className="px-4 py-3">
-                      <span className={`inline-block px-2 py-1 rounded-full text-[10px] font-medium ${
-                        course.isPublished
-                          ? "text-emerald-400"
-                          : "text-gray-500"
-                      }`} style={{
-                        background: course.isPublished ? "#22c55e22" : "#1e293b",
-                        border: `1px solid ${course.isPublished ? "#22c55e44" : "#334155"}`
-                      }}>
+                      <span
+                        className={`inline-block px-2 py-1 rounded-full text-[10px] font-medium ${
+                          course.isPublished
+                            ? "text-emerald-400"
+                            : "text-gray-500"
+                        }`}
+                        style={{
+                          background: course.isPublished
+                            ? "#22c55e22"
+                            : "#1e293b",
+                          border: `1px solid ${course.isPublished ? "#22c55e44" : "#334155"}`,
+                        }}
+                      >
                         {course.isPublished ? "Published" : "Draft"}
                       </span>
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="flex justify-center">
+                        <button
+                          onClick={() => {
+                            setReassigningCourse(course);
+                            setSelectedNewTeacher("");
+                          }}
+                          className="p-1.5 text-gray-500 hover:text-indigo-400 hover:bg-indigo-500/10 rounded-lg transition-all duration-200 hover:scale-110"
+                          title="Reassign teacher"
+                        >
+                          <span className="material-symbols-outlined text-base">
+                            swap_horiz
+                          </span>
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -281,21 +446,92 @@ const ManageCourses = () => {
           {/* Empty State */}
           {filteredCourses.length === 0 && (
             <div className="text-center py-16">
-              <span className="material-symbols-outlined text-5xl text-gray-700 mb-3 block">menu_book</span>
-              <h3 className="text-base font-semibold text-gray-400 mb-1">No courses found</h3>
-              <p className="text-sm text-gray-600">Try adjusting your search or filter criteria</p>
+              <span className="material-symbols-outlined text-5xl text-gray-700 mb-3 block">
+                menu_book
+              </span>
+              <h3 className="text-base font-semibold text-gray-400 mb-1">
+                No courses found
+              </h3>
+              <p className="text-sm text-gray-600">
+                Try adjusting your search or filter criteria
+              </p>
             </div>
           )}
         </div>
       )}
 
       {/* Info Banner */}
-      <div className="rounded-xl p-3 flex items-start gap-2" style={{ background: "#0a0f1e", border: "1px solid #1e293b" }}>
-        <span className="material-symbols-outlined text-xs text-indigo-400 mt-0.5">info</span>
+      <div
+        className="rounded-xl p-3 flex items-start gap-2"
+        style={{ background: "#0a0f1e", border: "1px solid #1e293b" }}
+      >
+        <span className="material-symbols-outlined text-xs text-indigo-400 mt-0.5">
+          info
+        </span>
         <p className="text-[10px] text-gray-500 leading-relaxed">
-          <span className="text-indigo-400 font-semibold">Course management:</span> View all courses across departments. Course creation and editing are managed by teachers. Admins have read-only access to course data.
+          <span className="text-indigo-400 font-semibold">
+            Course management:
+          </span>{" "}
+          View all courses across departments. Course creation and editing are
+          managed by teachers. Admins have read-only access to course data.
         </p>
       </div>
+
+
+      {/* Reassign Modal */}
+{reassigningCourse && (
+  <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-50" onClick={() => setReassigningCourse(null)}>
+    <div className="rounded-2xl w-full max-w-md" style={{ background: "#0f1629", border: "1px solid #1e293b" }} onClick={(e) => e.stopPropagation()}>
+      <div className="px-5 py-4" style={{ background: "#0a0f1e", borderBottom: "1px solid #1e293b" }}>
+        <div className="flex justify-between items-center">
+          <h2 className="text-lg font-bold text-white">Reassign Course</h2>
+          <button onClick={() => setReassigningCourse(null)} className="text-gray-500 hover:text-gray-400">
+            <span className="material-symbols-outlined text-xl">close</span>
+          </button>
+        </div>
+      </div>
+      <div className="p-5 space-y-4">
+        <div>
+          <p className="text-xs text-gray-500 mb-1">Course</p>
+          <p className="text-sm font-semibold text-white">{reassigningCourse.title}</p>
+          <p className="text-xs text-gray-500 mt-0.5">Current teacher: {reassigningCourse.teacher?.fullName || "—"}</p>
+        </div>
+        <div>
+          <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">New Teacher *</label>
+          <select
+            value={selectedNewTeacher}
+            onChange={e => setSelectedNewTeacher(e.target.value)}
+            className="w-full px-4 py-2.5 text-sm rounded-xl bg-gray-800/50 text-white border border-gray-700 focus:ring-2 focus:ring-indigo-500 outline-none"
+          >
+            <option value="">Select a teacher…</option>
+            {teachers
+              .filter(t => t._id !== reassigningCourse.teacher?._id)
+              .map(t => (
+                <option key={t._id} value={t._id}>{t.fullName} ({t.email})</option>
+              ))}
+          </select>
+        </div>
+        <div className="flex gap-3 pt-2">
+          <button
+            onClick={() => setReassigningCourse(null)}
+            className="flex-1 px-4 py-2.5 rounded-xl text-sm font-medium transition-all hover:scale-105"
+            style={{ background: "#1e293b", color: "#94a3b8" }}
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handleReassign}
+            disabled={!selectedNewTeacher || reassignLoading}
+            className="flex-1 px-4 py-2.5 rounded-xl text-sm font-bold text-white transition-all hover:scale-105 disabled:opacity-50"
+            style={{ background: "linear-gradient(135deg, #6366f1, #818cf8)" }}
+          >
+            {reassignLoading ? "Reassigning..." : "Reassign"}
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+)}
 
       <style>{`
         @keyframes fadeIn {
