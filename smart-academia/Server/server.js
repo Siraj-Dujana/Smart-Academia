@@ -33,9 +33,9 @@ app.use("/api/notifications", require("./routes/Notifications"));
 // ── Lesson routes (nested under courses) ─────────────────────
 app.use("/api/courses/:courseId/lessons", require("./routes/lessons"));
 
-// ── AI Routes (single mount — no duplicate) ───────────────────
+// ── AI Routes ──────────────────────────────────────────────────
+// This handles: /api/ai/public-chat, /api/ai/chat, /api/ai/generate-quiz, /api/ai/teacher-chat
 app.use("/api/ai", require("./routes/aiRoutes"));
-app.use("/api/assistant", require("./routes/aiRoutes"));
 
 // ── AI Assistant sub-resources ───────────────────────────────
 app.use("/api/assistant/documents", require("./routes/documentRoutes"));
@@ -58,6 +58,9 @@ app.use("/api/certificates", certificateRoutes);
 app.use('/api/course-notes', courseNoteRoutes);
 
 app.get("/", (req, res) => res.json({ message: "SmartAcademia API running" }));
+
+// ❌ REMOVE THIS DUPLICATE ENDPOINT - It's causing conflicts!
+// app.post('/api/chat', async (req, res) => { ... });
 
 mongoose.connect(process.env.MONGO_URI)
   .then(() => {

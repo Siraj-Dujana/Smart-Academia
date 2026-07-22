@@ -4,14 +4,122 @@ const ChatHistory = require('../models/ChatHistory');
 const Flashcard = require('../models/Flashcard');
 const Quiz = require('../models/AIQuiz');
 
-
 // const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 const getAI = () => {
   return new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 };
 
+// =============================================
+// POST /api/ai/public-chat — Public Landing Page Chatbot
+// =============================================
+// In your aiController.js - publicChat function
+const publicChat = async (req, res) => {
+  try {
+    const { message, history } = req.body;
 
-// @route   POST /api/ai/summary/:documentId
+    if (!message || !message.trim()) {
+      return res.status(400).json({ message: "Message is required" });
+    }
+
+    // System prompt for public landing page - NO EMOJIS
+    const systemPrompt = `You are Smart Academia's AI Assistant for the landing page. 
+Your role is to help visitors understand what Smart Academia offers.
+
+About Smart Academia:
+- AI-powered learning platform for students and teachers
+- Features: Personalized learning, automated grading, progress tracking, interactive study materials, collaborative learning tools
+- Benefits: Save time, improve learning outcomes, get instant feedback, better engagement
+- Free to start, with premium plans available
+- Website: Smart Academia
+
+Guidelines:
+- Be friendly, professional, and helpful
+- Keep responses concise and engaging
+- Focus on explaining features, benefits, and how it works
+- Encourage visitors to sign up or try the platform
+- If you don't know something, suggest they explore the website or contact support
+- Be conversational
+- Keep responses under 100 words
+- DO NOT use emojis anywhere in your responses
+
+Examples:
+Q: "What is Smart Academia?"
+A: Smart Academia is an AI-powered learning platform that helps students master subjects and teachers automate grading. It offers personalized learning, progress tracking, and instant feedback.
+
+Q: "How much does it cost?"
+A: We offer a free plan to get started. Premium plans start at $9.99/month for advanced features. All plans come with a 14-day free trial.
+
+Q: "What features do you have?"
+A: Smart Academia offers AI-powered learning, automated grading, personalized study plans, real-time progress tracking, and collaborative learning tools.
+
+Q: "How does it work?"
+A: Simply create an account, set up your learning goals or classes, and start learning with AI assistance. It's that easy.
+
+Now respond to the visitor's question. Be helpful and encourage them to explore Smart Academia. Do not use any emojis in your response.`;
+
+    // Build conversation history
+    const geminiHistory = (history || [])
+      .slice(-10)
+      .map(msg => ({
+        role: msg.role === "assistant" ? "model" : "user",
+        parts: [{ text: msg.content }],
+      }));
+
+    const ai = getAI();
+    
+    // Create chat session
+    const geminiChat = ai.chats.create({
+      model: "gemini-2.5-flash-lite",
+      config: {
+        systemInstruction: systemPrompt,
+        maxOutputTokens: 1024,
+        temperature: 0.7,
+      },
+      history: geminiHistory,
+    });
+
+    // Send message and get response
+    const response = await geminiChat.sendMessage({
+      message: message.trim(),
+    });
+
+    let reply = response.text;
+
+    // Remove any emojis from the response as a safety net
+    reply = reply.replace(/[\u{1F600}-\u{1F64F}]/gu, '') // Emoticons
+      .replace(/[\u{1F300}-\u{1F5FF}]/gu, '') // Misc Symbols and Pictographs
+      .replace(/[\u{1F680}-\u{1F6FF}]/gu, '') // Transport and Map
+      .replace(/[\u{1F700}-\u{1F77F}]/gu, '') // Alchemical Symbols
+      .replace(/[\u{1F780}-\u{1F7FF}]/gu, '') // Geometric Shapes Extended
+      .replace(/[\u{1F800}-\u{1F8FF}]/gu, '') // Supplemental Arrows-C
+      .replace(/[\u{1F900}-\u{1F9FF}]/gu, '') // Supplemental Symbols and Pictographs
+      .replace(/[\u{1FA00}-\u{1FA6F}]/gu, '') // Chess Symbols
+      .replace(/[\u{1FA70}-\u{1FAFF}]/gu, '') // Symbols and Pictographs Extended-A
+      .replace(/[\u{2600}-\u{26FF}]/gu, '') // Miscellaneous Symbols
+      .replace(/[\u{2700}-\u{27BF}]/gu, '') // Dingbats
+      .replace(/[\u{FE00}-\u{FEFF}]/gu, '') // Variation Selectors
+      .trim();
+
+    // Clean up any double spaces that might have been created
+    reply = reply.replace(/\s+/g, ' ').trim();
+
+    res.status(200).json({ reply });
+  } catch (error) {
+    console.error("Public AI chat error:", error);
+
+    if (error.message?.includes("API_KEY")) {
+      return res.status(500).json({ message: "AI service configuration error. Contact admin." });
+    }
+    if (error.message?.includes("quota") || error.message?.includes("rate")) {
+      return res.status(429).json({ message: "AI service is busy. Please try again in a moment." });
+    }
+
+    res.status(500).json({ message: "AI service error. Please try again." });
+  }
+};
+// =============================================
+// POST /api/ai/summary/:documentId
+// =============================================
 const generateSummary = async (req, res) => {
   try {
     const document = await Document.findOne({
@@ -49,7 +157,9 @@ const generateSummary = async (req, res) => {
   }
 };
 
-// @route   POST /api/ai/chat/:documentId
+// =============================================
+// POST /api/ai/chat/:documentId
+// =============================================
 const chatWithDocument = async (req, res) => {
   try {
     const { message } = req.body;
@@ -117,7 +227,9 @@ const chatWithDocument = async (req, res) => {
   }
 };
 
-// @route   GET /api/ai/chat/:documentId/history
+// =============================================
+// GET /api/ai/chat/:documentId/history
+// =============================================
 const getChatHistory = async (req, res) => {
   try {
     const chatHistory = await ChatHistory.findOne({
@@ -137,7 +249,9 @@ const getChatHistory = async (req, res) => {
   }
 };
 
-// @route   DELETE /api/ai/chat/:documentId/history
+// =============================================
+// DELETE /api/ai/chat/:documentId/history
+// =============================================
 const clearChatHistory = async (req, res) => {
   try {
     await ChatHistory.findOneAndDelete({
@@ -153,7 +267,9 @@ const clearChatHistory = async (req, res) => {
   }
 };
 
-// @route   POST /api/ai/explain/:documentId
+// =============================================
+// POST /api/ai/explain/:documentId
+// =============================================
 const explainConcept = async (req, res) => {
   try {
     const { concept } = req.body;
@@ -196,7 +312,9 @@ const explainConcept = async (req, res) => {
   }
 };
 
-// @route   POST /api/ai/flashcards/:documentId
+// =============================================
+// POST /api/ai/flashcards/:documentId
+// =============================================
 const generateFlashcards = async (req, res) => {
   try {
     const { title, count = 10 } = req.body;
@@ -249,7 +367,9 @@ const generateFlashcards = async (req, res) => {
   }
 };
 
-// @route   POST /api/ai/quiz/:documentId
+// =============================================
+// POST /api/ai/quiz/:documentId
+// =============================================
 const generateQuiz = async (req, res) => {
   try {
     const { title, count = 10 } = req.body;
@@ -306,7 +426,9 @@ const generateQuiz = async (req, res) => {
   }
 };
 
-// @route   GET /api/assistant/analytics
+// =============================================
+// GET /api/assistant/analytics
+// =============================================
 const getAnalytics = async (req, res) => {
   try {
     const userId = req.user._id;
@@ -378,8 +500,9 @@ const getAnalytics = async (req, res) => {
   }
 };
 
-// ✅ ===== STUDENT AI TUTOR =====
-// @route   POST /api/ai/student-chat
+// =============================================
+// POST /api/ai/student-chat — Student AI Tutor
+// =============================================
 const studentChat = async (req, res) => {
   try {
     const { message, context = "general" } = req.body;
@@ -442,8 +565,9 @@ const studentChat = async (req, res) => {
   }
 };
 
-// ✅ ===== TEACHER AI TUTOR =====
-// @route   POST /api/ai/teacher-chat
+// =============================================
+// POST /api/ai/teacher-chat — Teacher AI Tutor
+// =============================================
 const teacherChat = async (req, res) => {
   try {
     const { message, context = "general", courseContext = null } = req.body;
@@ -519,7 +643,9 @@ const teacherChat = async (req, res) => {
   }
 };
 
-// ✅ History functions
+// =============================================
+// GET /api/ai/student-chat/history
+// =============================================
 const getStudentChatHistory = async (req, res) => {
   try {
     const chatHistory = await ChatHistory.findOne({
@@ -532,6 +658,9 @@ const getStudentChatHistory = async (req, res) => {
   }
 };
 
+// =============================================
+// GET /api/ai/teacher-chat/history
+// =============================================
 const getTeacherChatHistory = async (req, res) => {
   try {
     const chatHistory = await ChatHistory.findOne({
@@ -544,6 +673,9 @@ const getTeacherChatHistory = async (req, res) => {
   }
 };
 
+// =============================================
+// DELETE /api/ai/student-chat/history
+// =============================================
 const clearStudentChatHistory = async (req, res) => {
   try {
     await ChatHistory.findOneAndDelete({
@@ -556,6 +688,9 @@ const clearStudentChatHistory = async (req, res) => {
   }
 };
 
+// =============================================
+// DELETE /api/ai/teacher-chat/history
+// =============================================
 const clearTeacherChatHistory = async (req, res) => {
   try {
     await ChatHistory.findOneAndDelete({
@@ -568,8 +703,11 @@ const clearTeacherChatHistory = async (req, res) => {
   }
 };
 
-
+// =============================================
+// EXPORTS
+// =============================================
 module.exports = {
+  publicChat, // ✅ NEW - Landing page chatbot
   generateSummary,
   chatWithDocument,
   getChatHistory,

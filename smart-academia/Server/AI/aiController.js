@@ -5,6 +5,93 @@ const Enrollment = require("../models/Enrollment");
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
 // =============================================
+// POST /api/ai/public-chat — Public Landing Page Chatbot
+// =============================================
+const publicChat = async (req, res) => {
+  try {
+    const { message, history } = req.body;
+
+    if (!message || !message.trim()) {
+      return res.status(400).json({ message: "Message is required" });
+    }
+
+    // System prompt for public landing page
+    const systemPrompt = `You are Smart Academia's AI Assistant for the landing page. 
+Your role is to help visitors understand what Smart Academia offers.
+
+About Smart Academia:
+- AI-powered learning platform for students and teachers
+- Features: Personalized learning, automated grading, progress tracking, interactive study materials, collaborative learning tools
+- Benefits: Save time, improve learning outcomes, get instant feedback, better engagement
+- Free to start, with premium plans available
+- Website: Smart Academia
+
+Guidelines:
+- Be friendly, professional, and helpful
+- Keep responses concise and engaging
+- Focus on explaining features, benefits, and how it works
+- Encourage visitors to sign up or try the platform
+- If you don't know something, suggest they explore the website or contact support
+- Be conversational and use emojis occasionally
+- Keep responses under 100 words
+
+Examples:
+Q: "What is Smart Academia?"
+A: Smart Academia is an AI-powered learning platform that helps students master subjects and teachers automate grading. It offers personalized learning, progress tracking, and instant feedback. 🎓
+
+Q: "How much does it cost?"
+A: We offer a free plan to get started! Premium plans start at $9.99/month for advanced features. All plans come with a 14-day free trial. 💰
+
+Q: "What features do you have?"
+A: Smart Academia offers AI-powered learning, automated grading, personalized study plans, real-time progress tracking, and collaborative learning tools. 🚀
+
+Q: "How does it work?"
+A: Simply create an account, set up your learning goals or classes, and start learning with AI assistance. It's that easy! ✨
+
+Now respond to the visitor's question. Be helpful and encourage them to explore Smart Academia!`;
+
+    // Build conversation history
+    const geminiHistory = (history || [])
+      .slice(-10)
+      .map(msg => ({
+        role: msg.role === "assistant" ? "model" : "user",
+        parts: [{ text: msg.content }],
+      }));
+
+    // Create chat session
+    const geminiChat = ai.chats.create({
+      model: "gemini-2.5-flash-lite",
+      config: {
+        systemInstruction: systemPrompt,
+        maxOutputTokens: 1024,
+        temperature: 0.7,
+      },
+      history: geminiHistory,
+    });
+
+    // Send message and get response
+    const response = await geminiChat.sendMessage({
+      message: message.trim(),
+    });
+
+    const reply = response.text;
+
+    res.status(200).json({ reply });
+  } catch (error) {
+    console.error("Public AI chat error:", error);
+
+    if (error.message?.includes("API_KEY")) {
+      return res.status(500).json({ message: "AI service configuration error. Contact admin." });
+    }
+    if (error.message?.includes("quota") || error.message?.includes("rate")) {
+      return res.status(429).json({ message: "AI service is busy. Please try again in a moment." });
+    }
+
+    res.status(500).json({ message: "AI service error. Please try again." });
+  }
+};
+
+// =============================================
 // POST /api/ai/chat — Student AI Tutor
 // =============================================
 const chat = async (req, res) => {
@@ -35,8 +122,8 @@ Focus your answers on topics relevant to this course when possible.`;
       }
     }
 
-   // Build system prompt - STRICT VERSION
-const systemPrompt = `You are an AI Tutor. Follow these rules STRICTLY:
+    // Build system prompt - STRICT VERSION
+    const systemPrompt = `You are an AI Tutor. Follow these rules STRICTLY:
 
 RULES:
 1. Keep responses UNDER 100 words unless asked for "detailed explanation"
@@ -51,6 +138,8 @@ RESPONSE FORMATS:
 - Definition → 1 sentence max
 - Comparison → 2-3 bullet points max
 - Yes/No → "Yes." or "No." only
+
+${courseContext}
 
 EXAMPLES:
 
@@ -72,14 +161,9 @@ A: • Lists are mutable
 
 Now respond to the student. Be VERY brief. No fluff. Get straight to the point.`;
 
-// Also add this as a user message to reinforce
-const userMessage = `${message}\n\nREMEMBER: Give a VERY SHORT answer. No greetings, no conclusions, just the answer.`;
-   
-   
     // Build conversation history for Gemini
-    // Gemini uses "user" and "model" roles (not "assistant")
     const geminiHistory = (history || [])
-      .slice(-10) // last 10 messages for context
+      .slice(-10)
       .map(msg => ({
         role: msg.role === "assistant" ? "model" : "user",
         parts: [{ text: msg.content }],
@@ -117,7 +201,6 @@ const userMessage = `${message}\n\nREMEMBER: Give a VERY SHORT answer. No greeti
     res.status(500).json({ message: "AI service error. Please try again." });
   }
 };
-
 
 // =============================================
 // POST /api/ai/generate-quiz — Teacher AI Quiz Generator
@@ -184,16 +267,14 @@ Rules:
       return res.status(500).json({ message: "AI returned no questions. Please try again." });
     }
 
-    // ✅ FIXED: Convert to database format
+    // Convert to database format
     const validatedQuestions = questions
       .map(q => {
-        // Handle both formats: {text, options: [{text, isCorrect}]} OR {questionText, options: string[], correctAnswer}
         let questionText = q.questionText || q.text || "";
         let optionStrings = [];
         let correctAnswerText = q.correctAnswer || "";
         
         if (Array.isArray(q.options)) {
-          // Check if options are objects with {text, isCorrect}
           if (q.options.length > 0 && typeof q.options[0] === 'object') {
             const correctOpt = q.options.find(o => o.isCorrect === true);
             if (correctOpt) {
@@ -201,10 +282,8 @@ Rules:
             }
             optionStrings = q.options.map(o => o.text || "").filter(Boolean);
           } else {
-            // Options are already strings
             optionStrings = q.options.map(o => o?.toString().trim()).filter(Boolean);
             
-            // If correctAnswer is a letter (A, B, C, D), convert to text
             if (correctAnswerText && correctAnswerText.length === 1 && /[A-D]/.test(correctAnswerText)) {
               const letterMap = { 'A': 0, 'B': 1, 'C': 2, 'D': 3 };
               const idx = letterMap[correctAnswerText];
@@ -350,5 +429,5 @@ Respond in a friendly, collaborative tone as a peer teaching assistant.`;
   }
 };
 
-// Update the export at the bottom:
-module.exports = { chat, generateQuizQuestions, teacherChat };
+// Update the export to include publicChat
+module.exports = { chat, generateQuizQuestions, teacherChat, publicChat };

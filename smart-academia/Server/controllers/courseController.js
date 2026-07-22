@@ -97,7 +97,19 @@ const getTeacherCourses = async (req, res) => {
     const courses = await Course.find({ teacher: req.user._id })
       .populate("teacher", "fullName email")
       .sort({ createdAt: -1 });
-    res.status(200).json({ courses });
+
+    // ✅ ADD LESSON COUNTS
+    const coursesWithLessonCounts = await Promise.all(
+      courses.map(async (course) => {
+        const totalLessons = await Lesson.countDocuments({ course: course._id });
+        return {
+          ...course.toObject(),
+          totalLessons,
+        };
+      })
+    );
+
+    res.status(200).json({ courses: coursesWithLessonCounts });
   } catch (error) {
     console.error("Get teacher courses error:", error);
     res.status(500).json({ message: "Server error" });

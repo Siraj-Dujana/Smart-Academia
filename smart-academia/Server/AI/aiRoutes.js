@@ -1,9 +1,12 @@
 const express = require("express");
 const router = express.Router();
-const { chat, generateQuizQuestions, teacherChat } = require("./aiController");
+const { chat, generateQuizQuestions, teacherChat, publicChat } = require("../controllers/aiController");
 const { protect, authorize } = require("../middleware/authMiddleware");
 
-// Student — AI Tutor chat
+// PUBLIC - Landing page AI Tutor chat (no authentication required)
+router.post("/public-chat", publicChat);
+
+// Student — AI Tutor chat (requires student auth)
 router.post("/chat", protect, authorize("student"), chat);
 
 // Teacher — AI Quiz Generator
