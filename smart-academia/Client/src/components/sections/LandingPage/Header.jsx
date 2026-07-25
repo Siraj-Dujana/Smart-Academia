@@ -78,18 +78,25 @@ const Header = ({
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16 sm:h-20">
+          
           {/* Logo Section - Scrolls to top */}
           <div className="flex items-center gap-2 sm:gap-3 cursor-pointer group" onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}>
-            <div className="flex h-9 w-9 sm:h-10 sm:w-10 items-center justify-center rounded-full transition-all duration-300 group-hover:scale-110" style={{ background: "linear-gradient(135deg, #ffffff, #ffffff)" }}>
-              <svg className="w-5 h-5 sm:w-6 sm:h-6 text-black" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 14l9-5-9-5-9 5 9 5zm0 0l9-5-9 5-9-5m9 5v5m0-5v5m0 0l-9-5m9 5l9-5" />
-              </svg>
-            </div>
-            <h2 className={`text-lg sm:text-xl font-black transition-all duration-300 ${
-              isScrolled 
-                ? "text-white" 
-                : "text-white"
-            }`}>
+            <div className="flex h-10 w-10 sm:h-11 sm:w-11 lg:h-12 lg:w-12 items-center justify-center rounded-2xl bg-white transition-all duration-300 group-hover:scale-105 group-hover:shadow-xl flex-shrink-0">
+  <svg
+    className="w-6 h-6 sm:w-7 sm:h-7 lg:w-8 lg:h-8 text-black"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth={2.2}
+    viewBox="0 0 24 24"
+  >
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      d="M12 14l9-5-9-5-9 5 9 5zm0 0v7m0-7l9-5m-9 5l-9-5"
+    />
+  </svg>
+</div>
+            <h2 className="text-base sm:text-lg lg:text-xl font-black text-white">
               {companyName}
             </h2>
           </div>

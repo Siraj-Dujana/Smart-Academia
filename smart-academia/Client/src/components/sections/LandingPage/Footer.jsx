@@ -1,14 +1,20 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { motion } from 'framer-motion';
+import React, { useState, useEffect, useRef } from "react";
+import { motion } from "framer-motion";
 
-const Footer = ({ 
+const Footer = ({
   projectName = "Smart Academia",
   currentYear = new Date().getFullYear(),
-  studentName = "Siraj Ahmed",
-  contactEmail = "dujanadujana16@gmail.com"
 }) => {
   const [isVisible, setIsVisible] = useState(false);
   const sectionRef = useRef(null);
+
+  const quickLinks = [
+    { id: "home", label: "Home" },
+    { id: "problem", label: "Problem" },
+    { id: "features", label: "Features" },
+    { id: "benefits", label: "Benefits" },
+    { id: "how-it-works", label: "How It Works" },
+  ];
 
   useEffect(() => {
     const observer = new IntersectionObserver(
@@ -21,120 +27,105 @@ const Footer = ({
       { threshold: 0.1 }
     );
 
-    if (sectionRef.current) {
-      observer.observe(sectionRef.current);
-    }
+    if (sectionRef.current) observer.observe(sectionRef.current);
 
     return () => {
-      if (sectionRef.current) {
-        observer.unobserve(sectionRef.current);
-      }
+      if (sectionRef.current) observer.unobserve(sectionRef.current);
     };
   }, []);
 
-  const containerVariants = {
-    hidden: { opacity: 0 },
-    visible: {
-      opacity: 1,
-      transition: {
-        staggerChildren: 0.15,
-        delayChildren: 0.1,
-      }
-    }
-  };
-
-  const itemVariants = {
-    hidden: { 
-      opacity: 0, 
-      y: 20,
-      scale: 0.95
-    },
-    visible: {
-      opacity: 1,
-      y: 0,
-      scale: 1,
-      transition: {
-        type: "spring",
-        damping: 20,
-        stiffness: 100,
-        duration: 0.6
-      }
+  const handleNavClick = (id) => {
+    if (id === "home") {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    } else {
+      document.getElementById(id)?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
     }
   };
 
   return (
-    <motion.footer 
+    <motion.footer
       ref={sectionRef}
-      className="py-8 sm:py-10 px-4 sm:px-6 lg:px-8 relative overflow-hidden border-t"
-      style={{ 
-        background: "#0c0e1e",
-        borderColor: "rgba(255, 255, 255, 0.06)"
-      }}
-      initial="hidden"
-      animate={isVisible ? "visible" : "hidden"}
-      variants={containerVariants}
+      initial={{ opacity: 0, y: 40 }}
+      animate={isVisible ? { opacity: 1, y: 0 } : {}}
+      transition={{ duration: 0.8 }}
+      className="relative overflow-hidden border-t border-white/10 bg-[#0c0e1e]"
     >
-      {/* Background gradients - matching other sections */}
-      <motion.div 
-        className="absolute top-0 left-1/4 w-96 h-96 rounded-full blur-3xl opacity-20"
-        style={{ background: "#000000" }}
-        initial={{ opacity: 0, scale: 0.8 }}
-        animate={isVisible ? { opacity: 0.2, scale: 1 } : { opacity: 0, scale: 0.8 }}
-        transition={{ duration: 1.5, ease: "easeOut" }}
-      />
-      <motion.div 
-        className="absolute bottom-0 right-1/4 w-96 h-96 rounded-full blur-3xl opacity-15"
-        style={{ background: "#000000" }}
-        initial={{ opacity: 0, scale: 0.8 }}
-        animate={isVisible ? { opacity: 0.15, scale: 1 } : { opacity: 0, scale: 0.8 }}
-        transition={{ duration: 1.5, delay: 0.2, ease: "easeOut" }}
-      />
-      
-      <div className="max-w-7xl mx-auto relative z-10">
-        <motion.div 
-          className="flex flex-col md:flex-row items-center justify-between gap-6 md:gap-8"
-          variants={containerVariants}
-        >
-          {/* Left - Logo & Name */}
-          <motion.div className="flex items-center gap-3" variants={itemVariants}>
-            <div className="flex h-9 w-9 sm:h-10 sm:w-10 items-center justify-center rounded-full transition-all duration-300 group-hover:scale-110" style={{ background: "linear-gradient(135deg, #ffffff, #ffffff)" }}>
-              <svg className="w-5 h-5 sm:w-6 sm:h-6 text-black" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 14l9-5-9-5-9 5 9 5zm0 0l9-5-9 5-9-5m9 5v5m0-5v5m0 0l-9-5m9 5l9-5" />
-              </svg>
+      <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16 lg:py-20">
+
+        {/* Main Content */}
+        <div className="grid grid-cols-1 lg:grid-cols-[1.5fr_1fr] gap-10 lg:gap-16">
+
+          {/* Left */}
+          <div>
+            <div className="flex flex-col sm:flex-row items-center sm:items-start gap-4 sm:gap-5 text-center sm:text-left">
+              <div className="flex h-16 w-16 sm:h-20 sm:w-20 md:h-24 md:w-24 items-center justify-center rounded-3xl bg-white transition-all duration-300 hover:scale-105 hover:shadow-2xl flex-shrink-0">
+                <svg
+                  className="w-10 h-10 sm:w-12 sm:h-12 md:w-14 md:h-14 text-black"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth={2.2}
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M12 14l9-5-9-5-9 5 9 5zm0 0v7m0-7l9-5m-9 5l-9-5"
+                  />
+                </svg>
+              </div>
+
+              <div>
+                <h2 className="text-2xl sm:text-3xl font-black text-white">
+                  {projectName}
+                </h2>
+
+                <p className="text-sm sm:text-base text-gray-400 mt-2 max-w-md leading-relaxed">
+                  AI-powered learning platform that enhances education through
+                  personalized learning, intelligent assessments, automated
+                  evaluation, and real-time progress tracking.
+                </p>
+              </div>
             </div>
-            <span className="text-base font-bold text-white">{projectName}</span>
-          </motion.div>
+          </div>
 
-          {/* Center - Developed by */}
-          <motion.p className="text-sm text-gray-400" variants={itemVariants}>
-            Developed by <span className="text-white font-semibold hover:text-indigo-300 transition-colors duration-300">{studentName}</span>
-          </motion.p>
+          {/* Right */}
+          <div className="text-center sm:text-left lg:justify-self-end">
+            <h3 className="text-base sm:text-lg font-semibold text-white mb-4 sm:mb-6">
+              Quick Links
+            </h3>
 
-          {/* Right - Email */}
-          <motion.a 
-            href={`mailto:${contactEmail}`}
-            className="text-sm text-gray-400 hover:text-indigo-400 transition-colors duration-300 flex items-center gap-1.5"
-            variants={itemVariants}
-            whileHover={{ x: 3 }}
-            transition={{ duration: 0.2 }}
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-            </svg>
-            {contactEmail}
-          </motion.a>
-        </motion.div>
+            <div className="grid grid-cols-2 gap-x-8 sm:gap-x-12 gap-y-3 sm:gap-y-4">
+              {quickLinks.map((item) => (
+                <button
+                  key={item.id}
+                  onClick={() => handleNavClick(item.id)}
+                  className="group inline-flex items-center justify-center sm:justify-start w-fit text-sm sm:text-base text-gray-400 transition-all duration-300 hover:text-white mx-auto sm:mx-0"
+                >
+                  {item.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
 
-        {/* Divider & Copyright */}
-        <motion.div 
-          className="mt-8 pt-6 border-t text-center"
-          style={{ borderColor: "rgba(255, 255, 255, 0.06)" }}
-          variants={itemVariants}
-        >
-          <p className="text-xs text-gray-500">
-            © {currentYear} <span className="text-white">{projectName}</span>. All rights reserved.
+        {/* Divider */}
+        <div className="my-8 sm:my-10 lg:my-12 h-px bg-white/10" />
+
+        {/* Bottom */}
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-4">
+          <p className="text-xs sm:text-sm text-gray-500 text-center sm:text-left">
+            © {currentYear}{" "}
+            <span className="text-white">{projectName}</span>.
+            All rights reserved.
           </p>
-        </motion.div>
+
+          <p className="text-xs sm:text-sm text-gray-500 text-center">
+            Built for modern education.
+          </p>
+        </div>
       </div>
     </motion.footer>
   );

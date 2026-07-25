@@ -1,12 +1,19 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none">
+<svg
+    xmlns="http://www.w3.org/2000/svg"
+    width="64"
+    height="64"
+    viewBox="0 0 64 64"
+    fill="none"
+>
+    <rect width="64" height="64" rx="18" fill="white"/>
 
-  <circle cx="12" cy="12" r="12" fill="#6366f1" />
-  
-
-  <path d="M12 14l9-5-9-5-9 5 9 5zm0 0l9-5-9 5-9-5m9 5v5m0-5v5m0 0l-9-5m9 5l9-5" 
-        stroke="white" 
-        stroke-width="2" 
-        stroke-linecap="round" 
-        stroke-linejoin="round" 
-        fill="none" />
+    <g transform="translate(0 0) scale(1.15)">
+        <path
+            d="M26 28L46 18L26 8L6 18L26 28ZM26 28V46M26 28L46 18M26 28L6 18"
+            stroke="#000000"
+            stroke-width="4.8"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+        />
+    </g>
 </svg>
