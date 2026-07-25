@@ -1,67 +1,226 @@
-import React from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import { motion } from 'framer-motion';
 
 const BenefitsSection = ({ 
   title = "Why Choose Smart Academia?",
   subtitle = "We fill the gaps that other platforms miss",
   benefits = [
-    { icon: "auto_awesome", title: "AI-Powered", description: "Personalized learning beyond static content", color: "#6366f1" },
-    { icon: "code", title: "Auto-Graded Labs", description: "Instant feedback on coding assignments", color: "#a855f7" },
-    { icon: "group", title: "Dual Platform", description: "Complete ecosystem for students & teachers", color: "#22c55e" },
-    { icon: "security", title: "Anti-Cheating", description: "Built-in integrity measures for fair assessment", color: "#f59e0b" }
+    {  title: "AI-Powered", description: "Personalized learning beyond static content", color: "#6366f1" },
+    {  title: "Auto-Graded Labs", description: "Instant feedback on coding assignments", color: "#6366f1" },
+    {  title: "Dual Platform", description: "Complete ecosystem for students & teachers", color: "#6366f1" },
+    {  title: "Anti-Cheating", description: "Built-in integrity measures for fair assessment", color: "#6366f1" }
   ],
   className = ""
 }) => {
+  const [isVisible, setIsVisible] = useState(false);
+  const [hoveredIndex, setHoveredIndex] = useState(null);
+  const sectionRef = useRef(null);
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setIsVisible(true);
+          observer.unobserve(entry.target);
+        }
+      },
+      { threshold: 0.1 }
+    );
+
+    if (sectionRef.current) {
+      observer.observe(sectionRef.current);
+    }
+
+    return () => {
+      if (sectionRef.current) {
+        observer.unobserve(sectionRef.current);
+      }
+    };
+  }, []);
+
+  // Animation variants - matching FeaturesSection
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: {
+        staggerChildren: 0.15,
+        delayChildren: 0.1,
+      }
+    }
+  };
+
+  const itemVariants = {
+    hidden: { 
+      opacity: 0, 
+      y: 30,
+      scale: 0.95
+    },
+    visible: {
+      opacity: 1,
+      y: 0,
+      scale: 1,
+      transition: {
+        type: "spring",
+        damping: 20,
+        stiffness: 100,
+        duration: 0.6
+      }
+    }
+  };
+
+  const headerVariants = {
+    hidden: { 
+      opacity: 0, 
+      y: -20 
+    },
+    visible: {
+      opacity: 1,
+      y: 0,
+      transition: {
+        type: "spring",
+        damping: 25,
+        stiffness: 120,
+        duration: 0.7
+      }
+    }
+  };
+
   return (
-    <section className={`py-16 sm:py-20 lg:py-24 px-4 sm:px-6 lg:px-8 ${className}`} style={{ background: "#0f1629" }}>
-      <div className="max-w-7xl mx-auto">
-        {/* Section Header */}
-        <div className="flex flex-col items-center text-center max-w-3xl mx-auto mb-12 sm:mb-16">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full mb-4" style={{ background: "#6366f122", border: "1px solid #6366f144" }}>
-            <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: "#6366f1" }} />
-            <span className="text-[10px] font-bold text-indigo-400 uppercase tracking-wider">Smart Academia Benefits</span>
-          </div>
-          <h2 className="text-3xl sm:text-4xl font-black text-white leading-tight">
+    <section 
+      id="benefits" 
+      ref={sectionRef}
+      className={`py-16 sm:py-20 lg:py-24 px-4 sm:px-6 lg:px-8 relative overflow-hidden ${className}`} 
+      style={{ background: "#0c0e1e" }}
+    >
+      {/* Background gradients - matching ProblemSection */}
+      <motion.div 
+        className="absolute top-0 left-1/4 w-96 h-96 rounded-full blur-3xl opacity-20"
+        style={{ background: "#000000" }}
+        initial={{ opacity: 0, scale: 0.8 }}
+        animate={isVisible ? { opacity: 0.2, scale: 1 } : { opacity: 0, scale: 0.8 }}
+        transition={{ duration: 1.5, ease: "easeOut" }}
+      />
+      <motion.div 
+        className="absolute bottom-0 right-1/4 w-96 h-96 rounded-full blur-3xl opacity-15"
+        style={{ background: "#000000" }}
+        initial={{ opacity: 0, scale: 0.8 }}
+        animate={isVisible ? { opacity: 0.15, scale: 1 } : { opacity: 0, scale: 0.8 }}
+        transition={{ duration: 1.5, delay: 0.2, ease: "easeOut" }}
+      />
+      <motion.div 
+        className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-full max-w-4xl rounded-full blur-3xl opacity-10"
+        style={{ background: "#000000" }}
+        initial={{ opacity: 0, scale: 0.8 }}
+        animate={isVisible ? { opacity: 0.1, scale: 1 } : { opacity: 0, scale: 0.8 }}
+        transition={{ duration: 1.5, delay: 0.4, ease: "easeOut" }}
+      />
+      
+      <div className="max-w-7xl mx-auto relative z-10">
+        {/* Section Header - Matching ProblemSection style */}
+        <motion.div 
+          className="flex flex-col items-center text-center max-w-3xl mx-auto"
+          initial="hidden"
+          animate={isVisible ? "visible" : "hidden"}
+          variants={headerVariants}
+        >
+          <h2 className="text-2xl sm:text-3xl lg:text-4xl font-black text-white leading-tight">
             {title}
           </h2>
-          <p className="text-gray-500 mt-3">
+          <p className="text-base md:text-lg text-gray-400 mt-3 max-w-2xl leading-relaxed">
             {subtitle}
           </p>
-        </div>
-
+        </motion.div>
+        
         {/* Benefits Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-          {benefits.map((benefit, index) => (
-            <div
-              key={index}
-              className="relative rounded-2xl overflow-hidden p-6 flex flex-col items-center text-center gap-3 group transition-all duration-300 hover:scale-105"
-              style={{ background: "#0f1629", border: `1px solid ${benefit.color}33` }}
-            >
-              {/* Breathing inner glow */}
-              <div 
-                className="absolute inset-0 transition-all duration-[4000ms] ease-in-out"
+        <motion.div 
+          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mt-12 sm:mt-16"
+          initial="hidden"
+          animate={isVisible ? "visible" : "hidden"}
+          variants={containerVariants}
+        >
+          {benefits.map((benefit, index) => {
+            const isHovered = hoveredIndex === index;
+            
+            return (
+              <motion.div
+                key={index}
+                variants={itemVariants}
+                className="relative rounded-2xl overflow-hidden p-0 transition-all duration-300 hover:scale-[1.02] group"
                 style={{ 
-                  background: `radial-gradient(circle at center, ${benefit.color} 0%, transparent 70%)`,
-                  opacity: 0,
-                  animation: 'breatheGlow 4s ease-in-out infinite',
+                  background: "#0c0e1e", 
+                  border: `1px solid ${benefit.color}33`,
+                  boxShadow: '0 4px 24px rgba(0,0,0,0.3)',
+                  minHeight: '180px'
                 }}
-              />
-              
-              {/* Hover overlay */}
-              <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-700" style={{ background: `radial-gradient(ellipse at 50% 0%, ${benefit.color}15 0%, transparent 80%)` }} />
-              
-              {/* Icon */}
-              <div className="w-14 h-14 rounded-xl flex items-center justify-center relative z-10 transition-all duration-300 group-hover:scale-110" style={{ background: `${benefit.color}22`, border: `1px solid ${benefit.color}44` }}>
-                <span className="material-symbols-outlined text-2xl" style={{ color: benefit.color }}>{benefit.icon}</span>
-              </div>
-              
-              {/* Content */}
-              <div className="relative z-10">
-                <h3 className="text-lg font-bold text-white mb-2">{benefit.title}</h3>
-                <p className="text-sm text-gray-400 leading-relaxed">{benefit.description}</p>
-              </div>
-            </div>
-          ))}
-        </div>
+                whileHover={{
+                  boxShadow: `0 8px 40px ${benefit.color}25`,
+                  transition: { duration: 0.3 }
+                }}
+                onMouseEnter={() => setHoveredIndex(index)}
+                onMouseLeave={() => setHoveredIndex(null)}
+              >
+                {/* Hover overlay */}
+                <motion.div 
+                  className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-700"
+                  style={{ background: `radial-gradient(ellipse at 50% 0%, ${benefit.color}15 0%, transparent 80%)` }}
+                  initial={{ opacity: 0 }}
+                  whileHover={{ opacity: 1 }}
+                  transition={{ duration: 0.5 }}
+                />
+                
+                {/* Sliding background - bottom to top (like Header nav) */}
+                <div 
+                  className={`absolute inset-0 bg-white transform transition-transform duration-500 ease-out ${
+                    isHovered ? 'translate-y-0' : 'translate-y-full'
+                  }`}
+                />
+                
+                <div className="relative z-10 p-6 min-h-[180px] flex flex-col items-center justify-center">
+                 
+                  
+                  {/* Title - Always visible, changes color on hover */}
+                  <motion.h3 
+                    className={`text-lg font-bold mt-4 mb-2 transition-colors duration-300 ${
+                      isHovered ? 'text-black' : 'text-white'
+                    }`}
+                    whileHover={{ x: 3 }}
+                    transition={{ duration: 0.2 }}
+                  >
+                    {benefit.title}
+                  </motion.h3>
+                  
+                  {/* Description - Only visible on hover */}
+                  <motion.p 
+                    className="text-sm text-center transition-all duration-300"
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{
+                      opacity: isHovered ? 1 : 0,
+                      y: isHovered ? 0 : 10
+                    }}
+                    transition={{ duration: 0.4, ease: "easeOut" }}
+                    style={{
+                      color: isHovered ? '#000000' : 'transparent'
+                    }}
+                  >
+                    {benefit.description}
+                  </motion.p>
+                </div>
+
+                {/* Subtle glow on hover */}
+                <motion.div 
+                  className="absolute -inset-0.5 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-700"
+                  style={{ 
+                    background: `linear-gradient(135deg, ${benefit.color}10, transparent 60%)`,
+                  }}
+                  initial={{ opacity: 0 }}
+                  whileHover={{ opacity: 1 }}
+                  transition={{ duration: 0.5 }}
+                />
+              </motion.div>
+            );
+          })}
+        </motion.div>
       </div>
 
       <style>

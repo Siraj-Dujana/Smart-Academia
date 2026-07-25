@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import { motion } from 'framer-motion';
 
 const CTASection = ({ 
   title = "Ready to Transform Your Academic Journey?",
@@ -13,52 +14,264 @@ const CTASection = ({
   },
   className = ""
 }) => {
+  const [isVisible, setIsVisible] = useState(false);
+  const [hoveredButton, setHoveredButton] = useState(null);
+  const sectionRef = useRef(null);
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setIsVisible(true);
+          observer.unobserve(entry.target);
+        }
+      },
+      { threshold: 0.1 }
+    );
+
+    if (sectionRef.current) {
+      observer.observe(sectionRef.current);
+    }
+
+    return () => {
+      if (sectionRef.current) {
+        observer.unobserve(sectionRef.current);
+      }
+    };
+  }, []);
+
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: {
+        staggerChildren: 0.15,
+        delayChildren: 0.1,
+      }
+    }
+  };
+
+  const itemVariants = {
+    hidden: { 
+      opacity: 0, 
+      y: 30,
+      scale: 0.95
+    },
+    visible: {
+      opacity: 1,
+      y: 0,
+      scale: 1,
+      transition: {
+        type: "spring",
+        damping: 20,
+        stiffness: 100,
+        duration: 0.6
+      }
+    }
+  };
+
+  const headerVariants = {
+    hidden: { 
+      opacity: 0, 
+      y: -20 
+    },
+    visible: {
+      opacity: 1,
+      y: 0,
+      transition: {
+        type: "spring",
+        damping: 25,
+        stiffness: 120,
+        duration: 0.7
+      }
+    }
+  };
+
   return (
-    <section className={`relative overflow-hidden py-20 sm:py-24 lg:py-28 px-4 sm:px-6 lg:px-8 ${className}`} style={{ background: "#0c0e1e" }}>
-      {/* Background gradients */}
-      <div className="absolute top-0 left-1/4 w-96 h-96 rounded-full blur-3xl opacity-20" style={{ background: "#6366f1" }} />
-      <div className="absolute bottom-0 right-1/4 w-96 h-96 rounded-full blur-3xl opacity-15" style={{ background: "#a855f7" }} />
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-4xl rounded-full blur-3xl opacity-10" style={{ background: "#6366f1" }} />
+    <section 
+      ref={sectionRef}
+      className={`py-16 sm:py-20 lg:py-24 px-4 sm:px-6 lg:px-8 relative overflow-hidden ${className}`} 
+      style={{ background: "#0c0e1e" }}
+    >
+      {/* Background gradients - matching other sections */}
+      <motion.div 
+        className="absolute top-0 left-1/4 w-96 h-96 rounded-full blur-3xl opacity-20"
+        style={{ background: "#000000" }}
+        initial={{ opacity: 0, scale: 0.8 }}
+        animate={isVisible ? { opacity: 0.2, scale: 1 } : { opacity: 0, scale: 0.8 }}
+        transition={{ duration: 1.5, ease: "easeOut" }}
+      />
+      <motion.div 
+        className="absolute bottom-0 right-1/4 w-96 h-96 rounded-full blur-3xl opacity-15"
+        style={{ background: "#000000" }}
+        initial={{ opacity: 0, scale: 0.8 }}
+        animate={isVisible ? { opacity: 0.15, scale: 1 } : { opacity: 0, scale: 0.8 }}
+        transition={{ duration: 1.5, delay: 0.2, ease: "easeOut" }}
+      />
+      <motion.div 
+        className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-full max-w-4xl rounded-full blur-3xl opacity-10"
+        style={{ background: "#000000" }}
+        initial={{ opacity: 0, scale: 0.8 }}
+        animate={isVisible ? { opacity: 0.1, scale: 1 } : { opacity: 0, scale: 0.8 }}
+        transition={{ duration: 1.5, delay: 0.4, ease: "easeOut" }}
+      />
       
-      <div className="relative z-10 max-w-4xl mx-auto">
-        <div className="bg-gray-900/50 backdrop-blur-sm rounded-2xl p-8 sm:p-12 border border-gray-800 text-center">
-          {/* Badge */}
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full mb-6 mx-auto" style={{ background: "#6366f122", border: "1px solid #6366f144" }}>
-            <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: "#6366f1" }} />
-            <span className="text-[10px] font-bold text-indigo-400 uppercase tracking-wider">Get Started Today</span>
-          </div>
-          
-          {/* Title */}
-          <h2 className="text-3xl sm:text-4xl md:text-5xl font-black text-white leading-tight mb-4">
+      <div className="max-w-4xl mx-auto relative z-10">
+        {/* Section Header - Matching other sections */}
+        <motion.div 
+          className="flex flex-col items-center text-center"
+          initial="hidden"
+          animate={isVisible ? "visible" : "hidden"}
+          variants={containerVariants}
+        >
+          <motion.h2 
+            className="text-2xl sm:text-3xl lg:text-4xl font-black text-white leading-tight"
+            variants={headerVariants}
+          >
             {title}
-          </h2>
+          </motion.h2>
           
-          {/* Subtitle */}
-          <p className="text-gray-500 text-base sm:text-lg max-w-2xl mx-auto mb-8">
+          <motion.p 
+            className="text-base md:text-lg text-gray-400 mt-3 max-w-2xl leading-relaxed"
+            variants={headerVariants}
+          >
             {subtitle}
-          </p>
-          
-          {/* Buttons */}
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+          </motion.p>
+        </motion.div>
+        
+        {/* Buttons - Matching card style from other sections */}
+        <motion.div 
+          className="flex flex-col sm:flex-row gap-4 justify-center items-center mt-8 sm:mt-10"
+          initial="hidden"
+          animate={isVisible ? "visible" : "hidden"}
+          variants={containerVariants}
+        >
+          {/* Primary Button */}
+          <motion.div
+            variants={itemVariants}
+            className="relative rounded-2xl overflow-hidden p-0 transition-all duration-300 hover:scale-[1.02] group w-full sm:w-auto min-w-[200px]"
+            style={{ 
+              background: "#0c0e1e", 
+              border: "1px solid rgba(255,255,255,0.1)",
+              boxShadow: '0 4px 24px rgba(0,0,0,0.3)'
+            }}
+            whileHover={{
+              boxShadow: '0 8px 40px rgba(99, 102, 241, 0.25)',
+              borderColor: 'rgba(99, 102, 241, 0.3)',
+              transition: { duration: 0.3 }
+            }}
+            onMouseEnter={() => setHoveredButton('primary')}
+            onMouseLeave={() => setHoveredButton(null)}
+          >
+            {/* Hover overlay */}
+            <motion.div 
+              className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-700"
+              style={{ background: 'radial-gradient(ellipse at 50% 0%, rgba(99,102,241,0.15) 0%, transparent 80%)' }}
+              initial={{ opacity: 0 }}
+              whileHover={{ opacity: 1 }}
+              transition={{ duration: 0.5 }}
+            />
+            
+            {/* Sliding background - bottom to top */}
+            <div 
+              className={`absolute inset-0 bg-white transform transition-transform duration-500 ease-out ${
+                hoveredButton === 'primary' ? 'translate-y-0' : 'translate-y-full'
+              }`}
+            />
+            
             <button 
               onClick={primaryButton.onClick}
-              className="flex items-center justify-center gap-2 rounded-xl px-6 sm:px-8 py-3 text-sm sm:text-base font-bold text-white transition-all duration-300 hover:scale-105 shadow-lg"
-              style={{ background: "linear-gradient(135deg, #6366f1, #818cf8)" }}
+              className="relative z-10 px-6 sm:px-8 py-3.5 text-sm sm:text-base font-bold transition-all duration-300 w-full"
+              style={{ 
+                color: hoveredButton === 'primary' ? '#000000' : '#ffffff'
+              }}
             >
-              <span className="material-symbols-outlined text-base">auto_awesome</span>
-              <span>{primaryButton.text}</span>
+              <span className="flex items-center justify-center gap-2">
+              
+                {primaryButton.text}
+              </span>
             </button>
+
+            {/* Subtle glow */}
+            <motion.div 
+              className="absolute -inset-0.5 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-700"
+              style={{ 
+                background: 'linear-gradient(135deg, rgba(99,102,241,0.1), transparent 60%)',
+              }}
+              initial={{ opacity: 0 }}
+              whileHover={{ opacity: 1 }}
+              transition={{ duration: 0.5 }}
+            />
+          </motion.div>
+
+          {/* Secondary Button */}
+          <motion.div
+            variants={itemVariants}
+            className="relative rounded-2xl overflow-hidden p-0 transition-all duration-300 hover:scale-[1.02] group w-full sm:w-auto min-w-[200px]"
+            style={{ 
+              background: "#0c0e1e", 
+              border: "1px solid rgba(255,255,255,0.06)",
+              boxShadow: '0 4px 24px rgba(0,0,0,0.3)'
+            }}
+            whileHover={{
+              boxShadow: '0 8px 40px rgba(168, 85, 247, 0.15)',
+              borderColor: 'rgba(168, 85, 247, 0.2)',
+              transition: { duration: 0.3 }
+            }}
+            onMouseEnter={() => setHoveredButton('secondary')}
+            onMouseLeave={() => setHoveredButton(null)}
+          >
+            {/* Hover overlay */}
+            <motion.div 
+              className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-700"
+              style={{ background: 'radial-gradient(ellipse at 50% 0%, rgba(168,85,247,0.1) 0%, transparent 80%)' }}
+              initial={{ opacity: 0 }}
+              whileHover={{ opacity: 1 }}
+              transition={{ duration: 0.5 }}
+            />
+            
+            {/* Sliding background - bottom to top */}
+            <div 
+              className={`absolute inset-0 bg-white transform transition-transform duration-500 ease-out ${
+                hoveredButton === 'secondary' ? 'translate-y-0' : 'translate-y-full'
+              }`}
+            />
+            
             <button 
               onClick={secondaryButton.onClick}
-              className="flex items-center justify-center gap-2 rounded-xl px-6 sm:px-8 py-3 text-sm sm:text-base font-medium transition-all duration-300 hover:scale-105"
-              style={{ color: "#818cf8", background: "transparent", border: "1px solid #334155" }}
+              className="relative z-10 px-6 sm:px-8 py-3.5 text-sm sm:text-base font-medium transition-all duration-300 w-full"
+              style={{ 
+                color: hoveredButton === 'secondary' ? '#000000' : '#fefefe'
+              }}
             >
-              <span className="material-symbols-outlined text-base">login</span>
-              <span>{secondaryButton.text}</span>
+              <span className="flex items-center justify-center gap-2">
+                
+                {secondaryButton.text}
+              </span>
             </button>
-          </div>
-        </div>
+
+            {/* Subtle glow */}
+            <motion.div 
+              className="absolute -inset-0.5 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-700"
+              style={{ 
+                background: 'linear-gradient(135deg, rgba(168,85,247,0.1), transparent 60%)',
+              }}
+              initial={{ opacity: 0 }}
+              whileHover={{ opacity: 1 }}
+              transition={{ duration: 0.5 }}
+            />
+          </motion.div>
+        </motion.div>
       </div>
+
+      <style>
+        {`
+          @keyframes breatheGlow {
+            0%, 100% { opacity: 0; }
+            50% { opacity: 0.25; }
+          }
+        `}
+      </style>
     </section>
   );
 };
