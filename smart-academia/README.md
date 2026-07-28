@@ -1,158 +1,268 @@
 # SmartAcademia
 
-SmartAcademia is an AI-Assisted Learning Management System (LMS) developed as a Final Year Project. It combines modern online learning with Artificial Intelligence to deliver personalized education, automated assessments, coding labs, learning analytics, and interactive learning experiences within a single platform.
+SmartAcademia is an AI-assisted Learning Management System (LMS) that combines modern educational tools with artificial intelligence to create a personalized learning experience for students, teachers, and administrators.
 
-The system serves three primary roles: Students, Teachers, and Administrators, providing an efficient environment for managing courses, learning activities, assessments, and academic progress.
+The platform enables educators to create structured courses, lessons, quizzes, and coding labs while providing students with AI-powered learning assistance, automated assessments, progress tracking, and intelligent feedback.
+
+This project was developed as a Final Year Project using the MERN stack with AI integration.
 
 ---
 
 ## Features
 
-### Student
+### Student Portal
 
-- Secure Authentication
-- Profile Management
-- Course Enrollment
-- Sequential Lesson Learning
-- AI Tutor
-- AI-Generated Quizzes
-- Automatic Quiz Evaluation
-- AI-Generated Coding Labs
-- Automatic Lab Evaluation
-- Assignment Submission
-- Progress Tracking
-- AI Progress Analysis
-- Personalized Learning Recommendations
-- Performance Analytics
-- Notifications
-- Email Notifications
-- Gamification
-- Certificate Generation
-
-### Teacher
-
-- Course Management
-- Lesson Management
-- Assignment Management
-- AI Quiz Generation
-- AI Coding Lab Generation
-- Automatic Quiz and Lab Evaluation
-- Student Performance Monitoring
-- Analytics Dashboard
+- User registration and authentication
+- Course enrollment
+- Sequential lesson completion
+- AI learning assistant
+- AI-generated quizzes
+- Coding lab submissions
+- Progress tracking
+- Performance analytics
 - Notifications
 
-### Administrator
+### Teacher Portal
 
-- User Management
-- Course Management
-- Content Moderation
-- Platform Monitoring
-- Analytics Dashboard
-- Notification Management
+- Course management
+- Lesson management
+- Quiz creation
+- AI quiz generation
+- Coding lab creation
+- Student performance monitoring
+- Analytics dashboard
+
+### Administrator Panel
+
+- User management
+- Course approval
+- Platform monitoring
+- Content moderation
+- System activity logs
 
 ---
 
-## Artificial Intelligence
+## AI Capabilities
 
-SmartAcademia leverages the **Google Gemini API** to power intelligent educational features, including:
+### AI Learning Assistant
 
-- AI Learning Assistant
-- AI Quiz Generation
-- Automatic Quiz Evaluation
-- AI Coding Lab Generation
-- Automatic Lab Evaluation
-- AI Progress Analysis
-- Personalized Learning Recommendations
+Provides contextual explanations, study guidance, and concept clarification.
+
+### AI Quiz Generation
+
+Automatically generates quizzes based on topics and difficulty levels while ensuring different question sets for every attempt.
+
+### AI Lab Feedback
+
+Analyzes submitted code and provides intelligent explanations, improvement suggestions, and feedback.
+
+### AI Progress Analysis
+
+Evaluates student learning patterns, identifies weak topics, and generates personalized learning recommendations.
 
 ---
 
-## Core Modules
+## Learning Workflow
 
-- Authentication & Authorization
-- Profile Management
-- Course Management
-- Lesson Management
-- Quiz Management
-- Coding Lab Management
-- Assignment Management
-- Certificate Management
-- Notification System
-- Email Notification System
-- Gamification
-- Analytics Dashboard
-- AI Services
+1. Teacher creates a course.
+2. Teacher adds lessons, quizzes, and coding labs.
+3. Student enrolls in the course.
+4. Student completes lessons sequentially.
+5. Student attempts quizzes (maximum three attempts).
+6. Student submits coding labs.
+7. AI evaluates progress and provides recommendations.
+8. Teachers monitor performance through analytics.
 
 ---
 
 ## Technology Stack
 
-**Frontend**
+### Frontend
 
 - React.js
 - Vite
 - Tailwind CSS
+- React Router
+- Axios
+- Framer Motion
 
-**Backend**
+### Backend
 
 - Node.js
 - Express.js
 
-**Database**
+### Database
 
 - MongoDB
+- Mongoose
 
-**Artificial Intelligence**
+### AI Integration
 
 - Google Gemini API
 
-**Additional Services**
+### Authentication
 
-- Redis
+- JWT
+- bcrypt
+
+### Cloud Storage
+
 - Cloudinary
+
+### Development Tools
+
+- Git
+- GitHub
+- Postman
+- Visual Studio Code
+
+---
+
+## Core Modules
+
+- Authentication
+- Course Management
+- Lesson Management
+- Enrollment System
+- Quiz System
+- Coding Lab Module
+- AI Assistant
+- AI Progress Analytics
+- Notification System
+- Administration Panel
+
+---
+
+## Security
+
+- JWT-based authentication
+- Role-based authorization
+- Protected API routes
+- Quiz attempt validation
+- Lesson access control
+- Activity logging
 
 ---
 
 ## Project Structure
 
 ```text
-SmartAcademia/
+SmartAcademia
 │
-├── client/
-├── server/
-└── README.md
+├── client
+│   ├── src
+│   ├── components
+│   ├── pages
+│   ├── hooks
+│   ├── services
+│   ├── assets
+│   └── App.jsx
+│
+├── server
+│   ├── controllers
+│   ├── middleware
+│   ├── models
+│   ├── routes
+│   ├── services
+│   ├── utils
+│   └── server.js
+│
+├── README.md
+└── package.json
 ```
 
 ---
 
 ## Installation
 
+Clone the repository
+
 ```bash
-git clone https://github.com/your-username/SmartAcademia.git
+git clone https://github.com/Siraj-Dujana/SmartAcademia.git
 
 cd SmartAcademia
+```
 
-# Install frontend
+Install backend dependencies
+
+```bash
+npm install
+```
+
+Install frontend dependencies
+
+```bash
 cd client
 npm install
+```
 
-# Install backend
-cd ../server
-npm install
+---
 
-# Run the application
+## Environment Variables
+
+Create a `.env` file in the root directory.
+
+```env
+PORT=5000
+
+MONGODB_URI=
+
+JWT_SECRET=
+
+GEMINI_API_KEY=
+
+CLOUDINARY_CLOUD_NAME=
+
+CLOUDINARY_API_KEY=
+
+CLOUDINARY_API_SECRET=
+```
+
+---
+
+## Running the Project
+
+Backend
+
+```bash
+npm run server
+```
+
+Frontend
+
+```bash
+cd client
 npm run dev
 ```
 
 ---
 
-## Future Enhancements
+## Database Collections
 
-- Live Virtual Classrooms
-- Video Conferencing
-- Mobile Application
-- Multi-language Support
-- Attendance Management
-- Offline Learning
+- Users
+- Courses
+- Lessons
+- Enrollments
+- Quizzes
+- Questions
+- QuizAttempts
+- Labs
+- LabSubmissions
+- Notifications
+- AIReports
+
+---
+
+## Planned Enhancements
+
+- Certificate generation
+- AI-powered plagiarism detection
+- Discussion forums
+- Real-time collaboration
+- Mobile application
+- Gamification
+- Leaderboards
+- Advanced analytics
 
 ---
 
@@ -162,12 +272,12 @@ This project is licensed under the MIT License.
 
 ---
 
-## Author
+## Developer
 
-**Siraj Ahmed**
+Siraj Ahmed
 
-Bachelor of Computer Science (BSCS)
+Software Engineer | Full Stack MERN Developer
 
-Full Stack MERN Developer
+GitHub: https://github.com/Siraj-Dujana
 
-Portfolio: https://sddev-portfolio.vercel.app
+LinkedIn: https://linkedin.com/in/siraj-ahmed-qureshi
