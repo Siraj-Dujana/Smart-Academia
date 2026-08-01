@@ -4,7 +4,6 @@ import { useNavigate } from "react-router-dom";
 const ForgotPassword = () => {
   const navigate = useNavigate();
 
-  // step 1 = enter email, step 2 = enter OTP, step 3 = new password
   const [step, setStep] = useState(1);
   const [email, setEmail] = useState("");
   const [otp, setOtp] = useState(["", "", "", "", "", ""]);
@@ -17,35 +16,33 @@ const ForgotPassword = () => {
   const [success, setSuccess] = useState("");
   const [countdown, setCountdown] = useState(0);
 
-  // Animation states
-  const [animateSchool, setAnimateSchool] = useState(false);
+  const [animateLogo, setAnimateLogo] = useState(false);
   const [animateTitle, setAnimateTitle] = useState(false);
   const [animateTagline, setAnimateTagline] = useState(false);
+  const [animateForm, setAnimateForm] = useState(false);
 
   const otpRefs = useRef([]);
 
   useEffect(() => {
-    const t1 = setTimeout(() => setAnimateSchool(true), 300);
+    const t1 = setTimeout(() => setAnimateLogo(true), 300);
     const t2 = setTimeout(() => setAnimateTitle(true), 600);
     const t3 = setTimeout(() => setAnimateTagline(true), 900);
-    return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); };
+    const t4 = setTimeout(() => setAnimateForm(true), 1100);
+    return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); clearTimeout(t4); };
   }, []);
 
-  // Countdown timer for resend OTP
   useEffect(() => {
     if (countdown <= 0) return;
     const timer = setTimeout(() => setCountdown((c) => c - 1), 1000);
     return () => clearTimeout(timer);
   }, [countdown]);
 
-  // Auto focus first OTP input when step 2 loads
   useEffect(() => {
     if (step === 2) {
       setTimeout(() => otpRefs.current[0]?.focus(), 100);
     }
   }, [step]);
 
-  // ===== STEP 1: Send OTP =====
   const handleSendOTP = async (e) => {
     e.preventDefault();
     setError("");
@@ -72,7 +69,6 @@ const ForgotPassword = () => {
     }
   };
 
-  // ===== STEP 2: Verify OTP =====
   const handleOTPInput = (index, value) => {
     if (!/^\d*$/.test(value)) return;
     const newOtp = [...otp];
@@ -144,7 +140,6 @@ const ForgotPassword = () => {
     }
   };
 
-  // ===== STEP 3: Reset Password =====
   const handleResetPassword = async (e) => {
     e.preventDefault();
     setError("");
@@ -181,19 +176,28 @@ const ForgotPassword = () => {
 
   return (
     <div className="h-screen w-full overflow-hidden" style={{ fontFamily: "'Lexend', sans-serif", background: "#0c0e1e" }}>
-      <div className="h-full flex flex-col lg:flex-row">
+      <style>{`
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #1e293b; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb { background: #ffffff; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: #e2e8f0; }
+        * { scrollbar-width: thin; scrollbar-color: #ffffff #1e293b; }
+      `}</style>
+
+      <div className="flex flex-col lg:flex-row h-full w-full">
 
         {/* Mobile Brand Section */}
-        <div className="lg:hidden relative overflow-hidden flex-shrink-0" style={{ background: "linear-gradient(135deg, #0c0e1e 0%, #131b35 50%, #0d1527 100%)", borderBottom: "1px solid #1e293b" }}>
-          <div className="absolute top-0 left-1/4 w-48 h-48 rounded-full blur-3xl opacity-20" style={{ background: "#6366f1" }} />
-          <div className="absolute bottom-0 right-1/4 w-48 h-48 rounded-full blur-3xl opacity-15" style={{ background: "#a855f7" }} />
-          
-          <div className="relative flex flex-col items-center justify-center py-12 px-6 text-center">
-            <div className={`flex h-20 w-20 items-center justify-center rounded-full transition-all duration-700 transform ${animateSchool ? 'opacity-100 scale-100' : 'opacity-0 scale-50'}`} style={{ background: "linear-gradient(135deg, #6366f1, #818cf8)" }}>
-              <svg className="w-12 h-12 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 14l9-5-9-5-9 5 9 5zm0 0l9-5-9 5-9-5m9 5v5m0-5v5m0 0l-9-5m9 5l9-5" />
+        <div className="lg:hidden relative overflow-hidden flex-shrink-0" style={{ background: "#0c0e1e", borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
+          <div className="absolute top-0 left-1/4 w-48 h-48 rounded-full blur-3xl opacity-20" style={{ background: "#000000" }} />
+          <div className="absolute bottom-0 right-1/4 w-48 h-48 rounded-full blur-3xl opacity-15" style={{ background: "#000000" }} />
+
+          <div className="relative flex flex-col items-center justify-center py-10 px-6 text-center">
+            <div className={`flex h-16 w-16 items-center justify-center rounded-2xl bg-white transition-all duration-700 transform ${animateLogo ? 'opacity-100 scale-100' : 'opacity-0 scale-50'}`}>
+              <svg className="w-9 h-9 text-black" fill="none" stroke="currentColor" strokeWidth={2.2} viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 14l9-5-9-5-9 5 9 5zm0 0v7m0-7l9-5m-9 5l-9-5" />
               </svg>
             </div>
+
             <h1 className={`text-2xl font-black text-white mt-4 transition-all duration-700 transform ${animateTitle ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
               Smart Academia
             </h1>
@@ -204,14 +208,15 @@ const ForgotPassword = () => {
         </div>
 
         {/* Desktop Brand Section */}
-        <div className="hidden lg:flex flex-col items-center justify-center w-1/2 p-12 text-center relative overflow-hidden" style={{ background: "linear-gradient(135deg, #0c0e1e 0%, #131b35 50%, #0d1527 100%)" }}>
-          <div className="absolute top-0 left-1/4 w-96 h-96 rounded-full blur-3xl opacity-20" style={{ background: "#6366f1" }} />
-          <div className="absolute bottom-0 right-1/4 w-96 h-96 rounded-full blur-3xl opacity-15" style={{ background: "#a855f7" }} />
-          
-          <div className="relative flex flex-col items-center gap-6 max-w-md">
-            <div className={`flex h-20 w-20 items-center justify-center rounded-full transition-all duration-700 transform ${animateSchool ? 'opacity-100 scale-100' : 'opacity-0 scale-50'}`} style={{ background: "linear-gradient(135deg, #6366f1, #818cf8)" }}>
-              <svg className="w-12 h-12 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 14l9-5-9-5-9 5 9 5zm0 0l9-5-9 5-9-5m9 5v5m0-5v5m0 0l-9-5m9 5l9-5" />
+        <div className="hidden lg:flex flex-col items-center justify-center w-1/2 p-12 text-center relative overflow-hidden" style={{ background: "#0c0e1e" }}>
+          <div className="absolute top-0 left-1/4 w-96 h-96 rounded-full blur-3xl opacity-20" style={{ background: "#000000" }} />
+          <div className="absolute bottom-0 right-1/4 w-96 h-96 rounded-full blur-3xl opacity-15" style={{ background: "#000000" }} />
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-full max-w-4xl rounded-full blur-3xl opacity-10" style={{ background: "#000000" }} />
+
+          <div className="relative flex flex-col items-center gap-6 max-w-md z-10">
+            <div className={`flex h-20 w-20 items-center justify-center rounded-2xl bg-white transition-all duration-700 transform ${animateLogo ? 'opacity-100 scale-100' : 'opacity-0 scale-50'} hover:scale-105 hover:shadow-xl`}>
+              <svg className="w-12 h-12 text-black" fill="none" stroke="currentColor" strokeWidth={2.2} viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 14l9-5-9-5-9 5 9 5zm0 0v7m0-7l9-5m-9 5l-9-5" />
               </svg>
             </div>
             <h1 className={`text-5xl font-black text-white transition-all duration-700 transform ${animateTitle ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>
@@ -221,48 +226,46 @@ const ForgotPassword = () => {
               Your Academic Journey, Amplified by AI.
             </p>
 
-            {/* Step Indicators */}
-            <div className="flex items-center gap-3 mt-8 w-full justify-center">
+            {/* Step Indicators - Matching Login page style */}
+            <div className="flex items-center gap-2 mt-8">
               {[1, 2, 3].map((s) => (
-                <div key={s} className="flex items-center gap-2">
-                  <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold transition-all duration-300 ${
-                    step === s ? "bg-gradient-to-r from-indigo-600 to-purple-600 text-white scale-110 shadow-lg" :
-                    step > s ? "bg-green-500 text-white" :
-                    "bg-gray-800 text-gray-500"
+                <div key={s} className="flex items-center">
+                  <div className={`flex items-center justify-center w-8 h-8 rounded-full text-sm font-bold transition-all duration-300 ${
+                    step === s ? "bg-white text-black scale-110 shadow-lg" :
+                    step > s ? "bg-white/20 text-white" :
+                    "bg-[#1e293b] text-gray-500"
                   }`}>
                     {step > s ? "✓" : s}
                   </div>
-                  {s < 3 && <div className={`w-8 h-0.5 ${step > s ? "bg-green-500" : "bg-gray-800"}`} />}
+                  {s < 3 && (
+                    <div className={`w-12 h-0.5 mx-1 ${step > s ? "bg-white/20" : "bg-[#1e293b]"}`} />
+                  )}
                 </div>
               ))}
             </div>
-            <div className="flex gap-6 text-xs text-gray-500">
-              <span className={step >= 1 ? "text-indigo-400 font-medium" : ""}>Email</span>
-              <span className={step >= 2 ? "text-indigo-400 font-medium" : ""}>OTP</span>
-              <span className={step >= 3 ? "text-indigo-400 font-medium" : ""}>Password</span>
+            <div className="flex gap-4 text-xs text-gray-500">
+              <span className={step >= 1 ? "text-white font-medium" : ""}>Email</span>
+              <span className={step >= 2 ? "text-white font-medium" : ""}>OTP</span>
+              <span className={step >= 3 ? "text-white font-medium" : ""}>Password</span>
             </div>
           </div>
         </div>
 
-        {/* Form Section */}
-        <div className="flex-1 flex flex-col items-center justify-center p-6 lg:p-8 overflow-y-auto" style={{ background: "#0f1629" }}>
-          <div className="w-full max-w-md space-y-6 py-6">
+        {/* Form Section - Matching Login page */}
+        <div className="flex-1 flex flex-col items-center justify-center p-6 lg:p-8 overflow-y-auto" style={{ background: "#0c0e1e" }}>
+          <div className={`w-full max-w-md space-y-6 py-6 transition-all duration-700 transform ${animateForm ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>
 
-            {/* Form Header */}
+            {/* Form Header - Matching Login page */}
             <div className="text-center">
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full mb-4" style={{ background: "#6366f122", border: "1px solid #6366f144" }}>
-                <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: "#6366f1" }} />
-                <span className="text-[10px] font-bold text-indigo-400 uppercase tracking-wider">Secure Recovery</span>
-              </div>
               <h1 className="text-3xl font-black text-white">
                 {stepTitles[step].title}
               </h1>
-              <p className="text-gray-500 mt-2 text-sm">
+              <p className="text-gray-400 mt-2 text-sm">
                 {stepTitles[step].sub}
               </p>
             </div>
 
-            {/* Error / Success banners */}
+            {/* Error / Success banners - Matching Login page */}
             {error && (
               <div className="rounded-xl p-3 flex items-center gap-2" style={{ background: "#ef444422", border: "1px solid #ef444444" }}>
                 <span className="material-symbols-outlined text-sm text-red-400">error</span>
@@ -291,7 +294,8 @@ const ForgotPassword = () => {
                       value={email}
                       onChange={(e) => { setEmail(e.target.value); setError(""); }}
                       placeholder="Enter your registered email"
-                      className="w-full px-4 py-3 pl-10 border rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200 text-sm border-gray-700 bg-gray-800/50"
+                      className="w-full px-4 py-3 pl-10 rounded-xl text-white placeholder-gray-500 outline-none transition-all duration-200 text-sm focus:ring-1 focus:white border"
+                      style={{ background: "#1e293b", borderColor: "rgba(255,255,255,0.06)" }}
                       disabled={isLoading}
                     />
                   </div>
@@ -299,14 +303,14 @@ const ForgotPassword = () => {
                 <button
                   type="submit"
                   disabled={isLoading}
-                  className="w-full flex justify-center items-center gap-2 py-3 px-4 rounded-xl text-sm font-bold text-white transition-all hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
-                  style={{ background: "linear-gradient(135deg, #6366f1, #818cf8)" }}
+                  className="w-full flex justify-center items-center gap-2 py-3 px-4 rounded-xl text-sm font-bold text-black transition-all duration-300 hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
+                  style={{ background: "linear-gradient(135deg, #ffffff, #ffffff)" }}
                 >
                   {isLoading ? (
                     <>
                       <div className="relative w-4 h-4">
-                        <div className="absolute inset-0 rounded-full border-2 border-indigo-900" />
-                        <div className="absolute inset-0 rounded-full border-2 border-transparent border-t-white animate-spin" />
+                        <div className="absolute inset-0 rounded-full border-2 border-gray-400" />
+                        <div className="absolute inset-0 rounded-full border-2 border-transparent border-t-black animate-spin" />
                       </div>
                       Sending OTP...
                     </>
@@ -320,8 +324,8 @@ const ForgotPassword = () => {
                 <button
                   type="button"
                   onClick={() => navigate("/login")}
-                  className="w-full flex justify-center items-center gap-2 py-3 px-4 rounded-xl text-sm font-medium transition-all hover:scale-105"
-                  style={{ color: "#818cf8", background: "transparent", border: "1px solid #334155" }}
+                  className="w-full flex justify-center items-center gap-2 py-3 px-4 rounded-xl text-sm font-medium transition-all duration-300 hover:scale-105"
+                  style={{ color: "#fcfcfc", background: "transparent", border: "1px solid rgba(186, 186, 191, 0.3)" }}
                 >
                   <span className="material-symbols-outlined text-base">arrow_back</span>
                   Back to Login
@@ -347,9 +351,10 @@ const ForgotPassword = () => {
                         value={digit}
                         onChange={(e) => handleOTPInput(index, e.target.value)}
                         onKeyDown={(e) => handleOTPKeyDown(index, e)}
-                        className={`w-12 h-14 text-center text-xl font-bold border-2 rounded-xl text-white focus:outline-none transition-all duration-200 ${
-                          digit ? "border-indigo-500 bg-indigo-500/20" : "border-gray-700 bg-gray-800/50"
-                        } focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20`}
+                        className={`w-12 h-14 text-center text-xl font-bold rounded-xl text-white outline-none transition-all duration-200 focus:ring-1 focus:white ${
+                          digit ? "border border-indigo-400 bg-indigo-500/20" : "border bg-[#1e293b]"
+                        }`}
+                        style={{ borderColor: digit ? undefined : "rgba(255,255,255,0.06)" }}
                         disabled={isLoading}
                       />
                     ))}
@@ -359,14 +364,14 @@ const ForgotPassword = () => {
                 <button
                   type="submit"
                   disabled={isLoading || otp.join("").length !== 6}
-                  className="w-full flex justify-center items-center gap-2 py-3 px-4 rounded-xl text-sm font-bold text-white transition-all hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
-                  style={{ background: "linear-gradient(135deg, #6366f1, #818cf8)" }}
+                  className="w-full flex justify-center items-center gap-2 py-3 px-4 rounded-xl text-sm font-bold text-black transition-all duration-300 hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
+                  style={{ background: "linear-gradient(135deg, #ffffff, #ffffff)" }}
                 >
                   {isLoading ? (
                     <>
                       <div className="relative w-4 h-4">
-                        <div className="absolute inset-0 rounded-full border-2 border-indigo-900" />
-                        <div className="absolute inset-0 rounded-full border-2 border-transparent border-t-white animate-spin" />
+                        <div className="absolute inset-0 rounded-full border-2 border-gray-400" />
+                        <div className="absolute inset-0 rounded-full border-2 border-transparent border-t-black animate-spin" />
                       </div>
                       Verifying...
                     </>
@@ -379,14 +384,14 @@ const ForgotPassword = () => {
                 </button>
 
                 <div className="text-center">
-                  <p className="text-sm text-gray-500">
+                  <p className="text-sm text-gray-400">
                     Didn't receive the code?{" "}
                     <button
                       type="button"
                       onClick={handleResendOTP}
                       disabled={countdown > 0 || isLoading}
                       className={`font-bold transition-all hover:scale-105 ${
-                        countdown > 0 ? "text-gray-500 cursor-not-allowed" : "text-indigo-400"
+                        countdown > 0 ? "text-gray-500 cursor-not-allowed" : "text-indigo-400 hover:text-indigo-300"
                       }`}
                     >
                       {countdown > 0 ? `Resend in ${countdown}s` : "Resend OTP"}
@@ -397,7 +402,7 @@ const ForgotPassword = () => {
                 <button
                   type="button"
                   onClick={() => { setStep(1); setError(""); setSuccess(""); setOtp(["","","","","",""]); }}
-                  className="w-full text-sm text-gray-500 hover:text-indigo-400 transition-colors"
+                  className="w-full text-sm text-gray-500 hover:text-white transition-colors"
                 >
                   ← Change email
                 </button>
@@ -418,19 +423,19 @@ const ForgotPassword = () => {
                       value={newPassword}
                       onChange={(e) => { setNewPassword(e.target.value); setError(""); }}
                       placeholder="Create a strong password"
-                      className="w-full px-4 py-3 pl-10 pr-10 border rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200 text-sm border-gray-700 bg-gray-800/50"
+                      className="w-full px-4 py-3 pl-10 pr-10 rounded-xl text-white placeholder-gray-500 outline-none transition-all duration-200 text-sm focus:ring-1 focus:white border"
+                      style={{ background: "#1e293b", borderColor: "rgba(255,255,255,0.06)" }}
                       disabled={isLoading}
                     />
                     <button
                       type="button"
                       onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-400"
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-300"
                     >
                       <span className="material-symbols-outlined text-lg">{showPassword ? "visibility_off" : "visibility"}</span>
                     </button>
                   </div>
                   
-                  {/* Password strength hints */}
                   <div className="flex flex-wrap gap-2 mt-2">
                     {[
                       { test: newPassword.length >= 8, label: "8+ chars" },
@@ -439,7 +444,7 @@ const ForgotPassword = () => {
                       { test: /\d/.test(newPassword), label: "Number" },
                     ].map((rule) => (
                       <span key={rule.label} className={`text-xs px-2 py-1 rounded-full transition-colors ${
-                        rule.test ? "bg-green-500/20 text-green-400 border border-green-500/30" : "bg-gray-800 text-gray-500 border border-gray-700"
+                        rule.test ? "bg-green-500/20 text-green-400 border border-green-500/30" : "bg-[#1e293b] text-gray-500 border border-gray-700"
                       }`}>
                         {rule.test ? "✓" : "○"} {rule.label}
                       </span>
@@ -458,15 +463,16 @@ const ForgotPassword = () => {
                       value={confirmPassword}
                       onChange={(e) => { setConfirmPassword(e.target.value); setError(""); }}
                       placeholder="Confirm your new password"
-                      className={`w-full px-4 py-3 pl-10 pr-10 border rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200 text-sm bg-gray-800/50 ${
-                        confirmPassword && newPassword !== confirmPassword ? "border-red-500" : "border-gray-700"
+                      className={`w-full px-4 py-3 pl-10 pr-10 rounded-xl text-white placeholder-gray-500 outline-none transition-all duration-200 text-sm focus:ring-1 focus:white border ${
+                        confirmPassword && newPassword !== confirmPassword ? "border-red-500" : ""
                       }`}
+                      style={{ background: "#1e293b", borderColor: confirmPassword && newPassword !== confirmPassword ? undefined : "rgba(255,255,255,0.06)" }}
                       disabled={isLoading}
                     />
                     <button
                       type="button"
                       onClick={() => setShowConfirm(!showConfirm)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-400"
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-300"
                     >
                       <span className="material-symbols-outlined text-lg">{showConfirm ? "visibility_off" : "visibility"}</span>
                     </button>
@@ -479,14 +485,14 @@ const ForgotPassword = () => {
                 <button
                   type="submit"
                   disabled={isLoading}
-                  className="w-full flex justify-center items-center gap-2 py-3 px-4 rounded-xl text-sm font-bold text-white transition-all hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
-                  style={{ background: "linear-gradient(135deg, #6366f1, #818cf8)" }}
+                  className="w-full flex justify-center items-center gap-2 py-3 px-4 rounded-xl text-sm font-bold text-black transition-all duration-300 hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
+                  style={{ background: "linear-gradient(135deg, #ffffff, #ffffff)" }}
                 >
                   {isLoading ? (
                     <>
                       <div className="relative w-4 h-4">
-                        <div className="absolute inset-0 rounded-full border-2 border-indigo-900" />
-                        <div className="absolute inset-0 rounded-full border-2 border-transparent border-t-white animate-spin" />
+                        <div className="absolute inset-0 rounded-full border-2 border-gray-400" />
+                        <div className="absolute inset-0 rounded-full border-2 border-transparent border-t-black animate-spin" />
                       </div>
                       Resetting...
                     </>

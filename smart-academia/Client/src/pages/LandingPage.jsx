@@ -16,7 +16,7 @@ import CTASection from "../components/sections/LandingPage/CTASection";
 // Chatbot Button Component - HeroSection themed
 const ChatbotButton = ({ onClick }) => {
   const [isHovered, setIsHovered] = useState(false);
-  
+
   return (
     <button
       onClick={onClick}
@@ -26,29 +26,29 @@ const ChatbotButton = ({ onClick }) => {
     >
       <div className="relative">
         <div className="absolute inset-0 rounded-full animate-ping" style={{ background: "#ffffff", opacity: 0.15 }} />
-        
-        <div 
+
+        <div
           className={`relative flex items-center gap-2 px-4 py-2.5 rounded-full transition-all duration-300 ${
             isHovered ? 'scale-110 shadow-2xl' : 'scale-100 shadow-lg'
           }`}
-          style={{ 
+          style={{
             background: "linear-gradient(135deg, #ffffff, #ffffff)",
             boxShadow: "0 8px 32px rgba(255, 255, 255, 0.15)"
           }}
         >
-          <svg 
+          <svg
             className={`w-4 h-4 text-black transition-transform duration-300 ${
               isHovered ? 'rotate-12' : 'rotate-0'
             }`}
-            fill="none" 
-            stroke="currentColor" 
+            fill="none"
+            stroke="currentColor"
             viewBox="0 0 24 24"
           >
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
           </svg>
-          
+
           <span className="text-sm font-bold text-black">Chat</span>
-          
+
           <span className="absolute -top-1 -right-1 flex h-3 w-3">
             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75"></span>
             <span className="relative inline-flex rounded-full h-3 w-3" style={{ background: "#6366f1" }}></span>
@@ -89,7 +89,7 @@ const GeminiChatbot = ({ isOpen, onClose }) => {
 
     try {
       const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
-      
+
       const response = await fetch(`${API_URL}/api/ai/public-chat`, {
         method: 'POST',
         headers: {
@@ -112,22 +112,22 @@ const GeminiChatbot = ({ isOpen, onClose }) => {
       }
 
       const data = await response.json();
-      
+
       if (data.reply) {
-        setMessages(prev => [...prev, { 
-          type: 'bot', 
+        setMessages(prev => [...prev, {
+          type: 'bot',
           text: data.reply
         }]);
       } else {
-        setMessages(prev => [...prev, { 
-          type: 'bot', 
+        setMessages(prev => [...prev, {
+          type: 'bot',
           text: data.message || "I'm not sure how to respond. Can you rephrase?"
         }]);
       }
     } catch (error) {
       console.error('Error:', error);
-      setMessages(prev => [...prev, { 
-        type: 'bot', 
+      setMessages(prev => [...prev, {
+        type: 'bot',
         text: error.message || "Having trouble connecting. Please try again."
       }]);
     } finally {
@@ -156,13 +156,13 @@ const GeminiChatbot = ({ isOpen, onClose }) => {
     h4: ({ children }) => <h4 className="text-xs font-semibold text-gray-400 mb-0.5">{children}</h4>,
     h5: ({ children }) => <h5 className="text-xs font-medium text-gray-400 mb-0.5">{children}</h5>,
     h6: ({ children }) => <h6 className="text-xs font-medium text-gray-500 mb-0.5">{children}</h6>,
-    
+
     p: ({ children }) => <p className="text-xs text-gray-200 leading-relaxed mb-0.5">{children}</p>,
-    
+
     ul: ({ children }) => <ul className="list-disc pl-3 space-y-0.5 text-xs text-gray-200">{children}</ul>,
     ol: ({ children }) => <ol className="list-decimal pl-3 space-y-0.5 text-xs text-gray-200">{children}</ol>,
     li: ({ children }) => <li className="text-xs text-gray-200 leading-relaxed">{children}</li>,
-    
+
     code: ({ className, children, inline }) => {
       if (inline) {
         return <code className="px-1 py-0.5 rounded bg-gray-800 text-xs text-indigo-300 font-mono">{children}</code>;
@@ -173,24 +173,24 @@ const GeminiChatbot = ({ isOpen, onClose }) => {
         </pre>
       );
     },
-    
+
     blockquote: ({ children }) => (
       <blockquote className="border-l-2 border-indigo-400 pl-2 my-1 text-xs text-gray-400 italic">
         {children}
       </blockquote>
     ),
-    
+
     a: ({ href, children }) => (
       <a href={href} target="_blank" rel="noopener noreferrer" className="text-indigo-300 hover:text-indigo-200 underline text-xs">
         {children}
       </a>
     ),
-    
+
     strong: ({ children }) => <strong className="font-bold text-white">{children}</strong>,
     em: ({ children }) => <em className="italic text-gray-300">{children}</em>,
-    
+
     hr: () => <hr className="border-gray-700 my-1" />,
-    
+
     table: ({ children }) => (
       <table className="min-w-full border-collapse my-1 text-xs">
         {children}
@@ -221,7 +221,7 @@ const GeminiChatbot = ({ isOpen, onClose }) => {
               <span className="ml-2 text-[10px] text-black/50">Gemini</span>
             </div>
           </div>
-          <button 
+          <button
             onClick={onClose}
             className="text-black/50 hover:text-black transition-colors p-1 rounded-full hover:bg-black/5"
           >
@@ -230,7 +230,7 @@ const GeminiChatbot = ({ isOpen, onClose }) => {
             </svg>
           </button>
         </div>
-        
+
         {/* Messages - HeroSection dark theme */}
         <div className="flex-1 p-4 overflow-y-auto space-y-3" style={{ background: "#0c0e1e" }}>
           {messages.map((msg, index) => (
@@ -243,13 +243,13 @@ const GeminiChatbot = ({ isOpen, onClose }) => {
                 </div>
               )}
 
-              <div 
+              <div
                 className={`px-3 py-2 rounded-xl max-w-[80%]  ${
                   msg.type === 'user' ? 'rounded-tr-none' : 'rounded-tl-none'
                 }`}
-                style={{ 
-                  background: msg.type === 'user' 
-                    ? "linear-gradient(135deg, #ffffff, #ffffff)" 
+                style={{
+                  background: msg.type === 'user'
+                    ? "linear-gradient(135deg, #ffffff, #ffffff)"
                     : "#1e293b",
                   border: msg.type === 'bot' ? "1px solid rgba(255, 255, 255, 0.06)" : "none"
                 }}
@@ -289,7 +289,7 @@ const GeminiChatbot = ({ isOpen, onClose }) => {
           )}
           <div ref={messagesEndRef} />
         </div>
-        
+
         {/* Quick Replies - HeroSection themed */}
         {messages.length < 3 && (
           <div className="px-3 py-2 flex gap-2 flex-wrap flex-shrink-0" style={{ background: "#0c0e1e", borderTop: "1px solid rgba(255, 255, 255, 0.06)" }}>
@@ -301,7 +301,7 @@ const GeminiChatbot = ({ isOpen, onClose }) => {
                   setTimeout(sendMessage, 100);
                 }}
                 className="px-3 py-1 rounded-full text-[10px] font-medium transition-all hover:scale-105"
-                style={{ 
+                style={{
                   background: "#1e293b",
                   color: "#cbd5e1",
                   border: "1px solid rgba(255, 255, 255, 0.06)"
@@ -312,13 +312,13 @@ const GeminiChatbot = ({ isOpen, onClose }) => {
             ))}
           </div>
         )}
-        
+
         {/* Input - HeroSection themed */}
         <div className="p-3 border-t flex-shrink-0" style={{ borderColor: "rgba(255, 255, 255, 0.06)", background: "#0c0e1e" }}>
           <div className="flex items-center gap-2">
-            <input 
+            <input
               ref={inputRef}
-              type="text" 
+              type="text"
               placeholder="Ask Me..."
               value={input}
               onChange={(e) => setInput(e.target.value)}
@@ -327,7 +327,7 @@ const GeminiChatbot = ({ isOpen, onClose }) => {
               style={{ background: "#1e293b", border: "1px solid rgba(255, 255, 255, 0.06)" }}
               disabled={isLoading}
             />
-            <button 
+            <button
               onClick={sendMessage}
               className={`p-2 rounded-xl transition-all hover:scale-105 ${
                 !input.trim() || isLoading ? 'opacity-50 cursor-not-allowed' : ''
@@ -368,7 +368,7 @@ const LandingPage = () => {
       const headerOffset = 80;
       const elementPosition = element.getBoundingClientRect().top;
       const offsetPosition = elementPosition + window.pageYOffset - headerOffset;
-      
+
       window.scrollTo({
         top: offsetPosition,
         behavior: "smooth"
@@ -385,7 +385,7 @@ const LandingPage = () => {
     const handleScroll = () => {
       setShowScrollTop(window.scrollY > 400);
       setIsScrolled(window.scrollY > 50);
-      
+
       if (mobileMenuOpen && window.innerWidth < 1024) {
         setMobileMenuOpen(false);
       }
@@ -414,31 +414,60 @@ const LandingPage = () => {
     }
   }, []);
 
+  // Force #root to stop being its own scroll container.
+  // This wins over any stylesheet rule (including !important ones loaded
+  // elsewhere) because inline element styles set with JS priority beat
+  // stylesheet-level !important. This is what actually fixes the
+  // double-scrollbar issue caused by a global CSS rule on #root.
+  useEffect(() => {
+    const root = document.getElementById('root');
+    if (root) {
+      root.style.setProperty('overflow-y', 'visible', 'important');
+      root.style.setProperty('overflow-x', 'hidden', 'important');
+      root.style.setProperty('height', 'auto', 'important');
+    }
+  }, []);
+
   return (
-    <div className="min-h-screen overflow-x-hidden pt-16 sm:pt-20" style={{ background: "#0c0e1e", fontFamily: "'Lexend', sans-serif" }}>
-      
+    <>
       <style>
         {`
-          /* Custom scrollbar - White */
+          html, body {
+            margin: 0;
+            padding: 0;
+            overflow-x: hidden;
+          }
+
+          body {
+            overflow-y: auto;
+            background: #0c0e1e;
+          }
+
+          #root {
+            height: auto !important;
+            min-height: 100vh;
+            overflow-y: visible !important;
+            overflow-x: hidden !important;
+          }
+
           ::-webkit-scrollbar {
             width: 8px;
           }
-          
+
           ::-webkit-scrollbar-track {
             background: #1e293b;
             border-radius: 10px;
           }
-          
+
           ::-webkit-scrollbar-thumb {
             background: #ffffff;
             border-radius: 10px;
           }
-          
+
           ::-webkit-scrollbar-thumb:hover {
             background: #e2e8f0;
           }
-          
-          /* For Firefox */
+
           * {
             scrollbar-width: thin;
             scrollbar-color: #ffffff #1e293b;
@@ -457,7 +486,7 @@ const LandingPage = () => {
           .animate-slideInUp { animation: slideInUp 0.3s ease-out; }
         `}
       </style>
-      
+
       <Header
         mobileMenuOpen={mobileMenuOpen}
         setMobileMenuOpen={setMobileMenuOpen}
@@ -467,38 +496,38 @@ const LandingPage = () => {
         onNavClick={scrollToSection}
       />
 
-      <main className="overflow-x-hidden animate-fadeIn">
+      <main className="animate-fadeIn pt-16 sm:pt-20">
         <HeroSection onButtonClick={() => handleNavigate("/register")} />
-        
+
         <div id="problem">
           <ProblemSection />
         </div>
-        
+
         <div id="features">
           <FeaturesSection />
         </div>
-        
+
         <div id="benefits">
           <BenefitsSection />
         </div>
-        
+
         <div id="how-it-works">
           <HowItWorksSection />
         </div>
-        
+
         <CTASection
           primaryButton={{ text: "Get Started", onClick: () => handleNavigate("/register") }}
           secondaryButton={{ text: "Login to Account", onClick: () => handleNavigate("/login") }}
         />
-      </main>
 
-      <Footer />
+        <Footer />
+      </main>
 
       {showScrollTop && (
         <button
           onClick={scrollToTop}
           className="fixed bottom-24 right-6 z-40 p-3 rounded-full transition-all duration-300 hover:scale-110 shadow-lg"
-          style={{ 
+          style={{
             background: "linear-gradient(135deg, #ffffff, #ffffff)",
             boxShadow: "0 8px 32px rgba(255, 255, 255, 0.15)"
           }}
@@ -511,7 +540,7 @@ const LandingPage = () => {
 
       <ChatbotButton onClick={toggleChatbot} />
       <GeminiChatbot isOpen={showChatbot} onClose={toggleChatbot} />
-    </div>
+    </>
   );
 };
 

@@ -22,19 +22,18 @@ const Setup = () => {
     setupKey: "",
   });
 
-  const [animateSchool, setAnimateSchool] = useState(false);
+  const [animateLogo, setAnimateLogo] = useState(false);
   const [animateTitle, setAnimateTitle] = useState(false);
   const [animateTagline, setAnimateTagline] = useState(false);
 
   useEffect(() => {
     checkSetupStatus();
-    const t1 = setTimeout(() => setAnimateSchool(true), 300);
+    const t1 = setTimeout(() => setAnimateLogo(true), 300);
     const t2 = setTimeout(() => setAnimateTitle(true), 600);
     const t3 = setTimeout(() => setAnimateTagline(true), 900);
     return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); };
   }, []);
 
-  // Check password strength
   useEffect(() => {
     setPasswordStrength({
       length: formData.password.length >= 8,
@@ -109,7 +108,7 @@ const Setup = () => {
     return (
       <div className="h-screen w-full flex items-center justify-center" style={{ background: "#0c0e1e", fontFamily: "'Lexend', sans-serif" }}>
         <div className="text-center">
-          <div className="w-12 h-12 border-4 border-indigo-900 border-t-indigo-500 rounded-full animate-spin mx-auto mb-4"></div>
+          <div className="w-12 h-12 border-4 border-gray-700 border-t-white rounded-full animate-spin mx-auto mb-4"></div>
           <p className="text-sm text-gray-500">Checking system status...</p>
         </div>
       </div>
@@ -120,17 +119,17 @@ const Setup = () => {
   if (setupRequired === false) {
     return (
       <div className="min-h-screen w-full flex items-center justify-center p-4" style={{ background: "#0c0e1e", fontFamily: "'Lexend', sans-serif" }}>
-        <div className="bg-gray-900 rounded-2xl border border-gray-800 max-w-md w-full p-8 text-center">
+        <div className="rounded-2xl border max-w-md w-full p-8 text-center" style={{ background: "#0c0e1e", borderColor: "rgba(255,255,255,0.06)" }}>
           <div className="flex items-center justify-center w-20 h-20 bg-green-500/20 rounded-full mx-auto mb-6">
             <span className="material-symbols-outlined text-green-400 text-4xl">check_circle</span>
           </div>
           <h1 className="text-2xl font-bold text-white mb-2">System Already Configured</h1>
-          <p className="text-gray-500 mb-6">
+          <p className="text-gray-400 mb-6">
             An admin account already exists. This setup page is now disabled for security.
           </p>
           <button onClick={() => navigate("/login")}
-            className="w-full py-3 px-4 rounded-xl text-sm font-bold text-white transition-all hover:scale-105"
-            style={{ background: "linear-gradient(135deg, #6366f1, #818cf8)" }}>
+            className="w-full py-3 px-4 rounded-xl text-sm font-bold text-black transition-all hover:scale-105"
+            style={{ background: "linear-gradient(135deg, #ffffff, #ffffff)" }}>
             Go to Login
           </button>
         </div>
@@ -142,15 +141,15 @@ const Setup = () => {
   if (isDone) {
     return (
       <div className="min-h-screen w-full flex items-center justify-center p-4" style={{ background: "#0c0e1e", fontFamily: "'Lexend', sans-serif" }}>
-        <div className="bg-gray-900 rounded-2xl border border-gray-800 max-w-md w-full p-8 text-center">
+        <div className="rounded-2xl border max-w-md w-full p-8 text-center" style={{ background: "#0c0e1e", borderColor: "rgba(255,255,255,0.06)" }}>
           <div className="flex items-center justify-center w-20 h-20 bg-green-500/20 rounded-full mx-auto mb-6 animate-bounce">
             <span className="material-symbols-outlined text-green-400 text-4xl">celebration</span>
           </div>
           <h1 className="text-2xl font-bold text-white mb-2">Setup Complete!</h1>
-          <p className="text-gray-500 mb-2">Admin account created successfully.</p>
+          <p className="text-gray-400 mb-2">Admin account created successfully.</p>
           <p className="text-sm text-gray-500 mb-6">Redirecting to login in 3 seconds...</p>
           <div className="flex items-center justify-center gap-2 text-sm text-indigo-400">
-            <div className="w-4 h-4 border-2 border-indigo-900 border-t-indigo-500 rounded-full animate-spin"></div>
+            <div className="w-4 h-4 border-2 border-gray-700 border-t-white rounded-full animate-spin"></div>
             Redirecting...
           </div>
         </div>
@@ -158,39 +157,39 @@ const Setup = () => {
     );
   }
 
-  // Setup form
   return (
     <div className="h-screen w-full overflow-hidden" style={{ fontFamily: "'Lexend', sans-serif", background: "#0c0e1e" }}>
       <style>{`
         .custom-scroll::-webkit-scrollbar {
-          width: 6px;
+          width: 8px;
         }
         .custom-scroll::-webkit-scrollbar-track {
           background: #1e293b;
           border-radius: 10px;
         }
         .custom-scroll::-webkit-scrollbar-thumb {
-          background: #6366f1;
+          background: #ffffff;
           border-radius: 10px;
         }
         .custom-scroll::-webkit-scrollbar-thumb:hover {
-          background: #818cf8;
+          background: #e2e8f0;
         }
       `}</style>
 
       <div className="flex flex-col lg:flex-row h-full w-full">
 
         {/* Mobile Brand Section */}
-        <div className="lg:hidden relative overflow-hidden flex-shrink-0" style={{ background: "linear-gradient(135deg, #0c0e1e 0%, #131b35 50%, #0d1527 100%)", borderBottom: "1px solid #1e293b" }}>
-          <div className="absolute top-0 left-1/4 w-48 h-48 rounded-full blur-3xl opacity-20" style={{ background: "#6366f1" }} />
-          <div className="absolute bottom-0 right-1/4 w-48 h-48 rounded-full blur-3xl opacity-15" style={{ background: "#a855f7" }} />
-          
-          <div className="relative flex flex-col items-center justify-center py-12 px-6 text-center">
-            <div className={`flex h-20 w-20 items-center justify-center rounded-full transition-all duration-700 transform ${animateSchool ? 'opacity-100 scale-100' : 'opacity-0 scale-50'}`} style={{ background: "linear-gradient(135deg, #6366f1, #818cf8)" }}>
-              <svg className="w-12 h-12 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 14l9-5-9-5-9 5 9 5zm0 0l9-5-9 5-9-5m9 5v5m0-5v5m0 0l-9-5m9 5l9-5" />
+        <div className="lg:hidden relative overflow-hidden flex-shrink-0" style={{ background: "#0c0e1e", borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
+          <div className="absolute top-0 left-1/4 w-48 h-48 rounded-full blur-3xl opacity-20" style={{ background: "#000000" }} />
+          <div className="absolute bottom-0 right-1/4 w-48 h-48 rounded-full blur-3xl opacity-15" style={{ background: "#000000" }} />
+
+          <div className="relative flex flex-col items-center justify-center py-10 px-6 text-center">
+            <div className={`flex h-16 w-16 items-center justify-center rounded-2xl bg-white transition-all duration-700 transform ${animateLogo ? 'opacity-100 scale-100' : 'opacity-0 scale-50'}`}>
+              <svg className="w-9 h-9 text-black" fill="none" stroke="currentColor" strokeWidth={2.2} viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 14l9-5-9-5-9 5 9 5zm0 0v7m0-7l9-5m-9 5l-9-5" />
               </svg>
             </div>
+
             <h1 className={`text-2xl font-black text-white mt-4 transition-all duration-700 transform ${animateTitle ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
               System Setup
             </h1>
@@ -200,41 +199,41 @@ const Setup = () => {
           </div>
         </div>
 
-        {/* Desktop Left Panel */}
-        <div className="hidden lg:flex flex-col items-center justify-center w-1/2 h-full relative overflow-hidden" style={{ background: "linear-gradient(135deg, #0c0e1e 0%, #131b35 50%, #0d1527 100%)" }}>
-          <div className="absolute top-0 left-1/4 w-96 h-96 rounded-full blur-3xl opacity-20" style={{ background: "#6366f1" }} />
-          <div className="absolute bottom-0 right-1/4 w-96 h-96 rounded-full blur-3xl opacity-15" style={{ background: "#a855f7" }} />
-          
-          <div className="relative z-10 flex flex-col items-center text-center max-w-md w-full px-8">
-            <div className={`flex h-24 w-24 items-center justify-center rounded-full transition-all duration-700 transform ${animateSchool ? 'opacity-100 scale-100' : 'opacity-0 scale-50'}`} style={{ background: "linear-gradient(135deg, #6366f1, #818cf8)" }}>
-              <svg className="w-12 h-12 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 14l9-5-9-5-9 5 9 5zm0 0l9-5-9 5-9-5m9 5v5m0-5v5m0 0l-9-5m9 5l9-5" />
+        {/* Desktop Brand Section */}
+        <div className="hidden lg:flex flex-col items-center justify-center w-1/2 p-12 text-center relative overflow-hidden" style={{ background: "#0c0e1e" }}>
+          <div className="absolute top-0 left-1/4 w-96 h-96 rounded-full blur-3xl opacity-20" style={{ background: "#000000" }} />
+          <div className="absolute bottom-0 right-1/4 w-96 h-96 rounded-full blur-3xl opacity-15" style={{ background: "#000000" }} />
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-full max-w-4xl rounded-full blur-3xl opacity-10" style={{ background: "#000000" }} />
+
+          <div className="relative flex flex-col items-center gap-6 max-w-md z-10">
+            <div className={`flex h-20 w-20 items-center justify-center rounded-2xl bg-white transition-all duration-700 transform ${animateLogo ? 'opacity-100 scale-100' : 'opacity-0 scale-50'} hover:scale-105 hover:shadow-xl`}>
+              <svg className="w-12 h-12 text-black" fill="none" stroke="currentColor" strokeWidth={2.2} viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 14l9-5-9-5-9 5 9 5zm0 0v7m0-7l9-5m-9 5l-9-5" />
               </svg>
             </div>
-            <h1 className={`text-3xl font-black text-white mt-6 transition-all duration-700 transform ${animateTitle ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>
+            <h1 className={`text-5xl font-black text-white transition-all duration-700 transform ${animateTitle ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>
               Smart Academia
             </h1>
-            <p className={`text-gray-400 mt-2 transition-all duration-700 ${animateTagline ? 'opacity-100' : 'opacity-0'}`}>
+            <p className={`text-xl text-gray-400 transition-all duration-700 ${animateTagline ? 'opacity-100' : 'opacity-0'}`}>
               System Setup
             </p>
 
-            {/* Steps */}
-            <div className="w-full mt-10 space-y-3 text-left">
+            <div className="grid grid-cols-1 gap-3 mt-8 w-full">
               {[
                 { step: "01", text: "Fill in the admin details" },
                 { step: "02", text: "Enter the setup key" },
                 { step: "03", text: "Complete setup & login" },
               ].map((item, i) => (
-                <div key={i} className="flex items-center gap-3 p-3 rounded-xl" style={{ background: "#0f1629", border: "1px solid #1e293b" }}>
-                  <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-indigo-600/20">
-                    <span className="text-xs font-bold text-indigo-400">{item.step}</span>
+                <div key={i} className="flex items-center gap-3 p-3 rounded-xl" style={{ background: "#1e293b", border: "1px solid rgba(255,255,255,0.06)" }}>
+                  <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-white/10">
+                    <span className="text-xs font-bold text-white">{item.step}</span>
                   </div>
                   <span className="text-sm text-gray-400">{item.text}</span>
                 </div>
               ))}
             </div>
 
-            <div className="mt-8 p-4 rounded-xl" style={{ background: "#f59e0b22", border: "1px solid #f59e0b44" }}>
+            <div className="mt-4 p-4 rounded-xl" style={{ background: "#f59e0b22", border: "1px solid #f59e0b44" }}>
               <div className="flex items-start gap-2">
                 <span className="material-symbols-outlined text-amber-500 text-sm mt-0.5">warning</span>
                 <p className="text-amber-400 text-xs leading-relaxed">
@@ -245,28 +244,28 @@ const Setup = () => {
           </div>
         </div>
 
-        {/* Right Panel - Form */}
-        <div className="flex-1 flex flex-col items-center justify-start p-6 lg:p-8 overflow-y-auto custom-scroll" style={{ background: "#0f1629", height: "100vh" }}>
-          <div className="w-full max-w-md mx-auto py-4">
+        {/* Form Section */}
+        <div className="flex-1 flex flex-col items-center justify-center p-6 lg:p-8 overflow-y-auto custom-scroll" style={{ background: "#0c0e1e" }}>
+          <div className="w-full max-w-md space-y-6 py-6">
 
             {/* Form Header */}
-            <div className="text-center mb-6">
+            <div className="text-center">
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full mb-4" style={{ background: "#6366f122", border: "1px solid #6366f144" }}>
                 <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: "#6366f1" }} />
                 <span className="text-[10px] font-bold text-indigo-400 uppercase tracking-wider">Admin Setup</span>
               </div>
-              <h2 className="text-2xl font-bold text-white">Create Admin Account</h2>
-              <p className="text-gray-500 mt-1 text-sm">This will be the master admin of Smart Academia</p>
+              <h1 className="text-3xl font-black text-white">Create Admin Account</h1>
+              <p className="text-gray-400 mt-2 text-sm">This will be the master admin of Smart Academia</p>
             </div>
 
             {error && (
-              <div className="rounded-xl p-3 flex items-center gap-2 mb-4" style={{ background: "#ef444422", border: "1px solid #ef444444" }}>
+              <div className="rounded-xl p-3 flex items-center gap-2" style={{ background: "#ef444422", border: "1px solid #ef444444" }}>
                 <span className="material-symbols-outlined text-sm text-red-400">error</span>
                 <p className="text-sm text-red-400 flex-1">{error}</p>
               </div>
             )}
 
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form onSubmit={handleSubmit} className="space-y-5">
 
               {/* Full Name */}
               <div className="space-y-2">
@@ -280,7 +279,8 @@ const Setup = () => {
                     onChange={handleChange} 
                     required 
                     placeholder="Enter your full name"
-                    className="w-full px-4 py-3 pl-10 border rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200 text-sm border-gray-700 bg-gray-800/50"
+                    className="w-full px-4 py-3 pl-10 rounded-xl text-white placeholder-gray-500 outline-none transition-all duration-200 text-sm focus:ring-1 focus:white border"
+                    style={{ background: "#1e293b", borderColor: "rgba(255,255,255,0.06)" }}
                   />
                 </div>
               </div>
@@ -297,7 +297,8 @@ const Setup = () => {
                     onChange={handleChange} 
                     required 
                     placeholder="admin@smartacademia.com"
-                    className="w-full px-4 py-3 pl-10 border rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200 text-sm border-gray-700 bg-gray-800/50"
+                    className="w-full px-4 py-3 pl-10 rounded-xl text-white placeholder-gray-500 outline-none transition-all duration-200 text-sm focus:ring-1 focus:white border"
+                    style={{ background: "#1e293b", borderColor: "rgba(255,255,255,0.06)" }}
                   />
                 </div>
               </div>
@@ -314,18 +315,18 @@ const Setup = () => {
                     onChange={handleChange}
                     required 
                     placeholder="Create a strong password"
-                    className="w-full px-4 py-3 pl-10 pr-10 border rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200 text-sm border-gray-700 bg-gray-800/50"
+                    className="w-full px-4 py-3 pl-10 pr-10 rounded-xl text-white placeholder-gray-500 outline-none transition-all duration-200 text-sm focus:ring-1 focus:white border"
+                    style={{ background: "#1e293b", borderColor: "rgba(255,255,255,0.06)" }}
                   />
                   <button 
                     type="button" 
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-400"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-300"
                   >
                     <span className="material-symbols-outlined text-lg">{showPassword ? "visibility_off" : "visibility"}</span>
                   </button>
                 </div>
                 
-                {/* Password strength indicators */}
                 {formData.password && (
                   <div className="flex flex-wrap gap-2 mt-2">
                     {[
@@ -334,7 +335,7 @@ const Setup = () => {
                       { test: passwordStrength.number, label: "Number" },
                     ].map(rule => (
                       <span key={rule.label} className={`text-xs px-2 py-1 rounded-full transition-colors ${
-                        rule.test ? "bg-green-500/20 text-green-400 border border-green-500/30" : "bg-gray-800 text-gray-500 border border-gray-700"
+                        rule.test ? "bg-green-500/20 text-green-400 border border-green-500/30" : "bg-[#1e293b] text-gray-500 border border-gray-700"
                       }`}>
                         {rule.test ? "✓" : "○"} {rule.label}
                       </span>
@@ -355,11 +356,10 @@ const Setup = () => {
                     onChange={handleChange}
                     required 
                     placeholder="Confirm your password"
-                    className={`w-full px-4 py-3 pl-10 border rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200 text-sm bg-gray-800/50 ${
-                      formData.confirmPassword && formData.password !== formData.confirmPassword
-                        ? "border-red-500"
-                        : "border-gray-700"
+                    className={`w-full px-4 py-3 pl-10 rounded-xl text-white placeholder-gray-500 outline-none transition-all duration-200 text-sm focus:ring-1 focus:white border ${
+                      formData.confirmPassword && formData.password !== formData.confirmPassword ? "border-red-500" : ""
                     }`}
+                    style={{ background: "#1e293b", borderColor: formData.confirmPassword && formData.password !== formData.confirmPassword ? undefined : "rgba(255,255,255,0.06)" }}
                   />
                 </div>
                 {formData.confirmPassword && formData.password !== formData.confirmPassword && (
@@ -382,12 +382,13 @@ const Setup = () => {
                     onChange={handleChange} 
                     required 
                     placeholder="Enter setup key"
-                    className="w-full px-4 py-3 pl-10 pr-10 border rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200 text-sm border-gray-700 bg-gray-800/50"
+                    className="w-full px-4 py-3 pl-10 pr-10 rounded-xl text-white placeholder-gray-500 outline-none transition-all duration-200 text-sm focus:ring-1 focus:white border"
+                    style={{ background: "#1e293b", borderColor: "rgba(255,255,255,0.06)" }}
                   />
                   <button 
                     type="button" 
                     onClick={() => setShowSetupKey(!showSetupKey)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-400"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-300"
                   >
                     <span className="material-symbols-outlined text-lg">{showSetupKey ? "visibility_off" : "visibility"}</span>
                   </button>
@@ -397,14 +398,14 @@ const Setup = () => {
               <button 
                 type="submit" 
                 disabled={isSubmitting}
-                className="w-full flex justify-center items-center gap-2 py-3 px-4 rounded-xl text-sm font-bold text-white transition-all hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed mt-2"
-                style={{ background: "linear-gradient(135deg, #6366f1, #818cf8)" }}
+                className="w-full flex justify-center items-center gap-2 py-3 px-4 rounded-xl text-sm font-bold text-black transition-all duration-300 hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
+                style={{ background: "linear-gradient(135deg, #ffffff, #ffffff)" }}
               >
                 {isSubmitting ? (
                   <>
                     <div className="relative w-4 h-4">
-                      <div className="absolute inset-0 rounded-full border-2 border-indigo-900" />
-                      <div className="absolute inset-0 rounded-full border-2 border-transparent border-t-white animate-spin" />
+                      <div className="absolute inset-0 rounded-full border-2 border-gray-400" />
+                      <div className="absolute inset-0 rounded-full border-2 border-transparent border-t-black animate-spin" />
                     </div>
                     Creating Admin Account...
                   </>
@@ -418,10 +419,13 @@ const Setup = () => {
             </form>
 
             {/* Login Link */}
-            <div className="text-center pt-4">
-              <p className="text-sm text-gray-500">
+            <div className="text-center pt-2">
+              <p className="text-sm text-gray-400">
                 Already have an account?{" "}
-                <button onClick={() => navigate("/login")} className="font-bold transition-all hover:scale-105" style={{ color: "#818cf8" }}>
+                <button 
+                  onClick={() => navigate("/login")} 
+                  className="font-bold text-white hover:text-gray-300 transition-colors"
+                >
                   Go to Login
                 </button>
               </p>
