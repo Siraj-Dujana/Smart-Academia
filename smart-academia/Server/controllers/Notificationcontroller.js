@@ -579,7 +579,7 @@ module.exports.notifyTeacherRegistration = notifyTeacherRegistration;
 const notifyStudentRegistration = async (studentData) => {
   return await broadcastToAdmins({
     type: "student_registration",
-    title: "New Student Registration",
+    title: "👤New Student Registration",
     message: `${studentData.fullName} (${studentData.email}) has registered as a student.`,
     link: "/admin/dashboard?tab=students",
     priority: "normal",

@@ -12,6 +12,9 @@ const {
   studentChat,
   teacherChat,
   publicChat, // ✅ Added publicChat import
+  adminChat, // ✅ Added adminChat import
+  getAdminChatHistory, // ✅ Added getAdminChatHistory import
+  clearAdminChatHistory, // ✅ Added clearAdminChatHistory import
   chat // ✅ Added chat import if needed
 } = require('../controllers/aiController');
 const { protect, authorize } = require('../middleware/authMiddleware');
@@ -42,5 +45,11 @@ router.post('/student-chat', protect, authorize('student'), studentChat);
 
 // Teacher AI Assistant
 router.post('/teacher-chat', protect, authorize('teacher', 'admin'), teacherChat);
+
+
+// admin Chatbot
+router.post('/admin-chat', protect, adminChat);
+router.get('/admin-chat/history', protect, getAdminChatHistory);
+router.delete('/admin-chat/history', protect, clearAdminChatHistory);
 
 module.exports = router;

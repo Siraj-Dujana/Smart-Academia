@@ -644,6 +644,141 @@ const teacherChat = async (req, res) => {
 };
 
 // =============================================
+// POST /api/ai/admin-chat — Admin AI Assistant
+// =============================================
+const adminChat = async (req, res) => {
+  try {
+    const { message, history = [] } = req.body;
+
+    if (!message || !message.trim()) {
+      return res.status(400).json({ message: 'Message is required' });
+    }
+
+    let chatHistory = await ChatHistory.findOne({
+      user: req.user._id,
+      type: 'admin-assistant'
+    });
+
+    if (!chatHistory) {
+      chatHistory = await ChatHistory.create({
+        user: req.user._id,
+        type: 'admin-assistant',
+        messages: []
+      });
+    }
+
+    // Pull live counts so the assistant can answer "how many teachers/students"
+    // style questions with real numbers instead of guessing.
+    let platformStats = '';
+    try {
+      const User = require('../models/User');
+      const AICourse = require('../models/Course');
+
+      const [totalTeachers, totalStudents, totalCourses, pendingTeachers] = await Promise.all([
+        User.countDocuments({ role: 'teacher' }),
+        User.countDocuments({ role: 'student' }),
+        AICourse.countDocuments({}),
+        User.countDocuments({ role: 'teacher', approved: false }),
+      ]);
+
+      platformStats = `
+Current platform snapshot (live data — use these numbers when relevant):
+- Total teachers: ${totalTeachers}
+- Total students: ${totalStudents}
+- Total courses: ${totalCourses}
+- Teachers pending approval: ${pendingTeachers}
+`;
+    } catch (statErr) {
+      // If a model name doesn't match this project's schema, don't fail the
+      // whole chat — just answer without live stats.
+      console.warn('Admin chat: could not load platform stats:', statErr.message);
+      platformStats = '';
+    }
+
+    const systemPrompt = `You are Smart Academia's AI Assistant for platform administrators.
+Your role is to help the admin manage teachers, students, courses, and understand platform activity.
+
+${platformStats}
+
+Guidelines:
+- Be concise, direct, and professional — the admin is working, not browsing
+- When asked about counts or stats, use the live platform snapshot above if it's relevant
+- If asked to perform an action (approve a teacher, delete a course, etc.), explain that you can't take actions directly yet, and point them to the relevant tab (Manage Teachers, Manage Students, Manage Courses)
+- If you don't have data to answer something, say so plainly instead of guessing
+- Keep responses under 120 words unless the admin asks for a detailed breakdown
+- Do not use emojis`;
+
+    const historyText = (chatHistory.messages || [])
+      .slice(-10)
+      .map(m => `${m.role === 'user' ? 'Admin' : 'Assistant'}: ${m.content}`)
+      .join('\n');
+
+    const ai = getAI();
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.5-flash-lite',
+      contents: `
+        ${systemPrompt}
+
+        Previous conversation:
+        ${historyText}
+
+        Admin's question: ${message.trim()}
+      `
+    });
+
+    const reply = response.text;
+
+    chatHistory.messages.push({ role: 'user', content: message.trim() });
+    chatHistory.messages.push({ role: 'assistant', content: reply });
+    await chatHistory.save();
+
+    res.status(200).json({ reply, chatHistory: chatHistory.messages });
+
+  } catch (error) {
+    console.error('Admin chat error:', error);
+
+    if (error.message?.includes('API_KEY')) {
+      return res.status(500).json({ message: 'AI service configuration error. Contact system administrator.' });
+    }
+    if (error.message?.includes('quota') || error.message?.includes('rate')) {
+      return res.status(429).json({ message: 'AI service is busy. Please try again in a moment.' });
+    }
+
+    res.status(500).json({ message: 'AI service error. Please try again.' });
+  }
+};
+
+// =============================================
+// GET /api/ai/admin-chat/history
+// =============================================
+const getAdminChatHistory = async (req, res) => {
+  try {
+    const chatHistory = await ChatHistory.findOne({
+      user: req.user._id,
+      type: 'admin-assistant'
+    });
+    res.status(200).json({ messages: chatHistory?.messages || [] });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// =============================================
+// DELETE /api/ai/admin-chat/history
+// =============================================
+const clearAdminChatHistory = async (req, res) => {
+  try {
+    await ChatHistory.findOneAndDelete({
+      user: req.user._id,
+      type: 'admin-assistant'
+    });
+    res.status(200).json({ message: 'Chat history cleared' });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// =============================================
 // GET /api/ai/student-chat/history
 // =============================================
 const getStudentChatHistory = async (req, res) => {
@@ -718,8 +853,11 @@ module.exports = {
   getAnalytics,
   studentChat,
   teacherChat,
+  adminChat, // ✅ NEW - Admin dashboard assistant
   getStudentChatHistory,
   getTeacherChatHistory,
+  getAdminChatHistory, // ✅ NEW
   clearStudentChatHistory,
-  clearTeacherChatHistory
+  clearTeacherChatHistory,
+  clearAdminChatHistory // ✅ NEW
 };

@@ -13,7 +13,7 @@ const chatHistorySchema = new mongoose.Schema({
   },
   type: {
     type: String,
-    enum: ['document', 'student-tutor', 'teacher-tutor'],
+    enum: ['document', 'student-tutor', 'teacher-tutor', 'admin-assistant'],
     default: 'document'
   },
   messages: [{

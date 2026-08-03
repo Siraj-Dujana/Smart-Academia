@@ -17,15 +17,18 @@ const apiFetch = async (url, opts = {}) => {
   return res;
 };
 
-// Admin specific type config
+// Admin type config — monochrome to match the Dashboard theme.
+// Red is reserved for destructive/urgent items only (course deletion,
+// system alerts), matching how red is used for error banners everywhere
+// else in the app. Everything else is white/neutral, no per-type color coding.
 const adminTypeConfig = {
-  teacher_registration: { icon: "person_add", color: "#6366f1", bg: "#6366f122", border: "#6366f144", label: "Teacher Registration" },
-  student_registration: { icon: "group_add", color: "#22c55e", bg: "#22c55e22", border: "#22c55e44", label: "Student Registration" },
-  course_creation: { icon: "menu_book", color: "#f59e0b", bg: "#f59e0b22", border: "#f59e0b44", label: "Course Created" },
-  course_deletion: { icon: "delete", color: "#ef4444", bg: "#ef444422", border: "#ef444444", label: "Course Deleted" },
-  user_report: { icon: "flag", color: "#a855f7", bg: "#a855f722", border: "#a855f744", label: "User Report" },
-  system_alert: { icon: "warning", color: "#ef4444", bg: "#ef444422", border: "#ef444444", label: "System Alert" },
-  system: { icon: "info", color: "#6b7280", bg: "#6b728022", border: "#6b728044", label: "System" },
+  teacher_registration: {  color: "#ffffff", bg: "rgba(255,255,255,0.06)", border: "rgba(255,255,255,0.12)", label: "Teacher Registration" },
+  student_registration: {  color: "#ffffff", bg: "rgba(255,255,255,0.06)", border: "rgba(255,255,255,0.12)", label: "Student Registration" },
+  course_creation: {  color: "#ffffff", bg: "rgba(255,255,255,0.06)", border: "rgba(255,255,255,0.12)", label: "Course Created" },
+  course_deletion: {  color: "#fffefe", bg: "#ef444422", border: "#ef444444", label: "Course Deleted" },
+  user_report: {  color: "#ffffff", bg: "rgba(255,255,255,0.06)", border: "rgba(255,255,255,0.12)", label: "User Report" },
+  system_alert: {  color: "#fffefe", bg: "#ef444422", border: "#ef444444", label: "System Alert" },
+  system: {  color: "#94a3b8", bg: "rgba(148,163,184,0.1)", border: "rgba(148,163,184,0.2)", label: "System" },
 };
 
 const timeAgo = (date) => {
@@ -167,11 +170,12 @@ const AdminNotificationBell = () => {
   const unread = notifications.filter(n => !n.isRead);
   const read = notifications.filter(n => n.isRead);
 
+  // Same dual-ring spinner used in Dashboard.jsx — white/white-40, no color accents
   const LoadingSpinner = () => (
     <div className="relative w-8 h-8 mx-auto">
-      <div className="absolute inset-0 rounded-full border-3 border-indigo-900" />
-      <div className="absolute inset-0 rounded-full border-3 border-transparent border-t-indigo-500 animate-spin" />
-      <div className="absolute inset-1 rounded-full border-3 border-transparent border-t-purple-500 animate-spin" style={{ animationDirection: "reverse", animationDuration: "0.8s" }} />
+      <div className="absolute inset-0 rounded-full border-[3px] border-white/10" />
+      <div className="absolute inset-0 rounded-full border-[3px] border-transparent border-t-white animate-spin" />
+      <div className="absolute inset-1 rounded-full border-[3px] border-transparent border-t-white/40 animate-spin" style={{ animationDirection: "reverse", animationDuration: "0.8s" }} />
     </div>
   );
 
@@ -185,7 +189,7 @@ const AdminNotificationBell = () => {
         aria-label="Admin Notifications"
       >
         <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-lg"
-          style={{ background: "radial-gradient(ellipse at 50% 50%, #6366f115 0%, transparent 70%)" }}
+          style={{ background: "radial-gradient(ellipse at 50% 50%, rgba(255,255,255,0.08) 0%, transparent 70%)" }}
         />
         <span className="material-symbols-outlined text-xl relative z-10">notifications</span>
         {unreadCount > 0 && (
@@ -198,16 +202,16 @@ const AdminNotificationBell = () => {
 
       {/* Dropdown Panel */}
       {open && (
-        <div className="absolute right-0 mt-3 w-[380px] sm:w-[420px] rounded-2xl shadow-2xl z-50 overflow-hidden"
+        <div className="absolute right-0 mt-3 w-[380px] sm:w-[420px] rounded-2xl shadow-2xl z-50 overflow-hidden transition-all duration-300"
           style={{ background: "#0f1629", border: "1px solid #1e293b", maxHeight: "min(520px, 80vh)" }}>
           
-          {/* Header */}
-          <div className="flex items-center justify-between px-5 py-3" style={{ background: "linear-gradient(135deg, #6366f1, #818cf8)" }}>
+          {/* Header — solid white, black text, matches the site's primary-surface pattern */}
+          <div className="flex items-center justify-between px-5 py-3 bg-white">
             <div className="flex items-center gap-2">
-              <span className="material-symbols-outlined text-white text-lg">admin_panel_settings</span>
-              <h3 className="font-bold text-white text-sm">Admin Alerts</h3>
+              <span className="material-symbols-outlined text-black text-lg">admin_panel_settings</span>
+              <h3 className="font-bold text-black text-sm">Admin Alerts</h3>
               {unreadCount > 0 && (
-                <span className="px-2 py-0.5 bg-white/20 text-white text-[10px] font-bold rounded-full">
+                <span className="px-2 py-0.5 bg-black/10 text-black text-[10px] font-bold rounded-full">
                   {unreadCount} new
                 </span>
               )}
@@ -216,7 +220,7 @@ const AdminNotificationBell = () => {
               {unreadCount > 0 && (
                 <button
                   onClick={handleMarkAllRead}
-                  className="text-[10px] text-white/80 hover:text-white px-2 py-1 rounded-lg hover:bg-white/10 transition-colors"
+                  className="text-[10px] text-black/70 hover:text-black px-2 py-1 rounded-lg hover:bg-black/5 transition-colors"
                 >
                   Mark all read
                 </button>
@@ -224,7 +228,7 @@ const AdminNotificationBell = () => {
               {read.length > 0 && (
                 <button
                   onClick={handleClearRead}
-                  className="text-[10px] text-white/80 hover:text-white px-2 py-1 rounded-lg hover:bg-white/10 transition-colors"
+                  className="text-[10px] text-black/70 hover:text-black px-2 py-1 rounded-lg hover:bg-black/5 transition-colors"
                 >
                   Clear read
                 </button>
@@ -252,7 +256,7 @@ const AdminNotificationBell = () => {
                 {unread.length > 0 && (
                   <div>
                     <div className="px-5 py-2" style={{ background: "#0a0f1e", borderBottom: "1px solid #1e293b" }}>
-                      <p className="text-[10px] font-bold text-indigo-400 uppercase tracking-wider">New Alerts</p>
+                      <p className="text-[10px] font-bold text-white/70 uppercase tracking-wider">New Alerts</p>
                     </div>
                     {unread.map(notif => (
                       <NotificationItem
@@ -298,15 +302,10 @@ const NotificationItem = ({ notif, onRead, onDelete }) => {
     <div
       onClick={() => onRead(notif)}
       className={`group flex items-start gap-3 px-5 py-3 cursor-pointer transition-all duration-150 hover:bg-white/5 border-b last:border-0 ${
-        !notif.isRead ? "bg-indigo-500/5" : ""
+        !notif.isRead ? "bg-white/5" : ""
       }`}
       style={{ borderColor: "#1e293b" }}
     >
-      {/* Icon */}
-      <div className={`flex-shrink-0 w-10 h-10 rounded-xl flex items-center justify-center mt-0.5`}
-        style={{ background: cfg.bg, border: `1px solid ${cfg.border}` }}>
-        <span className={`material-symbols-outlined text-base`} style={{ color: cfg.color }}>{cfg.icon}</span>
-      </div>
 
       {/* Content */}
       <div className="flex-1 min-w-0">
@@ -331,21 +330,21 @@ const NotificationItem = ({ notif, onRead, onDelete }) => {
           {notif.priority === "high" && (
             <>
               <span className="text-[10px] text-gray-700">•</span>
-              <span className="text-[10px] text-red-400 font-medium">⚠️ High Priority</span>
+              <span className="text-[10px] text-red-400 font-medium">High Priority</span>
             </>
           )}
           {notif.priority === "urgent" && (
             <>
               <span className="text-[10px] text-gray-700">•</span>
-              <span className="text-[10px] text-red-400 font-medium">🚨 URGENT</span>
+              <span className="text-[10px] text-red-400 font-bold uppercase tracking-wide">Urgent</span>
             </>
           )}
         </div>
       </div>
 
-      {/* Unread dot */}
+      {/* Unread dot — white, matches Dashboard's monochrome accent dots */}
       {!notif.isRead && (
-        <div className="flex-shrink-0 w-2 h-2 rounded-full mt-1" style={{ background: "#6366f1", boxShadow: "0 0 6px #6366f1" }} />
+        <div className="flex-shrink-0 w-2 h-2 rounded-full mt-1 bg-white" style={{ boxShadow: "0 0 6px rgba(255,255,255,0.6)" }} />
       )}
     </div>
   );
