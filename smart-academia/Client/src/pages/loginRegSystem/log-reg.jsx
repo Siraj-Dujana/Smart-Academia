@@ -176,10 +176,7 @@ const Register = () => {
 
             {/* Form Header */}
             <div className="text-center">
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full mb-4" style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)" }}>
-                <span className="w-1.5 h-1.5 rounded-full animate-pulse bg-white" />
-                <span className="text-[10px] font-bold text-white uppercase tracking-wider">Join Us</span>
-              </div>
+              
               <h1 className="text-3xl font-black text-white">
                 Join Smart Academia
               </h1>
