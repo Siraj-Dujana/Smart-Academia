@@ -15,6 +15,7 @@ import StudentAIAnalytics from "../components/dashboard/StudentDashboard/Student
 import Leaderboard from "../components/dashboard/StudentDashboard/Student Tabs/Leaderboard";
 import Certificates from "../components/dashboard/StudentDashboard/Student Tabs/Certificates";
 import StudentViewNotes from "../components/dashboard/StudentDashboard/Student Tabs/StudentViewNotes"
+
 const StudentDashboard = () => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -42,21 +43,21 @@ const StudentDashboard = () => {
     if (tab) setActiveMenu(tab);
   }, [location.search]);
 
-const menuItems = [
-  { icon: "dashboard", label: "Dashboard", key: 'dashboard' },
-  { icon: "import_contacts", label: "Courses", key: 'courses' },
-  { icon: "quiz", label: "Quizzes", key: 'quizzes' },
-  { icon: "science", label: "Labs", key: 'labs' },
-  { icon: "note_stack", label: "Notes", key: 'notes' },
-  { icon: "bar_chart_4_bars", label: "Progress", key: 'progress' },
-  { icon: "auto_awesome", label: "AI Insights", key: 'ai-analytics' },
-  { icon: "leaderboard", label: "Leaderboard", key: 'leaderboard' },
-  { icon: "workspace_premium", label: "Certificates", key: 'certificates' },
-  { icon: "smart_toy", label: "AI Tutor", key: 'ai-tutor' },
-  { icon: "assistant", label: "AI Assistant", key: 'ai-assistant' },
-  { icon: 'person', label: 'My Profile', key: 'profile' },
-  { icon: "notifications", label: "Notifications", key: "notifications" },
-];
+  const menuItems = [
+    { icon: "dashboard", label: "Dashboard", key: 'dashboard' },
+    { icon: "import_contacts", label: "Courses", key: 'courses' },
+    { icon: "quiz", label: "Quizzes", key: 'quizzes' },
+    { icon: "science", label: "Labs", key: 'labs' },
+    { icon: "note_stack", label: "Notes", key: 'notes' },
+    { icon: "bar_chart_4_bars", label: "Progress", key: 'progress' },
+    { icon: "auto_awesome", label: "AI Insights", key: 'ai-analytics' },
+    { icon: "leaderboard", label: "Leaderboard", key: 'leaderboard' },
+    { icon: "workspace_premium", label: "Certificates", key: 'certificates' },
+    { icon: "smart_toy", label: "AI Tutor", key: 'ai-tutor' },
+    { icon: "assistant", label: "AI Assistant", key: 'ai-assistant' },
+    { icon: 'person', label: 'My Profile', key: 'profile' },
+    { icon: "notifications", label: "Notifications", key: "notifications" },
+  ];
 
   const handleMenuClick = (menuKey) => {
     setActiveMenu(menuKey);
@@ -95,41 +96,41 @@ const menuItems = [
   const userAvatar = user.avatar || null;
   const userInitial = displayName.charAt(0).toUpperCase();
 
+  // Monochrome palette - matches AdminDashboard / landing page / Login / Register theme
   const colors = {
     bg: "#0a0b10",
     sidebar: "#0c0e1e",
     card: "#0f1629",
     border: "#1e293b",
-    accent: "#6366f1",
-    accent2: "#a855f7",
-    amber: "#f59e0b",
-    green: "#22c55e",
     text: "#e2e8f0",
     muted: "#64748b",
     hover: "#1e293b",
   };
 
-  // Glowing button component for sidebar
+  // SidebarButton component - shows icon ONLY when active
   const SidebarButton = ({ item }) => {
     const isActive = activeMenu === item.key;
     return (
       <button
         onClick={() => handleMenuClick(item.key)}
-        className="flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 group relative overflow-hidden"
+        className="flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-300 group relative overflow-hidden w-full"
         style={isActive
-          ? { background: `${colors.accent}18`, color: "#c7d2fe", border: `1px solid ${colors.accent}33`, boxShadow: `0 0 20px ${colors.accent}15` }
+          ? { background: "rgba(255,255,255,0.08)", color: "#ffffff", border: "1px solid rgba(255,255,255,0.15)" }
           : { color: colors.muted }
         }
       >
         <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-lg"
-          style={{ background: `radial-gradient(ellipse at 50% 0%, ${colors.accent}10 0%, transparent 70%)` }}
+          style={{ background: "radial-gradient(ellipse at 50% 0%, rgba(255,255,255,0.06) 0%, transparent 70%)" }}
         />
-        <span className="material-symbols-outlined text-xl transition-transform duration-200 group-hover:scale-110 relative z-10">
-          {item.icon}
-        </span>
+        {/* Icon - only show when active */}
+        {isActive && (
+          <span className="material-symbols-outlined text-xl transition-transform duration-300 group-hover:scale-110 relative z-10">
+            dashboard
+          </span>
+        )}
         <p className="text-sm font-medium relative z-10">{item.label}</p>
         {isActive && (
-          <div className="ml-auto w-1.5 h-1.5 rounded-full animate-pulse relative z-10" style={{ background: colors.accent }} />
+          <div className="ml-auto w-1.5 h-1.5 rounded-full animate-pulse relative z-10 bg-white" />
         )}
       </button>
     );
@@ -139,15 +140,32 @@ const menuItems = [
   const HeaderIconButton = ({ onClick, icon, className = "" }) => (
     <button
       onClick={onClick}
-      className={`p-2 rounded-lg transition-all duration-200 relative overflow-hidden ${className}`}
+      className={`p-2 rounded-lg transition-all duration-300 relative overflow-hidden ${className}`}
       style={{ color: colors.muted }}
     >
       <div className="absolute inset-0 opacity-0 hover:opacity-100 transition-opacity duration-300 rounded-lg"
-        style={{ background: `radial-gradient(ellipse at 50% 50%, ${colors.accent}15 0%, transparent 70%)` }}
+        style={{ background: "radial-gradient(ellipse at 50% 50%, rgba(255,255,255,0.08) 0%, transparent 70%)" }}
       />
       <span className="material-symbols-outlined text-xl relative z-10">{icon}</span>
     </button>
   );
+
+  // User avatar - white circle / black initial, matches the site's logo mark
+  const UserAvatar = ({ size = "w-10 h-10", textSize = "text-sm" }) => {
+    if (userAvatar) {
+      return (
+        <div
+          className={`${size} rounded-full bg-center bg-no-repeat bg-cover flex-shrink-0 transition-transform duration-300`}
+          style={{ backgroundImage: `url("${userAvatar}")` }}
+        />
+      );
+    }
+    return (
+      <div className={`${size} rounded-full flex items-center justify-center ${textSize} font-bold text-black bg-white flex-shrink-0 transition-transform duration-300`}>
+        {userInitial}
+      </div>
+    );
+  };
 
   return (
     <div style={{ background: colors.bg, minHeight: "100vh", fontFamily: "'Lexend', sans-serif", color: colors.text }}>
@@ -169,15 +187,15 @@ const menuItems = [
         >
           {/* Logo */}
           <div className="flex items-center gap-3 px-5 py-5 shrink-0" style={{ borderBottom: `1px solid ${colors.border}` }}>
-            <div className="w-9 h-9 rounded-lg flex items-center justify-center" style={{ background: `${colors.accent}22`, border: `1px solid ${colors.accent}44` }}>
-             <svg className="w-12 h-12 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 14l9-5-9-5-9 5 9 5zm0 0l9-5-9 5-9-5m9 5v5m0-5v5m0 0l-9-5m9 5l9-5" />
+            <div className="w-9 h-9 rounded-lg flex items-center justify-center bg-white">
+              <svg className="w-6 h-6 text-black" fill="none" stroke="currentColor" strokeWidth={2.2} viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 14l9-5-9-5-9 5 9 5zm0 0v7m0-7l9-5m-9 5l-9-5" />
               </svg>
             </div>
-            <h1 className="text-lg font-bold text-white tracking-tight">Smart<span style={{ color: colors.accent }}>Academia</span></h1>
+            <h1 className="text-lg font-bold text-white tracking-tight">Smart Academia</h1>
             <button
               onClick={() => setSidebarOpen(false)}
-              className="lg:hidden ml-auto text-gray-500 hover:text-white"
+              className="lg:hidden ml-auto text-gray-500 hover:text-white transition-colors duration-300"
             >
               <span className="material-symbols-outlined text-xl">close</span>
             </button>
@@ -195,23 +213,15 @@ const menuItems = [
           {/* User Profile */}
           <div className="p-4 shrink-0" style={{ borderTop: `1px solid ${colors.border}` }}>
             <div
-              className="flex items-center gap-3 p-2.5 rounded-lg cursor-pointer transition-all duration-200 hover:bg-white/5 relative overflow-hidden group"
+              className="flex items-center gap-3 p-2.5 rounded-lg cursor-pointer transition-all duration-300 hover:bg-white/5 relative overflow-hidden group"
               onClick={() => handleMenuClick('profile')}
             >
               <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-lg"
-                style={{ background: `radial-gradient(ellipse at 50% 0%, ${colors.accent}10 0%, transparent 70%)` }}
+                style={{ background: "radial-gradient(ellipse at 50% 0%, rgba(255,255,255,0.06) 0%, transparent 70%)" }}
               />
-              {userAvatar ? (
-                <div
-                  className="w-10 h-10 rounded-full bg-center bg-no-repeat bg-cover flex-shrink-0 relative z-10"
-                  style={{ backgroundImage: `url("${userAvatar}")` }}
-                />
-              ) : (
-                <div className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold text-white flex-shrink-0 relative z-10"
-                  style={{ background: `linear-gradient(135deg, ${colors.accent}, ${colors.accent2})` }}>
-                  {userInitial}
-                </div>
-              )}
+              <div className="relative z-10">
+                <UserAvatar />
+              </div>
               <div className="flex-1 min-w-0 relative z-10">
                 <p className="text-sm font-semibold text-white truncate">{displayName}</p>
                 <p className="text-xs text-gray-500 truncate">{userRole} · ID: {studentId}</p>
@@ -236,20 +246,10 @@ const menuItems = [
               <NotificationBell />
               <HeaderIconButton onClick={handleLogout} icon="logout" />
               <div
-                className="cursor-pointer transition-transform hover:scale-105 relative z-10"
+                className="cursor-pointer transition-transform duration-300 hover:scale-105 relative z-10"
                 onClick={() => handleMenuClick('profile')}
               >
-                {userAvatar ? (
-                  <div
-                    className="w-9 h-9 rounded-full bg-center bg-no-repeat bg-cover ring-2 ring-offset-2 ring-offset-transparent"
-                    style={{ backgroundImage: `url("${userAvatar}")`, ringColor: colors.accent }}
-                  />
-                ) : (
-                  <div className="w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold text-white"
-                    style={{ background: `linear-gradient(135deg, ${colors.accent}, ${colors.accent2})` }}>
-                    {userInitial}
-                  </div>
-                )}
+                <UserAvatar size="w-9 h-9" />
               </div>
             </div>
           </header>
@@ -273,8 +273,6 @@ const menuItems = [
         scrollIcon="arrow_upward"
         chatPosition="bottom-4 right-4 sm:bottom-6 sm:right-6 md:bottom-8 md:right-8"
         scrollPosition="bottom-20 right-4 sm:bottom-24 sm:right-6 md:bottom-28 md:right-8"
-        chatColor="from-indigo-600 to-indigo-700"
-        scrollColor="from-indigo-600 to-indigo-700"
       />
 
       <style>{`

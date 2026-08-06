@@ -297,7 +297,7 @@ const AdminDashboard = () => {
   }, [location.search]);
 
   const menuItems = [
-    { icon: "dashboard", label: "Dahboard", key: "dashboard" },
+    { icon: "dashboard", label: "Dashboard", key: "dashboard" },
     { icon: "supervisor_account", label: "Manage Teachers", key: 'teachers' },
     { icon: "groups", label: "Manage Students", key: 'students' },
     { icon: "menu_book", label: "Manage Courses", key: 'courses' },
@@ -348,7 +348,7 @@ const AdminDashboard = () => {
     hover: "#1e293b",
   };
 
-  // Glowing button component for sidebar - white/monochrome active state
+  // SidebarButton component - shows icon ONLY when active
   const SidebarButton = ({ item }) => {
     const isActive = activeMenu === item.key;
     return (
@@ -363,9 +363,12 @@ const AdminDashboard = () => {
         <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-lg"
           style={{ background: "radial-gradient(ellipse at 50% 0%, rgba(255,255,255,0.06) 0%, transparent 70%)" }}
         />
-        <span className="material-symbols-outlined text-xl transition-transform duration-200 group-hover:scale-110 relative z-10">
-          {item.icon}
-        </span>
+        {/* Icon - only show when active */}
+        {isActive && (
+          <span className="material-symbols-outlined text-xl transition-transform duration-200 group-hover:scale-110 relative z-10">
+            dashboard
+          </span>
+        )}
         <p className="text-sm font-medium relative z-10">{item.label}</p>
         {isActive && (
           <div className="ml-auto w-1.5 h-1.5 rounded-full animate-pulse relative z-10 bg-white" />

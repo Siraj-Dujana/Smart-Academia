@@ -4,13 +4,13 @@ import { useNavigate } from "react-router-dom";
 const API = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
 // ── Mini Bar ──────────────────────────────────────────────────
-const MiniBar = ({ value = 0, color = "#6366f1", height = 3 }) => (
+const MiniBar = ({ value = 0, color = "#ffffff", height = 3 }) => (
   <div className="w-full rounded-full overflow-hidden" style={{ height, background: "#1e293b" }}>
     <div
       className="h-full rounded-full"
       style={{
         width: `${Math.min(value, 100)}%`,
-        background: `linear-gradient(90deg, ${color}cc, ${color})`,
+        background: color,
         boxShadow: `0 0 8px ${color}66`,
         transition: "width 1s cubic-bezier(.4,0,.2,1)"
       }}
@@ -18,30 +18,31 @@ const MiniBar = ({ value = 0, color = "#6366f1", height = 3 }) => (
   </div>
 );
 
-const GlowCard = ({ icon, label, value, color, sub }) => (
-  <div className="relative rounded-2xl overflow-hidden p-4 flex flex-col gap-2 group" style={{ background: "#0f1629", border: `1px solid ${color}33` }}>
-    <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500" style={{ background: `radial-gradient(ellipse at 50% 0%, ${color}15 0%, transparent 70%)` }} />
-    <div className="flex items-start justify-between">
-      <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: `${color}22`, border: `1px solid ${color}44` }}>
-        <span className="material-symbols-outlined text-lg" style={{ color }}>{icon}</span>
-      </div>
-      {sub && <span className="text-[10px] text-gray-500 font-medium px-2 py-0.5 rounded-full" style={{ background: "#1e293b" }}>{sub}</span>}
+// ── Stat Card — icon-free, all cards identical, live percentage bar ───
+const StatCard = ({ label, value, percentage, sub, delay = 0 }) => (
+  <div
+    className="relative rounded-2xl overflow-hidden p-4 flex flex-col gap-2 group opacity-0 animate-fadeInUp transition-all duration-300 ease-out hover:-translate-y-1"
+    style={{ background: "#0f1629", border: "1px solid rgba(255,255,255,0.1)", animationDelay: `${delay}ms`, animationFillMode: "forwards" }}
+  >
+    <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500" style={{ background: "radial-gradient(ellipse at 50% 0%, rgba(255,255,255,0.08) 0%, transparent 70%)" }} />
+    <div className="flex items-start justify-between relative z-10">
+      <p className="text-xs text-gray-400 font-medium">{label}</p>
+      <span className="text-xs font-bold text-white transition-all duration-300">{percentage}%</span>
     </div>
-    <div>
-      <p className="text-2xl font-black text-white tracking-tight" style={{ textShadow: `0 0 20px ${color}66` }}>{value}</p>
-      <p className="text-[10px] text-gray-400 font-medium mt-0.5">{label}</p>
-    </div>
+    <p className="text-2xl font-black text-white tracking-tight relative z-10" style={{ textShadow: "0 0 20px rgba(255,255,255,0.25)" }}>{value}</p>
+    {sub && <p className="text-[10px] text-gray-500 relative z-10">{sub}</p>}
+    <div className="relative z-10"><MiniBar value={percentage} /></div>
   </div>
 );
 
 // ── Section Header ────────────────────────────────────────────
-const SectionHeader = ({ icon, title, color = "#6366f1" }) => (
+const SectionHeader = ({ icon, title }) => (
   <div className="flex items-center gap-3 mb-4">
-    <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: `${color}22`, border: `1px solid ${color}44` }}>
-      <span className="material-symbols-outlined text-sm" style={{ color }}>{icon}</span>
+    <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)" }}>
+      <span className="material-symbols-outlined text-sm text-white">{icon}</span>
     </div>
     <h3 className="text-xs font-bold text-white tracking-wide uppercase">{title}</h3>
-    <div className="flex-1 h-px" style={{ background: `linear-gradient(90deg, ${color}44, transparent)` }} />
+    <div className="flex-1 h-px" style={{ background: "linear-gradient(90deg, rgba(255,255,255,0.15), transparent)" }} />
   </div>
 );
 
@@ -50,27 +51,14 @@ const LoadingState = () => (
   <div className="flex items-center justify-center py-24">
     <div className="text-center">
       <div className="relative w-16 h-16 mx-auto mb-5">
-        <div className="absolute inset-0 rounded-full border-4 border-indigo-900" />
-        <div className="absolute inset-0 rounded-full border-4 border-transparent border-t-indigo-500 animate-spin" />
-        <div className="absolute inset-2 rounded-full border-4 border-transparent border-t-purple-500 animate-spin" style={{ animationDirection: "reverse", animationDuration: "0.8s" }} />
+        <div className="absolute inset-0 rounded-full border-4 border-white/10" />
+        <div className="absolute inset-0 rounded-full border-4 border-transparent border-t-white animate-spin" />
+        <div className="absolute inset-2 rounded-full border-4 border-transparent border-t-white/40 animate-spin" style={{ animationDirection: "reverse", animationDuration: "0.8s" }} />
       </div>
       <p className="text-sm font-medium text-gray-500">Loading labs...</p>
     </div>
   </div>
 );
-
-const colors = {
-    accent: "#6366f1",
-    accent2: "#a855f7",
-    amber: "#f59e0b",
-    green: "#22c55e",
-    red: "#ef4444",
-    card: "#0f1629",
-    border: "#1e293b",
-    muted: "#64748b",
-    text: "#e2e8f0",
-    textDim: "#94a3b8",
-  };
 
 const Labs = () => {
   const navigate = useNavigate();
@@ -177,17 +165,21 @@ const Labs = () => {
     await fetchLabsForCourse(courseId);
   };
 
+  // Two-color semantic palette, matching the rest of the app: white = neutral/
+  // in-progress, green = success (graded), red = danger (overdue). No amber.
   const getStatusConfig = (status, dueDate) => {
     const isOverdue = dueDate && new Date(dueDate) < new Date();
     if (status === "graded") return { color: "#22c55e", bg: "#22c55e22", border: "#22c55e", icon: "verified", text: "Graded" };
-    if (status === "submitted") return { color: "#f59e0b", bg: "#f59e0b22", border: "#f59e0b", icon: "pending", text: "Submitted" };
+    if (status === "submitted") return { color: "#ffffff", bg: "rgba(255,255,255,0.08)", border: "rgba(255,255,255,0.4)", icon: "pending", text: "Submitted" };
     if (isOverdue) return { color: "#ef4444", bg: "#ef444422", border: "#ef4444", icon: "warning", text: "Overdue" };
-    return { color: "#6366f1", bg: "#6366f122", border: "#6366f1", icon: "play_arrow", text: "Not Started" };
+    return { color: "#ffffff", bg: "rgba(255,255,255,0.08)", border: "rgba(255,255,255,0.4)", icon: "play_arrow", text: "Not Started" };
   };
 
+  // easy = success (green), hard = danger (red), medium = neutral white —
+  // same two-color-plus-neutral rule used everywhere else.
   const getDifficultyColor = (diff) => ({
     easy: { color: "#4ade80", bg: "#22c55e22" },
-    medium: { color: "#fbbf24", bg: "#f59e0b22" },
+    medium: { color: "#e2e8f0", bg: "#1e293b" },
     hard: { color: "#f87171", bg: "#ef444422" },
   }[diff] || { color: "#94a3b8", bg: "#1e293b" });
 
@@ -198,12 +190,14 @@ const Labs = () => {
     theory: "description",
   };
 
-  // Updated stats - removed completion rate
   const stats = {
     total: labs.length,
     submitted: labs.filter(l => l.status === "submitted" || l.status === "graded").length,
-    notGraded: labs.filter(l => l.status === "submitted").length, // Labs submitted but not graded by teacher
+    notGraded: labs.filter(l => l.status === "submitted").length,
   };
+
+  // Every percentage is a real share of your total labs — never a fixed cap.
+  const pct = v => stats.total > 0 ? Math.round((v / stats.total) * 100) : 0;
 
   if (isLoading) return <LoadingState />;
 
@@ -212,8 +206,8 @@ const Labs = () => {
 
       <div>
         <div className="flex items-center gap-2 mb-1">
-          <span className="w-2 h-2 rounded-full animate-pulse" style={{ background: colors.accent }} />
-          <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: "#818cf8" }}>Labs</p>
+          <span className="w-2 h-2 rounded-full animate-pulse bg-white" />
+          <p className="text-xs font-semibold uppercase tracking-widest text-gray-400">Labs</p>
         </div>
         <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
           Hands-on Learning
@@ -222,50 +216,31 @@ const Labs = () => {
 
       {/* Course Selector */}
       {courses.length > 0 && (
-        <div className="rounded-2xl p-4" style={{ background: "#0f1629", border: "1px solid #1e293b" }}>
-          <SectionHeader icon="school" title="Select Course" color="#6366f1" />
+        <div className="rounded-2xl p-4 transition-all duration-300" style={{ background: "#0f1629", border: "1px solid #1e293b" }}>
+          <SectionHeader icon="school" title="Select Course" />
           <select
             value={selectedCourse}
             onChange={e => handleCourseChange(e.target.value)}
-            className="w-full sm:w-80 px-3 py-2 rounded-xl bg-gray-800/50 text-white border border-gray-700 focus:ring-2 focus:ring-indigo-500 focus:border-transparent cursor-pointer hover:bg-gray-800 transition-colors text-sm"
+            className="w-full sm:w-80 px-3 py-2 rounded-xl bg-gray-800/50 text-white border border-gray-700 focus:ring-2 focus:ring-white/40 focus:border-transparent cursor-pointer hover:bg-gray-800 transition-all duration-300 text-sm"
           >
             {courses.map(c => <option key={c._id} value={c._id}>{c.title}</option>)}
           </select>
         </div>
       )}
 
-      {/* Stats Cards - Updated without percentages */}
+      {/* Stats Cards — identical styling, live percentage bars */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        <GlowCard 
-          icon="science" 
-          label="Total Labs" 
-          value={stats.total} 
-          color="#6366f1" 
-        />
-        
-        <GlowCard 
-          icon="check_circle" 
-          label="Submitted" 
-          value={stats.submitted} 
-          color="#f59e0b" 
-          sub={`${stats.submitted}/${stats.total}`}
-        />
-        
-        <GlowCard 
-          icon="pending" 
-          label="Pending Review" 
-          value={stats.notGraded} 
-          color="#a855f7"
-          sub={`Waiting for teacher`}
-        />
+        <StatCard label="Total Labs" value={stats.total} percentage={100} delay={0} />
+        <StatCard label="Submitted" value={stats.submitted} percentage={pct(stats.submitted)} sub={`${stats.submitted}/${stats.total}`} delay={90} />
+        <StatCard label="Pending Review" value={stats.notGraded} percentage={pct(stats.notGraded)} sub="Waiting for teacher" delay={180} />
       </div>
 
       {/* Error Banner */}
       {error && (
-        <div className="p-3 rounded-xl flex items-center gap-2" style={{ background: "#1a0a0a", border: "1px solid #ef444433" }}>
+        <div className="p-3 rounded-xl flex items-center gap-2 transition-all duration-300" style={{ background: "#1a0a0a", border: "1px solid #ef444433" }}>
           <span className="material-symbols-outlined text-red-500 text-sm">error</span>
           <p className="text-sm text-red-400 flex-1">{error}</p>
-          <button onClick={() => setError("")} className="text-red-500 hover:text-red-400">
+          <button onClick={() => setError("")} className="text-red-500 hover:text-red-400 transition-colors duration-300">
             <span className="material-symbols-outlined text-sm">close</span>
           </button>
         </div>
@@ -284,18 +259,18 @@ const Labs = () => {
               <div
                 key={lab._id || idx}
                 onClick={() => navigate(`/lessons/${lab.courseId}?lessonId=${lab.lessonId}`)}
-                className="group rounded-xl overflow-hidden transition-all duration-300 cursor-pointer hover:-translate-y-1 flex flex-col"
-                style={{ background: "#0f1629", border: `1px solid ${sc.border}33` }}
+                className="group rounded-xl overflow-hidden transition-all duration-300 ease-out cursor-pointer hover:-translate-y-1 flex flex-col"
+                style={{ background: "#0f1629", border: `1px solid ${sc.color === "#ffffff" ? "rgba(255,255,255,0.1)" : sc.border + "33"}` }}
               >
                 <div className="p-4 flex flex-col h-full">
                   {/* Header */}
                   <div className="flex items-start justify-between gap-2 mb-3">
                     <div className="flex items-center gap-2 flex-1 min-w-0">
-                      <div className="flex-shrink-0 w-9 h-9 rounded-lg flex items-center justify-center" style={{ background: "linear-gradient(135deg, #6366f1, #818cf8)" }}>
+                      <div className="flex-shrink-0 w-9 h-9 rounded-lg flex items-center justify-center" style={{ background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.18)" }}>
                         <span className="material-symbols-outlined text-white text-base">{icon}</span>
                       </div>
                       <div className="min-w-0 flex-1">
-                        <h3 className="font-bold text-white text-sm truncate group-hover:text-indigo-400 transition-colors">
+                        <h3 className="font-bold text-white text-sm truncate transition-colors duration-300">
                           {lab.title}
                         </h3>
                         <p className="text-[10px] text-gray-500 truncate">
@@ -303,7 +278,7 @@ const Labs = () => {
                         </p>
                       </div>
                     </div>
-                    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10px] font-bold border flex-shrink-0`} style={{ background: sc.bg, borderColor: sc.border, color: sc.color }}>
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10px] font-bold border flex-shrink-0" style={{ background: sc.bg, borderColor: sc.border, color: sc.color }}>
                       <span className="material-symbols-outlined text-xs">{sc.icon}</span>
                       {sc.text}
                     </span>
@@ -324,7 +299,7 @@ const Labs = () => {
                       </span>
                     )}
                     <span className="text-[10px] font-medium px-2 py-0.5 rounded-full flex items-center gap-1" style={{ background: "#1e293b", color: "#94a3b8" }}>
-                      <span className="material-symbols-outlined text-xs">grade</span>
+                  
                       {lab.totalMarks || 100} pts
                     </span>
                     {lab.language && lab.labType === "programming" && (
@@ -343,7 +318,7 @@ const Labs = () => {
 
                   {/* Score Section for Graded Labs */}
                   {lab.status === "graded" && lab.marks !== null && (
-                    <div className="mb-3 p-2 rounded-lg flex-shrink-0" style={{ background: "#1e293b", border: "1px solid #22c55e33" }}>
+                    <div className="mb-3 p-2 rounded-lg flex-shrink-0 transition-all duration-300" style={{ background: "#1e293b", border: "1px solid #22c55e33" }}>
                       <div className="flex justify-between items-center mb-1">
                         <span className="text-[10px] font-semibold text-green-400">Score</span>
                         <span className="text-xs font-bold text-green-400">
@@ -364,10 +339,10 @@ const Labs = () => {
 
                   {/* Submitted but not graded yet */}
                   {lab.status === "submitted" && !lab.marks && (
-                    <div className="mb-3 p-2 rounded-lg flex-shrink-0" style={{ background: "#1e293b", border: "1px solid #f59e0b33" }}>
+                    <div className="mb-3 p-2 rounded-lg flex-shrink-0 transition-all duration-300" style={{ background: "#1e293b", border: "1px solid rgba(255,255,255,0.15)" }}>
                       <div className="flex items-center gap-2">
-                        <span className="material-symbols-outlined text-amber-400 text-sm">pending</span>
-                        <p className="text-[10px] text-amber-400">Waiting for instructor review</p>
+                        <span className="material-symbols-outlined text-white/70 text-sm">pending</span>
+                        <p className="text-[10px] text-gray-300">Waiting for instructor review</p>
                       </div>
                     </div>
                   )}
@@ -377,10 +352,11 @@ const Labs = () => {
 
                   {/* Action Button - Always at bottom */}
                   <button 
-                    className="w-full flex items-center justify-center gap-1.5 text-xs font-bold py-2 rounded-lg transition-all hover:opacity-90 mt-3 flex-shrink-0" 
+                    className="w-full flex items-center justify-center gap-1.5 text-xs font-bold py-2 rounded-lg transition-all duration-300 hover:opacity-90 mt-3 flex-shrink-0" 
                     style={{
-                      background: lab.status === "graded" ? "#64748b" : (lab.status === "submitted" ? "#f59e0b" : "linear-gradient(135deg, #6366f1, #818cf8)"),
+                      background: lab.status === "graded" ? "#334155" : "rgba(255,255,255,0.1)",
                       color: "white",
+                      border: lab.status === "graded" ? "none" : "1px solid rgba(255,255,255,0.2)",
                       cursor: lab.status === "graded" ? "not-allowed" : "pointer"
                     }}
                     disabled={lab.status === "graded"}
@@ -401,7 +377,7 @@ const Labs = () => {
           })}
         </div>
       ) : (
-        <div className="rounded-2xl p-12 text-center" style={{ background: "#0f1629", border: "1px solid #1e293b" }}>
+        <div className="rounded-2xl p-12 text-center transition-all duration-300" style={{ background: "#0f1629", border: "1px solid #1e293b" }}>
           <span className="material-symbols-outlined text-6xl text-gray-700 mb-4 block">science</span>
           <p className="text-gray-400 font-semibold">No Labs Available</p>
           <p className="text-sm text-gray-600 mt-1">
@@ -410,8 +386,8 @@ const Labs = () => {
           {courses.length === 0 && (
             <button
               onClick={() => navigate("/student/dashboard?tab=courses")}
-              className="mt-4 px-4 py-2 rounded-xl text-sm font-bold transition-all hover:scale-105"
-              style={{ background: "linear-gradient(135deg, #6366f1, #818cf8)", color: "white" }}
+              className="mt-4 px-4 py-2 rounded-xl text-sm font-bold transition-all duration-300 hover:scale-105"
+              style={{ background: "rgba(255,255,255,0.1)", color: "white", border: "1px solid rgba(255,255,255,0.2)" }}
             >
               Browse Courses
             </button>
@@ -420,10 +396,10 @@ const Labs = () => {
       )}
 
       {/* Info Banner */}
-      <div className="rounded-xl p-4" style={{ background: "#0f1629", border: "1px solid #6366f133" }}>
+      <div className="rounded-xl p-4 transition-all duration-300" style={{ background: "#0f1629", border: "1px solid #1e293b" }}>
         <div className="flex items-start gap-3">
-          <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: "#6366f122", border: "1px solid #6366f144" }}>
-            <span className="material-symbols-outlined text-sm" style={{ color: "#6366f1" }}>info</span>
+          <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)" }}>
+            <span className="material-symbols-outlined text-sm text-white">info</span>
           </div>
           <div>
             <h4 className="text-xs font-bold text-white mb-1">How labs work</h4>
@@ -434,6 +410,14 @@ const Labs = () => {
           </div>
         </div>
       </div>
+
+      <style>{`
+        @keyframes fadeInUp {
+          from { opacity: 0; transform: translateY(8px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fadeInUp { animation: fadeInUp 0.4s ease-out both; }
+      `}</style>
     </div>
   );
 };

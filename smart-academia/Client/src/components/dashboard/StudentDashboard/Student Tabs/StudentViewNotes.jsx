@@ -2,13 +2,10 @@ import React, { useState, useEffect } from 'react';
 
 const API = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
-const SectionHeader = ({ icon, title, color = "#6366f1" }) => (
+const SectionHeader = ({ title }) => (
   <div className="flex items-center gap-3 mb-4">
-    <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: `${color}22`, border: `1px solid ${color}44` }}>
-      <span className="material-symbols-outlined text-sm" style={{ color }}>{icon}</span>
-    </div>
     <h3 className="text-xs font-bold text-white tracking-wide uppercase">{title}</h3>
-    <div className="flex-1 h-px" style={{ background: `linear-gradient(90deg, ${color}44, transparent)` }} />
+    <div className="flex-1 h-px" style={{ background: "linear-gradient(90deg, rgba(255,255,255,0.15), transparent)" }} />
   </div>
 );
 
@@ -127,20 +124,6 @@ const StudentViewNotes = () => {
     return icons[type] || 'insert_drive_file';
   };
 
-  const getFileColor = (type) => {
-    const colors = {
-      pdf: '#ef4444',
-      doc: '#3b82f6',
-      docx: '#3b82f6',
-      ppt: '#f59e0b',
-      pptx: '#f59e0b',
-      xls: '#22c55e',
-      xlsx: '#22c55e',
-      txt: '#6b7280'
-    };
-    return colors[type] || '#6366f1';
-  };
-
   const formatFileSize = (bytes) => {
     if (bytes === 0) return "0 Bytes";
     const k = 1024;
@@ -159,50 +142,45 @@ const StudentViewNotes = () => {
   const fileTypes = [
     { key: "all", label: "All", icon: "folder" },
     { key: "pdf", label: "PDF", icon: "picture_as_pdf" },
-    { key: "doc", label: "Word", icon: "description" },
     { key: "docx", label: "Word", icon: "description" },
-    { key: "ppt", label: "Presentation", icon: "slideshow" },
     { key: "pptx", label: "Presentation", icon: "slideshow" }
   ];
 
   return (
     <div className="space-y-6" style={{ fontFamily: "'Lexend', sans-serif" }}>
       {/* Hero Section */}
-      <div className="relative rounded-2xl overflow-hidden p-6" style={{ background: "linear-gradient(135deg, #0c0e1e 0%, #131b35 50%, #0d1527 100%)", border: "1px solid #1e293b" }}>
-        <div className="absolute top-0 left-1/4 w-48 h-48 rounded-full blur-3xl opacity-20" style={{ background: "#6366f1" }} />
-        <div className="relative">
-          <div className="flex items-center gap-2 mb-1">
-            <span className="w-2 h-2 rounded-full animate-pulse" style={{ background: "#6366f1" }} />
-            <p className="text-xs font-semibold text-indigo-400 uppercase tracking-widest">Student · Course Notes</p>
-          </div>
-          <h1 className="text-2xl sm:text-3xl font-black text-white leading-tight tracking-tight">
-            Lecture Notes & Materials
-          </h1>
-          <p className="text-sm text-gray-400 mt-1">
-            Access notes, study materials, and resources shared by your teachers
-          </p>
+      <div>
+        <div className="flex items-center gap-2 mb-1">
+          <span className="w-2 h-2 rounded-full animate-pulse bg-white" />
+          <p className="text-xs font-semibold uppercase tracking-widest text-gray-400">Student · Course Notes</p>
         </div>
+        <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
+          Lecture Notes & Materials
+        </h1>
+        <p className="text-sm text-gray-400 mt-1">
+          Access notes, study materials, and resources shared by your teachers
+        </p>
       </div>
 
       {error && (
-        <div className="rounded-xl p-3 flex items-center gap-2" style={{ background: "#ef444422", border: "1px solid #ef444444" }}>
+        <div className="rounded-xl p-3 flex items-center gap-2 transition-all duration-300" style={{ background: "#ef444422", border: "1px solid #ef444444" }}>
           <span className="material-symbols-outlined text-sm text-red-400">error</span>
           <p className="text-sm text-red-400 flex-1">{error}</p>
-          <button onClick={() => setError("")} className="text-red-400 hover:text-red-300">
+          <button onClick={() => setError("")} className="text-red-400 hover:text-red-300 transition-colors duration-300">
             <span className="material-symbols-outlined text-sm">close</span>
           </button>
         </div>
       )}
 
       {/* Course Selector */}
-      <div className="rounded-2xl p-5" style={{ background: "#0f1629", border: "1px solid #1e293b" }}>
+      <div className="rounded-2xl p-5 transition-all duration-300" style={{ background: "#0f1629", border: "1px solid #1e293b" }}>
         <div className="flex flex-wrap items-center gap-4">
           <div className="flex-1 min-w-[200px]">
             <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Select Course</label>
             <select
               value={selectedCourse}
               onChange={e => setSelectedCourse(e.target.value)}
-              className="w-full px-4 py-2.5 text-sm rounded-xl bg-gray-800/50 text-white border border-gray-700 focus:ring-2 focus:ring-indigo-500 outline-none"
+              className="w-full px-4 py-2.5 text-sm rounded-xl bg-gray-800/50 text-white border border-gray-700 focus:ring-2 focus:ring-white/40 outline-none transition-all duration-300"
             >
               {courses.map(c => <option key={c._id} value={c._id}>{c.title}</option>)}
             </select>
@@ -211,9 +189,9 @@ const StudentViewNotes = () => {
       </div>
 
       {/* Notes Section */}
-      <div className="rounded-2xl overflow-hidden" style={{ background: "#0f1629", border: "1px solid #1e293b" }}>
+      <div className="rounded-2xl overflow-hidden transition-all duration-300" style={{ background: "#0f1629", border: "1px solid #1e293b" }}>
         <div className="px-5 py-4 border-b" style={{ background: "#0a0f1e", borderColor: "#1e293b" }}>
-          <SectionHeader icon="menu_book" title="Available Study Materials" color="#6366f1" />
+          <SectionHeader  title="Available Study Materials" />
           
           {/* Filters */}
           <div className="flex flex-col sm:flex-row gap-3 mt-4">
@@ -224,7 +202,7 @@ const StudentViewNotes = () => {
                 placeholder="Search notes..."
                 value={searchTerm}
                 onChange={e => setSearchTerm(e.target.value)}
-                className="w-full pl-9 pr-4 py-2 text-sm rounded-xl bg-gray-800/50 text-white border border-gray-700 focus:ring-2 focus:ring-indigo-500 outline-none"
+                className="w-full pl-9 pr-4 py-2 text-sm rounded-xl bg-gray-800/50 text-white border border-gray-700 focus:ring-2 focus:ring-white/40 outline-none transition-all duration-300"
               />
             </div>
             <div className="flex gap-1.5">
@@ -232,14 +210,10 @@ const StudentViewNotes = () => {
                 <button
                   key={type.key}
                   onClick={() => setSelectedType(type.key)}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all hover:scale-105 flex items-center gap-1 ${
-                    selectedType === type.key
-                      ? "text-white"
-                      : "text-gray-500"
-                  }`}
+                  className="px-3 py-1.5 rounded-lg text-xs font-bold transition-all duration-300 hover:scale-105 flex items-center gap-1"
                   style={selectedType === type.key
-                    ? { background: "linear-gradient(135deg, #6366f1, #818cf8)" }
-                    : { background: "#1e293b", border: "1px solid #334155" }
+                    ? { background: "#ffffff", color: "#0a0f1e" }
+                    : { background: "#1e293b", border: "1px solid #334155", color: "#64748b" }
                   }
                 >
                   <span className="material-symbols-outlined text-xs">{type.icon}</span>
@@ -253,8 +227,8 @@ const StudentViewNotes = () => {
         {isLoading ? (
           <div className="text-center py-16">
             <div className="relative w-12 h-12 mx-auto">
-              <div className="absolute inset-0 rounded-full border-4 border-indigo-900" />
-              <div className="absolute inset-0 rounded-full border-4 border-transparent border-t-indigo-500 animate-spin" />
+              <div className="absolute inset-0 rounded-full border-4 border-white/10" />
+              <div className="absolute inset-0 rounded-full border-4 border-transparent border-t-white animate-spin" />
             </div>
             <p className="text-gray-500 mt-3 text-sm">Loading notes...</p>
           </div>
@@ -269,10 +243,10 @@ const StudentViewNotes = () => {
         ) : (
           <div className="divide-y divide-gray-800 max-h-[600px] overflow-y-auto">
             {filteredNotes.map(note => (
-              <div key={note._id} className="p-5 hover:bg-white/5 transition-all group">
+              <div key={note._id} className="p-5 hover:bg-white/5 transition-all duration-300 group">
                 <div className="flex items-start gap-4">
-                  <div className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: `${getFileColor(note.fileType)}22`, border: `1px solid ${getFileColor(note.fileType)}44` }}>
-                    <span className="material-symbols-outlined text-2xl" style={{ color: getFileColor(note.fileType) }}>
+                  <div className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.18)" }}>
+                    <span className="material-symbols-outlined text-2xl text-white">
                       {getFileIcon(note.fileType)}
                     </span>
                   </div>
@@ -296,7 +270,7 @@ const StudentViewNotes = () => {
                           {note.lessonId && (
                             <>
                               <span className="text-[10px] text-gray-600">•</span>
-                              <span className="text-[10px] text-indigo-400">Lesson: {note.lessonId.title}</span>
+                              <span className="text-[10px] text-gray-400">Lesson: {note.lessonId.title}</span>
                             </>
                           )}
                         </div>
@@ -305,8 +279,8 @@ const StudentViewNotes = () => {
                         {note.fileType === 'pdf' && (
                           <button
                             onClick={() => setPreviewNote(note)}
-                            className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium transition-all hover:scale-105"
-                            style={{ background: "#6366f122", color: "#818cf8", border: "1px solid #6366f144" }}
+                            className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-300 hover:scale-105"
+                            style={{ background: "rgba(255,255,255,0.06)", color: "#e2e8f0", border: "1px solid rgba(255,255,255,0.16)" }}
                           >
                             <span className="material-symbols-outlined text-sm">visibility</span>
                             Preview
@@ -314,8 +288,8 @@ const StudentViewNotes = () => {
                         )}
                         <button
                           onClick={() => handleDownload(note)}
-                          className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-bold text-white transition-all hover:scale-105"
-                          style={{ background: "linear-gradient(135deg, #22c55e, #16a34a)" }}
+                          className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-bold transition-all duration-300 hover:scale-105"
+                          style={{ background: "rgba(255,255,255,0.1)", color: "#ffffff", border: "1px solid rgba(255,255,255,0.2)" }}
                         >
                           <span className="material-symbols-outlined text-sm">download</span>
                           Download
@@ -332,22 +306,23 @@ const StudentViewNotes = () => {
 
       {/* Preview Modal */}
       {previewNote && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={() => setPreviewNote(null)}>
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4 transition-opacity duration-300" onClick={() => setPreviewNote(null)}>
           <div className="rounded-2xl w-full flex flex-col overflow-hidden" style={{ maxWidth: "90vw", height: "85vh", background: "#0f1629", border: "1px solid #1e293b" }} onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center justify-between px-5 py-3 flex-shrink-0" style={{ background: "linear-gradient(135deg, #6366f1, #818cf8)" }}>
+            <div className="flex items-center justify-between px-5 py-3 flex-shrink-0" style={{ background: "#0a0f1e", borderBottom: "1px solid #1e293b" }}>
               <div>
                 <p className="text-sm font-bold text-white">{previewNote.title}</p>
-                <p className="text-xs text-indigo-200">{previewNote.fileName}</p>
+                <p className="text-xs text-gray-500">{previewNote.fileName}</p>
               </div>
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => handleDownload(previewNote)}
-                  className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-bold text-indigo-600 bg-white hover:bg-indigo-50 transition-colors"
+                  className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-bold transition-all duration-300 hover:scale-105"
+                  style={{ background: "rgba(255,255,255,0.1)", color: "#ffffff", border: "1px solid rgba(255,255,255,0.2)" }}
                 >
                   <span className="material-symbols-outlined text-sm">download</span>
                   Download
                 </button>
-                <button onClick={() => setPreviewNote(null)} className="text-white hover:bg-white/20 rounded-lg p-1.5">
+                <button onClick={() => setPreviewNote(null)} className="text-gray-400 hover:text-white hover:bg-white/10 rounded-lg p-1.5 transition-all duration-300">
                   <span className="material-symbols-outlined">close</span>
                 </button>
               </div>

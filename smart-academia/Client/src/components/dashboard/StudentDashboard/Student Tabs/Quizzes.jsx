@@ -3,12 +3,29 @@ import { useNavigate } from "react-router-dom";
 
 const API = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
+// Two-color semantic palette, matching every other redesigned page:
+// white = neutral/default, green = success (passed/correct), red = failure/danger.
+// No amber, no indigo/purple — nothing decorative left in the mix.
 const C = {
-  card: "#0f1629", border: "#1e293b", accent: "#6366f1", accent2: "#a855f7",
-  amber: "#f59e0b", green: "#22c55e", red: "#ef4444", muted: "#64748b",
+  card: "#0f1629", border: "#1e293b", accent: "#ffffff",
+  green: "#22c55e", red: "#ef4444", muted: "#64748b",
   text: "#e2e8f0", textDim: "#94a3b8", input: "#0a0f1e",
-  indigoLight: "#818cf8", greenLight: "#4ade80", amberLight: "#fbbf24", redLight: "#f87171",
+  greenLight: "#4ade80", redLight: "#f87171",
 };
+
+// ── Mini Bar ──────────────────────────────────────────────────
+const MiniBar = ({ value = 0, height = 6 }) => (
+  <div className="w-full rounded-full overflow-hidden" style={{ height, background: "#1e293b" }}>
+    <div
+      className="h-full rounded-full bg-white"
+      style={{
+        width: `${Math.min(Math.max(value, 0), 100)}%`,
+        boxShadow: "0 0 8px rgba(255,255,255,0.4)",
+        transition: "width 1s cubic-bezier(.4,0,.2,1)"
+      }}
+    />
+  </div>
+);
 
 const RingProgress = ({ value = 0, size = 80, stroke = 7, color = C.accent, trackColor = C.border }) => {
   const r = (size - stroke * 2) / 2;
@@ -28,12 +45,13 @@ const RingProgress = ({ value = 0, size = 80, stroke = 7, color = C.accent, trac
   );
 };
 
-// ── Quiz Card ── (FIXED VERSION)
+// ── Quiz Card ──
 const QuizCard = ({ quiz, onStart, onViewResults }) => {
-  // Determine status color and label
+  // Only two real status colors: green = passed, red = attempts exhausted.
+  // Everything still in play (new or mid-attempt) stays neutral white.
   let statusColor = C.accent;
   let statusLabel = "New";
-  
+
   if (quiz.passed) {
     statusColor = C.green;
     statusLabel = "Passed";
@@ -41,23 +59,21 @@ const QuizCard = ({ quiz, onStart, onViewResults }) => {
     statusColor = C.red;
     statusLabel = "Exhausted";
   } else if (quiz.attemptCount > 0) {
-    statusColor = C.amber;
+    statusColor = C.accent;
     statusLabel = `Attempt ${quiz.attemptCount}/${quiz.maxAttempts}`;
   }
 
-  // Calculate progress percentage
   const progressPercent = quiz.maxAttempts > 0 
     ? (quiz.attemptCount / quiz.maxAttempts) * 100 
     : 0;
 
   return (
-    <div className="rounded-2xl overflow-hidden transition-all duration-300 border group" style={{ background: C.card, borderColor: statusColor + "33" }}>
+    <div className="rounded-2xl overflow-hidden transition-all duration-300 ease-out border group hover:-translate-y-1" style={{ background: C.card, borderColor: statusColor === C.accent ? "rgba(255,255,255,0.1)" : statusColor + "33", transition: "border-color 0.3s ease, transform 0.3s ease, box-shadow 0.3s ease" }}>
       <div className="p-5">
         <div className="flex items-start justify-between gap-3 mb-4">
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-2">
-              <span className="material-symbols-outlined text-lg" style={{ color: statusColor }}>quiz</span>
-              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ background: statusColor + "18", color: statusColor, border: `1px solid ${statusColor}44` }}>
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ background: statusColor === C.accent ? "rgba(255,255,255,0.08)" : statusColor + "18", color: statusColor, border: `1px solid ${statusColor === C.accent ? "rgba(255,255,255,0.18)" : statusColor + "44"}` }}>
                 {statusLabel}
               </span>
             </div>
@@ -68,7 +84,7 @@ const QuizCard = ({ quiz, onStart, onViewResults }) => {
           </div>
           {quiz.bestScore != null && (
             <div className="text-right flex-shrink-0">
-              <p className="text-2xl font-black" style={{ color: quiz.passed ? C.greenLight : C.amberLight }}>{quiz.bestScore}%</p>
+              <p className="text-2xl font-black" style={{ color: quiz.passed ? C.greenLight : "#ffffff" }}>{quiz.bestScore}%</p>
               <p className="text-[10px] text-gray-500">Best</p>
             </div>
           )}
@@ -101,9 +117,7 @@ const QuizCard = ({ quiz, onStart, onViewResults }) => {
               <span>Attempts used</span>
               <span>{quiz.attemptCount}/{quiz.maxAttempts}</span>
             </div>
-            <div className="w-full rounded-full overflow-hidden" style={{ height: 4, background: C.border }}>
-              <div className="h-full rounded-full transition-all" style={{ width: `${progressPercent}%`, background: statusColor }} />
-            </div>
+            <MiniBar value={progressPercent} height={4} />
           </div>
         )}
 
@@ -112,7 +126,7 @@ const QuizCard = ({ quiz, onStart, onViewResults }) => {
           {quiz.attemptCount > 0 && (
             <button 
               onClick={() => onViewResults(quiz)} 
-              className="flex-1 flex items-center justify-center gap-1.5 text-xs font-semibold py-2 rounded-lg transition-all hover:bg-white/5" 
+              className="flex-1 flex items-center justify-center gap-1.5 text-xs font-semibold py-2 rounded-lg transition-all duration-300 hover:bg-white/5" 
               style={{ color: C.textDim, border: `1px solid ${C.border}` }}
             >
               <span className="material-symbols-outlined text-sm">bar_chart</span>
@@ -122,11 +136,11 @@ const QuizCard = ({ quiz, onStart, onViewResults }) => {
           <button 
             onClick={() => onStart(quiz)} 
             disabled={!quiz.canAttempt || quiz.passed}
-            className="flex-1 flex items-center justify-center gap-1.5 text-xs font-semibold py-2 rounded-lg transition-all hover:scale-105 disabled:opacity-40 disabled:hover:scale-100"
+            className="flex-1 flex items-center justify-center gap-1.5 text-xs font-semibold py-2 rounded-lg transition-all duration-300 hover:scale-105 disabled:opacity-40 disabled:hover:scale-100"
             style={{ 
-              background: quiz.canAttempt && !quiz.passed ? statusColor + "22" : "transparent", 
+              background: quiz.canAttempt && !quiz.passed ? (statusColor === C.accent ? "rgba(255,255,255,0.08)" : statusColor + "22") : "transparent", 
               color: quiz.canAttempt && !quiz.passed ? statusColor : C.muted, 
-              border: `1px solid ${quiz.canAttempt && !quiz.passed ? statusColor + "44" : C.border}`
+              border: `1px solid ${quiz.canAttempt && !quiz.passed ? (statusColor === C.accent ? "rgba(255,255,255,0.18)" : statusColor + "44") : C.border}`
             }}
           >
             <span className="material-symbols-outlined text-sm">
@@ -164,26 +178,26 @@ const QuizPlayer = ({ quiz, attempt, questions, onSubmit, onCancel }) => {
   const fmt = s => `${String(Math.floor(s/60)).padStart(2,"0")}:${String(s%60).padStart(2,"0")}`;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "#000000cc", backdropFilter: "blur(4px)" }}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 transition-opacity duration-300" style={{ background: "#000000cc", backdropFilter: "blur(4px)" }}>
       <div className="rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-hidden flex flex-col" style={{ background: "#0c0e1e", border: `1px solid ${C.border}` }}>
         <div className="px-5 py-4 flex-shrink-0" style={{ borderBottom: `1px solid ${C.border}` }}>
           <div className="flex items-center justify-between gap-3 mb-3">
             <div><h2 className="text-lg font-bold text-white">{quiz.title}</h2><p className="text-xs text-gray-500">Attempt {attempt.attemptNumber}/{quiz.maxAttempts}</p></div>
             <div className="flex items-center gap-3">
-              {tabSwitchCount>0 && <span className="text-xs font-medium" style={{color:C.amberLight}}>⚠ {tabSwitchCount}/3</span>}
-              <div className="px-3 py-1.5 rounded-xl font-mono font-bold text-lg" style={{ background: timeLeft<300?`${C.red}22`:`${C.accent}22`, color: timeLeft<300?C.redLight:C.indigoLight }}>{fmt(timeLeft)}</div>
+              {tabSwitchCount>0 && <span className="text-xs font-medium" style={{color:C.redLight}}>⚠ {tabSwitchCount}/3</span>}
+              <div className="px-3 py-1.5 rounded-xl font-mono font-bold text-lg transition-colors duration-300" style={{ background: timeLeft<300?`${C.red}22`:"rgba(255,255,255,0.08)", color: timeLeft<300?C.redLight:"#ffffff" }}>{fmt(timeLeft)}</div>
             </div>
           </div>
           {warning && <div className="text-xs font-medium mb-2" style={{color:C.redLight}}>{warning}</div>}
           <div className="flex justify-between text-xs text-gray-500 mb-1"><span>Q {currentQ+1}/{questions.length}</span><span>{Object.keys(answers).length} answered</span></div>
-          <div className="h-1.5 rounded-full overflow-hidden" style={{background:C.border}}><div className="h-full rounded-full transition-all" style={{width:`${((currentQ+1)/questions.length)*100}%`,background:C.accent}}/></div>
+          <div className="h-1.5 rounded-full overflow-hidden" style={{background:C.border}}><div className="h-full rounded-full bg-white transition-all duration-500" style={{width:`${((currentQ+1)/questions.length)*100}%`}}/></div>
         </div>
         <div className="flex-1 overflow-y-auto p-5">
           <p className="text-base text-white font-medium mb-4">{q.text}</p>
           <div className="space-y-2">
             {q.options.map((o,i)=>{const sel=answers[q._id]===i;return(
-              <label key={i} className="flex items-center gap-3 p-3 rounded-xl cursor-pointer transition-all" style={{background:sel?`${C.accent}15`:"transparent",border:`1px solid ${sel?C.accent:C.border}`}}>
-                <input type="radio" checked={sel} onChange={()=>setAnswers(p=>({...p,[q._id]:i}))} className="text-indigo-500"/>
+              <label key={i} className="flex items-center gap-3 p-3 rounded-xl cursor-pointer transition-all duration-300" style={{background:sel?"rgba(255,255,255,0.08)":"transparent",border:`1px solid ${sel?"#ffffff":C.border}`}}>
+                <input type="radio" checked={sel} onChange={()=>setAnswers(p=>({...p,[q._id]:i}))} />
                 <span className="text-sm text-gray-300">{o.text}</span>
               </label>
             )})}
@@ -191,12 +205,12 @@ const QuizPlayer = ({ quiz, attempt, questions, onSubmit, onCancel }) => {
         </div>
         <div className="px-5 py-4 flex-shrink-0" style={{ borderTop: `1px solid ${C.border}` }}>
           <div className="flex gap-1.5 mb-3 flex-wrap">{questions.map((_,i)=>(
-            <button key={i} onClick={()=>setCurrentQ(i)} className="w-7 h-7 rounded-full text-[10px] font-bold transition-all" style={{background:i===currentQ?C.accent:answers[questions[i]._id]!==undefined?C.green:C.border,color:i===currentQ||answers[questions[i]._id]!==undefined?"white":C.muted}}>{i+1}</button>
+            <button key={i} onClick={()=>setCurrentQ(i)} className="w-7 h-7 rounded-full text-[10px] font-bold transition-all duration-300 ease-out" style={{background:i===currentQ?"#ffffff":answers[questions[i]._id]!==undefined?C.green:C.border,color:i===currentQ?"#0a0f1e":answers[questions[i]._id]!==undefined?"white":C.muted}}>{i+1}</button>
           ))}</div>
           <div className="flex justify-between gap-2">
-            <button onClick={()=>setCurrentQ(p=>Math.max(0,p-1))} disabled={currentQ===0} className="px-4 py-2 text-sm rounded-lg disabled:opacity-30 hover:bg-white/5" style={{color:C.textDim}}>Prev</button>
-            <button onClick={()=>submit(false)} disabled={isSubmitting} className="px-5 py-2 text-sm font-semibold rounded-lg hover:scale-105 disabled:opacity-50" style={{background:`${C.green}22`,color:C.greenLight,border:`1px solid ${C.green}44`}}>{isSubmitting?"Submitting...":"Submit"}</button>
-            <button onClick={()=>setCurrentQ(p=>Math.min(questions.length-1,p+1))} disabled={currentQ===questions.length-1} className="px-4 py-2 text-sm rounded-lg disabled:opacity-30 hover:bg-white/5" style={{color:C.textDim}}>Next</button>
+            <button onClick={()=>setCurrentQ(p=>Math.max(0,p-1))} disabled={currentQ===0} className="px-4 py-2 text-sm rounded-lg disabled:opacity-30 hover:bg-white/5 transition-all duration-300" style={{color:C.textDim}}>Prev</button>
+            <button onClick={()=>submit(false)} disabled={isSubmitting} className="px-5 py-2 text-sm font-semibold rounded-lg hover:scale-105 disabled:opacity-50 transition-all duration-300" style={{background:`${C.green}22`,color:C.greenLight,border:`1px solid ${C.green}44`}}>{isSubmitting?"Submitting...":"Submit"}</button>
+            <button onClick={()=>setCurrentQ(p=>Math.min(questions.length-1,p+1))} disabled={currentQ===questions.length-1} className="px-4 py-2 text-sm rounded-lg disabled:opacity-30 hover:bg-white/5 transition-all duration-300" style={{color:C.textDim}}>Next</button>
           </div>
         </div>
       </div>
@@ -204,18 +218,18 @@ const QuizPlayer = ({ quiz, attempt, questions, onSubmit, onCancel }) => {
   );
 };
 
-// ── Results Modal ── (FIXED SCROLLING)
+// ── Results Modal ───────────────────────────────────────────
 const QuizResults = ({ result, quiz, onClose, onRetry }) => (
-  <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "#000000cc", backdropFilter: "blur(4px)" }}>
+  <div className="fixed inset-0 z-50 flex items-center justify-center p-4 transition-opacity duration-300" style={{ background: "#000000cc", backdropFilter: "blur(4px)" }}>
     <div className="rounded-2xl shadow-2xl w-full max-w-2xl flex flex-col" style={{ background: "#0c0e1e", border: `1px solid ${C.border}`, maxHeight: "90vh" }}>
       
-      {/* Header - fixed at top */}
-      <div className="p-5 flex-shrink-0 flex items-center justify-between rounded-t-2xl" style={{ background: result.passed ? C.green : C.amber }}>
+      {/* Header - fixed at top. Binary pass/fail: green or red, no amber middle-ground. */}
+      <div className="p-5 flex-shrink-0 flex items-center justify-between rounded-t-2xl" style={{ background: result.passed ? C.green : C.red }}>
         <div>
           <h2 className="text-xl font-bold text-white">Results</h2>
           <p className="text-white/80 text-sm">{quiz.title}</p>
         </div>
-        <button onClick={onClose} className="p-1.5 rounded-full bg-white/20 hover:bg-white/30 transition-all">
+        <button onClick={onClose} className="p-1.5 rounded-full bg-white/20 hover:bg-white/30 transition-all duration-300">
           <span className="material-symbols-outlined text-white">close</span>
         </button>
       </div>
@@ -224,7 +238,7 @@ const QuizResults = ({ result, quiz, onClose, onRetry }) => (
       <div className="flex-1 overflow-y-auto p-5">
         {/* Ring Progress */}
         <div className="flex justify-center mb-5">
-          <RingProgress value={result.score} size={140} stroke={10} color={result.passed ? C.green : C.amber} trackColor={C.border} />
+          <RingProgress value={result.score} size={140} stroke={10} color={result.passed ? C.green : C.red} trackColor={C.border} />
         </div>
 
         {/* Stats Grid */}
@@ -234,7 +248,7 @@ const QuizResults = ({ result, quiz, onClose, onRetry }) => (
             { l: "Time", v: result.timeTaken ? `${Math.floor(result.timeTaken / 60)}m ${result.timeTaken % 60}s` : "—" },
             { l: "Pass mark", v: `${quiz.passingScore}%` }
           ].map(s => (
-            <div key={s.l} className="rounded-xl p-3 text-center" style={{ background: C.card, border: `1px solid ${C.border}` }}>
+            <div key={s.l} className="rounded-xl p-3 text-center transition-all duration-300" style={{ background: C.card, border: `1px solid ${C.border}` }}>
               <p className="font-bold text-white text-sm">{s.v}</p>
               <p className="text-[10px] text-gray-500 mt-0.5">{s.l}</p>
             </div>
@@ -246,7 +260,7 @@ const QuizResults = ({ result, quiz, onClose, onRetry }) => (
           <div className="mb-5 space-y-2">
             <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Question Breakdown</p>
             {result.results.map((r, i) => (
-              <div key={i} className="p-3 rounded-xl" style={{ background: r.isCorrect ? `${C.green}11` : `${C.red}11`, border: `1px solid ${r.isCorrect ? C.green : C.red}33` }}>
+              <div key={i} className="p-3 rounded-xl transition-all duration-300" style={{ background: r.isCorrect ? `${C.green}11` : `${C.red}11`, border: `1px solid ${r.isCorrect ? C.green : C.red}33` }}>
                 <div className="flex items-start gap-2">
                   <span className="material-symbols-outlined text-sm mt-0.5 flex-shrink-0" style={{ color: r.isCorrect ? C.greenLight : C.redLight }}>
                     {r.isCorrect ? "check_circle" : "cancel"}
@@ -259,7 +273,7 @@ const QuizResults = ({ result, quiz, onClose, onRetry }) => (
                       </p>
                     )}
                     {r.correctAnswer && (
-                      <p className="text-[10px] mt-0.5" style={{ color: r.isCorrect ? C.greenLight : C.amberLight }}>
+                      <p className="text-[10px] mt-0.5 text-gray-400">
                         Correct: {r.correctAnswer}
                       </p>
                     )}
@@ -286,7 +300,7 @@ const QuizResults = ({ result, quiz, onClose, onRetry }) => (
       <div className="p-5 flex-shrink-0 flex gap-2 border-t" style={{ borderColor: C.border }}>
         <button 
           onClick={onClose} 
-          className="flex-1 py-2.5 rounded-xl text-sm font-semibold transition-all hover:scale-105" 
+          className="flex-1 py-2.5 rounded-xl text-sm font-semibold transition-all duration-300 hover:scale-105" 
           style={{ color: C.textDim, border: `1px solid ${C.border}`, background: C.card }}
         >
           Back to Quizzes
@@ -294,8 +308,8 @@ const QuizResults = ({ result, quiz, onClose, onRetry }) => (
         {onRetry && (
           <button 
             onClick={onRetry} 
-            className="flex-1 py-2.5 rounded-xl text-sm font-semibold transition-all hover:scale-105" 
-            style={{ background: `${C.accent}22`, color: C.indigoLight, border: `1px solid ${C.accent}44` }}
+            className="flex-1 py-2.5 rounded-xl text-sm font-semibold transition-all duration-300 hover:scale-105" 
+            style={{ background: "rgba(255,255,255,0.08)", color: "#ffffff", border: "1px solid rgba(255,255,255,0.18)" }}
           >
             Try Again
           </button>
@@ -326,36 +340,55 @@ const Quizzes = () => {
   const filtered = quizzes.filter(q=>{if(filter==="pending"&&(q.attemptCount>=q.maxAttempts||q.passed))return false;if(filter==="completed"&&q.attemptCount===0)return false;if(filter==="passed"&&!q.passed)return false;if(search&&!q.title.toLowerCase().includes(search.toLowerCase()))return false;return true;});
   const stats = {total:quizzes.length,completed:quizzes.filter(q=>q.attemptCount>0).length,passed:quizzes.filter(q=>q.passed).length,pending:quizzes.filter(q=>q.attemptCount===0&&q.canAttempt).length};
 
+  // Every percentage is the stat's own share of the total quiz count —
+  // never a fixed cap.
+  const pct = v => stats.total > 0 ? Math.round((v / stats.total) * 100) : 0;
+
   return (
     <div className="space-y-5 pb-10" style={{ fontFamily: "'Lexend', sans-serif" }}>
       <div>
-        <div className="flex items-center gap-2 mb-1"><span className="w-2 h-2 rounded-full animate-pulse" style={{background:C.accent}}/><p className="text-xs font-semibold uppercase tracking-widest" style={{color:C.indigoLight}}>Quizzes</p></div>
+        <div className="flex items-center gap-2 mb-1"><span className="w-2 h-2 rounded-full animate-pulse bg-white"/><p className="text-xs font-semibold uppercase tracking-widest text-gray-400">Quizzes</p></div>
         <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight">Test Your Knowledge</h1>
       </div>
 
+      {/* All four cards share identical styling — consistent white monochrome,
+          no card singled out with its own color. Each bar is the stat's share
+          of the total quizzes, never a fixed cap. */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        {[{i:"quiz",l:"Total",v:stats.total,c:C.accent},{i:"pending",l:"Pending",v:stats.pending,c:C.amber},{i:"check_circle",l:"Attempted",v:stats.completed,c:C.accent2},{i:"emoji_events",l:"Passed",v:stats.passed,c:C.green}].map(s=>(
-          <div key={s.l} className="rounded-xl p-4 flex flex-col gap-2 relative overflow-hidden group" style={{background:C.card,border:`1px solid ${s.c}33`}}>
-            <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500" style={{ background: `radial-gradient(ellipse at 50% 0%, ${s.c}15 0%, transparent 70%)` }} />
-            <div className="w-9 h-9 rounded-lg flex items-center justify-center relative z-10" style={{background:`${s.c}22`,border:`1px solid ${s.c}44`}}><span className="material-symbols-outlined text-sm" style={{color:s.c}}>{s.i}</span></div>
-            <p className="text-2xl font-black text-white relative z-10" style={{textShadow:`0 0 20px ${s.c}66`}}>{s.v}</p><p className="text-xs text-gray-500 relative z-10">{s.l}</p>
+        {[{l:"Total",v:stats.total,p:100},{l:"Pending",v:stats.pending,p:pct(stats.pending)},{l:"Attempted",v:stats.completed,p:pct(stats.completed)},{l:"Passed",v:stats.passed,p:pct(stats.passed)}].map((s,i)=>(
+          <div key={s.l} className="rounded-xl p-4 flex flex-col gap-2 relative overflow-hidden group opacity-0 animate-fadeInUp transition-all duration-300 ease-out hover:-translate-y-1" style={{background:C.card,border:"1px solid rgba(255,255,255,0.1)",animationDelay:`${i*90}ms`,animationFillMode:"forwards"}}>
+            <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500" style={{ background: "radial-gradient(ellipse at 50% 0%, rgba(255,255,255,0.08) 0%, transparent 70%)" }} />
+            <div className="flex items-start justify-between relative z-10">
+              <p className="text-xs text-gray-400 font-medium">{s.l}</p>
+              <span className="text-xs font-bold text-white transition-all duration-300">{s.p}%</span>
+            </div>
+            <p className="text-2xl font-black text-white relative z-10" style={{textShadow:"0 0 20px rgba(255,255,255,0.25)"}}>{s.v}</p>
+            <div className="relative z-10"><MiniBar value={s.p} /></div>
           </div>
         ))}
       </div>
 
-      <div className="rounded-xl p-4 flex flex-col sm:flex-row gap-3" style={{background:C.card,border:`1px solid ${C.border}`}}>
-        {courses.length>0&&<select value={selectedCourse} onChange={e=>setSelectedCourse(e.target.value)} className="sm:w-64 px-3 py-2 text-sm rounded-lg outline-none" style={{background:C.input,border:`1px solid ${C.border}`,color:C.text}}>{courses.map(c=><option key={c._id} value={c._id}>{c.title}</option>)}</select>}
-        <div className="flex-1 relative"><span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-sm" style={{color:C.muted}}>search</span><input placeholder="Search quizzes..." value={search} onChange={e=>setSearch(e.target.value)} className="w-full pl-9 pr-4 py-2 text-sm rounded-lg outline-none" style={{background:C.input,border:`1px solid ${C.border}`,color:C.text}}/></div>
-        <div className="flex gap-1">{["all","pending","completed","passed"].map(f=><button key={f} onClick={()=>setFilter(f)} className="px-3 py-2 rounded-lg text-xs font-semibold capitalize transition-all" style={{background:filter===f?C.accent:"transparent",color:filter===f?"white":C.muted}}>{f}</button>)}</div>
+      <div className="rounded-xl p-4 flex flex-col sm:flex-row gap-3 transition-all duration-300" style={{background:C.card,border:`1px solid ${C.border}`}}>
+        {courses.length>0&&<select value={selectedCourse} onChange={e=>setSelectedCourse(e.target.value)} className="sm:w-64 px-3 py-2 text-sm rounded-lg outline-none transition-all duration-300 focus:ring-2 focus:ring-white/40" style={{background:C.input,border:`1px solid ${C.border}`,color:C.text}}>{courses.map(c=><option key={c._id} value={c._id}>{c.title}</option>)}</select>}
+        <div className="flex-1 relative"><span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-sm" style={{color:C.muted}}>search</span><input placeholder="Search quizzes..." value={search} onChange={e=>setSearch(e.target.value)} className="w-full pl-9 pr-4 py-2 text-sm rounded-lg outline-none transition-all duration-300 focus:ring-2 focus:ring-white/40" style={{background:C.input,border:`1px solid ${C.border}`,color:C.text}}/></div>
+        <div className="flex gap-1">{["all","pending","completed","passed"].map(f=><button key={f} onClick={()=>setFilter(f)} className="px-3 py-2 rounded-lg text-xs font-semibold capitalize transition-all duration-300 ease-out" style={{background:filter===f?"#ffffff":"transparent",color:filter===f?"#0a0f1e":C.muted}}>{f}</button>)}</div>
       </div>
 
-      {error && <div className="p-3 rounded-xl text-sm" style={{background:`${C.red}11`,border:`1px solid ${C.red}33`,color:C.redLight}}>{error}</div>}
-      {isLoading ? <div className="flex justify-center py-12"><div className="w-8 h-8 rounded-full border-2 border-gray-800 border-t-indigo-500 animate-spin"/></div>
+      {error && <div className="p-3 rounded-xl text-sm transition-all duration-300" style={{background:`${C.red}11`,border:`1px solid ${C.red}33`,color:C.redLight}}>{error}</div>}
+      {isLoading ? <div className="flex justify-center py-12"><div className="w-8 h-8 rounded-full border-2 border-white/10 border-t-white animate-spin"/></div>
       : filtered.length>0 ? <div className="grid grid-cols-1 md:grid-cols-2 gap-4">{filtered.map(q=><QuizCard key={q._id} quiz={q} onStart={handleStart} onViewResults={handleView}/>)}</div>
-      : <div className="rounded-xl p-12 text-center" style={{background:C.card,border:`1px solid ${C.border}`}}><span className="material-symbols-outlined text-5xl text-gray-700 mb-3 block">quiz</span><p className="text-gray-500">No quizzes found</p></div>}
+      : <div className="rounded-xl p-12 text-center transition-all duration-300" style={{background:C.card,border:`1px solid ${C.border}`}}><span className="material-symbols-outlined text-5xl text-gray-700 mb-3 block">quiz</span><p className="text-gray-500">No quizzes found</p></div>}
 
       {activeQuiz && activeAttempt && <QuizPlayer quiz={activeQuiz} attempt={activeAttempt} questions={activeQuestions} onSubmit={handleSubmit} onCancel={()=>{if(confirm("Cancel?")){setActiveQuiz(null);setActiveAttempt(null);setActiveQuestions([]);}}}/>}
       {result && resultQuiz && <QuizResults result={result} quiz={resultQuiz} onClose={()=>{setResult(null);setResultQuiz(null);}} onRetry={resultQuiz.canAttempt?()=>{setResult(null);setResultQuiz(null);handleStart(resultQuiz);}:null}/>}
+
+      <style>{`
+        @keyframes fadeInUp {
+          from { opacity: 0; transform: translateY(8px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fadeInUp { animation: fadeInUp 0.4s ease-out both; }
+      `}</style>
     </div>
   );
 };
