@@ -25,6 +25,55 @@ app.use(cors({
 }));
 app.use(express.json());
 
+// ── MongoDB — cached connection for serverless ───────────────
+// On Vercel, every cold start would otherwise open a brand new connection.
+// This caches the connection (and the in-flight connect promise) on the
+// global object so warm invocations reuse it instead of reconnecting, and
+// so we never call mongoose.connect() more than once concurrently.
+let cached = global._mongooseConn;
+if (!cached) {
+  cached = global._mongooseConn = { conn: null, promise: null };
+}
+
+const connectDB = async () => {
+  if (cached.conn) return cached.conn;
+
+  if (!cached.promise) {
+    if (!process.env.MONGO_URI) {
+      throw new Error("MONGO_URI environment variable is not set");
+    }
+    cached.promise = mongoose
+      .connect(process.env.MONGO_URI)
+      .then((m) => m);
+  }
+
+  try {
+    cached.conn = await cached.promise;
+  } catch (err) {
+    // Reset the cached promise so the NEXT request retries the connection
+    // instead of being permanently stuck on a failed attempt.
+    cached.promise = null;
+    throw err;
+  }
+
+  return cached.conn;
+};
+
+// Ensure every request has a DB connection before hitting route handlers.
+// If the connection fails, respond with a proper error instead of crashing
+// the whole function process.
+app.use(async (req, res, next) => {
+  try {
+    await connectDB();
+    next();
+  } catch (err) {
+    console.error("MongoDB connection error:", err.message);
+    res.status(503).json({
+      message: "Database connection unavailable. Please try again shortly.",
+    });
+  }
+});
+
 // ── Service Health Check ────────────────────────────────────
 const checkServices = async () => {
   const status = {
@@ -167,7 +216,7 @@ app.post("/api/test-email", async (req, res) => {
     await transporter.sendMail({
       from: emailUser,
       to: emailUser,
-      subject: "✅ Smart Academia - Test Email",
+      subject: "Smart Academia - Test Email",
       html: `
         <h2>Email Test Successful</h2>
         <p>Your Smart Academia backend email configuration is working.</p>
@@ -215,33 +264,26 @@ app.use('/api/course-notes', courseNoteRoutes);
 
 app.get("/", (req, res) => res.json({ message: "SmartAcademia API running" }));
 
-// ── Start Server ────────────────────────────────────────────
+// ── Start Server (local dev only) ────────────────────────────
 const PORT = process.env.PORT || 5000;
 
+if (process.env.NODE_ENV !== "production") {
+  connectDB()
+    .then(async () => {
+      const services = await checkServices();
+      console.log("\n Service Status:");
+      console.log(`  MongoDB:    ${services.mongodb.connected ? "✅" : "❌"} ${services.mongodb.message}`);
+      console.log(`  Cloudinary: ${services.cloudinary.configured ? "✅" : "❌"} ${services.cloudinary.message}`);
+      console.log(`  Gemini:     ${services.gemini.configured ? "✅" : "❌"} ${services.gemini.message}`);
+      console.log(`  Email:      ${services.email.configured ? "✅" : "❌"} ${services.email.message}`);
 
-
-mongoose.connect(process.env.MONGO_URI)
-  .then(async () => {
-    // Check services on startup
-    const services = await checkServices();
-    console.log("\n Service Status:");
-    console.log(`  MongoDB:   ${services.mongodb.connected ? " ✅" : "❌"} ${services.mongodb.message}`);
-    console.log(`  Cloudinary: ${services.cloudinary.configured ? "✅" : "❌"} ${services.cloudinary.message}`);
-    console.log(`  Gemini:     ${services.gemini.configured ? "✅" : "❌"} ${services.gemini.message}`);
-    console.log(`  Email:      ${services.email.configured ? "✅" : "❌"} ${services.email.message}`);
-    
-    // app.listen(PORT, () => console.log(`\n Server running on port ${PORT}`));
-    // Keep this for local dev only
-if (process.env.NODE_ENV !== 'production') {
-  app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+      app.listen(PORT, () => console.log(`\n Server running on port ${PORT}`));
+    })
+    .catch((err) => {
+      // Local dev only: log clearly, but still don't hard-exit — that habit
+      // is exactly what breaks this file when it's reused in production.
+      console.error("❌ MongoDB connection failed:", err.message);
+    });
 }
 
-})
-.catch(err => {
-    console.error("❌ MongoDB connection failed:", err.message);
-    process.exit(1);
-  });
-
-
-
-    module.exports = app;
+module.exports = app;
