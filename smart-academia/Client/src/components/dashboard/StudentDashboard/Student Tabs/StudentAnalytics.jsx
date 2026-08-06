@@ -724,6 +724,7 @@ const StudentAnalytics = () => {
             <StatCard label="Graded" value={labGraded} percentage={allLabs.length > 0 ? Math.round((labGraded / allLabs.length) * 100) : 0} delay={90} />
             <StatCard label="Avg Score" value={labAvgScore !== null ? `${labAvgScore}%` : "—"} percentage={labAvgScore ?? 0} delay={180} />
           </div>
+          dashboard
 
           {/* Lab List */}
           <div className="rounded-2xl overflow-hidden transition-all duration-300" style={{ background: C.surface, border: `1px solid ${C.border}` }}>

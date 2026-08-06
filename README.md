@@ -4,8 +4,6 @@ SmartAcademia is an AI-assisted Learning Management System (LMS) that combines m
 
 The platform enables educators to create structured courses, lessons, quizzes, and coding labs while providing students with AI-powered learning assistance, automated assessments, progress tracking, and intelligent feedback.
 
-This project was developed as a Final Year Project using the MERN stack with AI integration.
-
 ---
 
 ## Features
@@ -18,18 +16,22 @@ This project was developed as a Final Year Project using the MERN stack with AI 
 - AI learning assistant
 - AI-generated quizzes
 - Coding lab submissions
+- Auto Lab Evaluation (Get instant score)
 - Progress tracking
 - Performance analytics
+- Progress Analyzer (Students can see what topics they are weak in during the course)
+- AI Learning Assistant (Student can upload the documents and can chat with that document, generate quizes, generate flashcards)
 - Notifications
 
 ### Teacher Portal
 
+- User registration and authentication
 - Course management
 - Lesson management
-- Quiz creation
-- AI quiz generation
-- Coding lab creation
-- Student performance monitoring
+- Quiz creation (manual)
+- AI quiz generation (auto)
+- Coding lab creation (auto+manual)
+- Student performance monitoring (can see performance of each student seperately)
 - Analytics dashboard
 
 ### Administrator Panel
@@ -60,6 +62,9 @@ Analyzes submitted code and provides intelligent explanations, improvement sugge
 
 Evaluates student learning patterns, identifies weak topics, and generates personalized learning recommendations.
 
+### AI Chatbot for both Teacher and Student
+helps student and teacher in understanding the concepts clearly.
+
 ---
 
 ## Learning Workflow
@@ -67,7 +72,7 @@ Evaluates student learning patterns, identifies weak topics, and generates perso
 1. Teacher creates a course.
 2. Teacher adds lessons, quizzes, and coding labs.
 3. Student enrolls in the course.
-4. Student completes lessons sequentially.
+4. Student completes lessons sequentially. 
 5. Student attempts quizzes (maximum three attempts).
 6. Student submits coding labs.
 7. AI evaluates progress and provides recommendations.
