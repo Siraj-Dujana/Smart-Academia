@@ -18,18 +18,35 @@ const courseNoteRoutes = require('./routes/courseNoteRoutes');
 
 const app = express();
 
-// ── Middleware ──────────────────────────────────────────────
-app.use(cors({ 
-  origin: ["http://localhost:5173", "http://localhost:3000", process.env.CLIENT_URL],
+// ── CORS Configuration ──────────────────────────────────────
+const allowedOrigins = [
+  'http://localhost:5173',
+  'http://localhost:3000',
+  'https://smart-academia-frontend.vercel.app',
+  'https://smart-academia-sd.vercel.app',
+  process.env.CLIENT_URL
+].filter(Boolean);
+
+app.use(cors({
+  origin: function (origin, callback) {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.indexOf(origin) !== -1) {
+      callback(null, true);
+    } else {
+      console.log('Blocked origin:', origin);
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+  optionsSuccessStatus: 200
 }));
+
 app.use(express.json());
 
 // ── MongoDB — cached connection for serverless ───────────────
-// On Vercel, every cold start would otherwise open a brand new connection.
-// This caches the connection (and the in-flight connect promise) on the
-// global object so warm invocations reuse it instead of reconnecting, and
-// so we never call mongoose.connect() more than once concurrently.
 let cached = global._mongooseConn;
 if (!cached) {
   cached = global._mongooseConn = { conn: null, promise: null };
@@ -50,8 +67,6 @@ const connectDB = async () => {
   try {
     cached.conn = await cached.promise;
   } catch (err) {
-    // Reset the cached promise so the NEXT request retries the connection
-    // instead of being permanently stuck on a failed attempt.
     cached.promise = null;
     throw err;
   }
@@ -60,8 +75,6 @@ const connectDB = async () => {
 };
 
 // Ensure every request has a DB connection before hitting route handlers.
-// If the connection fails, respond with a proper error instead of crashing
-// the whole function process.
 app.use(async (req, res, next) => {
   try {
     await connectDB();
@@ -264,24 +277,22 @@ app.use('/api/course-notes', courseNoteRoutes);
 
 app.get("/", (req, res) => res.json({ message: "SmartAcademia API running" }));
 
-// ── Start Server (local dev only) ────────────────────────────
+// ── Start Server ────────────────────────────────────────────
 const PORT = process.env.PORT || 5000;
 
 if (process.env.NODE_ENV !== "production") {
   connectDB()
     .then(async () => {
       const services = await checkServices();
-      console.log("\n Service Status:");
+      console.log("\n📊 Service Status:");
       console.log(`  MongoDB:    ${services.mongodb.connected ? "✅" : "❌"} ${services.mongodb.message}`);
       console.log(`  Cloudinary: ${services.cloudinary.configured ? "✅" : "❌"} ${services.cloudinary.message}`);
       console.log(`  Gemini:     ${services.gemini.configured ? "✅" : "❌"} ${services.gemini.message}`);
       console.log(`  Email:      ${services.email.configured ? "✅" : "❌"} ${services.email.message}`);
 
-      app.listen(PORT, () => console.log(`\n Server running on port ${PORT}`));
+      app.listen(PORT, () => console.log(`\n🚀 Server running on port ${PORT}`));
     })
     .catch((err) => {
-      // Local dev only: log clearly, but still don't hard-exit — that habit
-      // is exactly what breaks this file when it's reused in production.
       console.error("❌ MongoDB connection failed:", err.message);
     });
 }
