@@ -20,7 +20,8 @@ const app = express();
 
 // ── Middleware ──────────────────────────────────────────────
 app.use(cors({ 
-  origin: ["http://localhost:5173", "http://localhost:3000", process.env.CLIENT_URL] 
+  origin: ["http://localhost:5173", "http://localhost:3000", process.env.CLIENT_URL],
+  credentials: true,
 }));
 app.use(express.json());
 
@@ -217,6 +218,8 @@ app.get("/", (req, res) => res.json({ message: "SmartAcademia API running" }));
 // ── Start Server ────────────────────────────────────────────
 const PORT = process.env.PORT || 5000;
 
+
+
 mongoose.connect(process.env.MONGO_URI)
   .then(async () => {
     // Check services on startup
@@ -227,9 +230,18 @@ mongoose.connect(process.env.MONGO_URI)
     console.log(`  Gemini:     ${services.gemini.configured ? "✅" : "❌"} ${services.gemini.message}`);
     console.log(`  Email:      ${services.email.configured ? "✅" : "❌"} ${services.email.message}`);
     
-    app.listen(PORT, () => console.log(`\n Server running on port ${PORT}`));
-  })
-  .catch(err => {
+    // app.listen(PORT, () => console.log(`\n Server running on port ${PORT}`));
+    // Keep this for local dev only
+if (process.env.NODE_ENV !== 'production') {
+  app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+}
+
+})
+.catch(err => {
     console.error("❌ MongoDB connection failed:", err.message);
     process.exit(1);
   });
+
+
+
+    module.exports = app;
